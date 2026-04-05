@@ -88,7 +88,7 @@ export default function ListPropertyPage() {
     <div className="max-w-2xl mx-auto page-enter">
       <div className="mb-8">
         <h2 className="font-display text-2xl font-bold text-forest-900">List a Property</h2>
-        <p className="text-gray-500 text-sm mt-1">Fill in the details to list your property on corecity</p>
+        <p className="text-gray-500 text-sm mt-1">Fill in the details to list your property on Corecity</p>
       </div>
 
       {/* Step indicator */}

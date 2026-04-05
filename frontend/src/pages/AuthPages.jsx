@@ -95,7 +95,7 @@ export function RegisterPage() {
     const payload = { ...data, phone: normalizePhone(data.phone) };
     const result = await authRegister(payload);
     if (result.success) {
-      toast.success('Account created! Welcome to corecity 🏠');
+      toast.success('Account created! Welcome to Corecity 🏠');
       navigate('/dashboard');
     } else {
       toast.error(result.error);
@@ -123,7 +123,7 @@ export function RegisterPage() {
             </span>
           </Link>
           <h1 className="font-display text-3xl font-bold text-forest-900">Create your account</h1>
-          <p className="text-gray-500 mt-2">Join thousands of Nigerians on corecity</p>
+          <p className="text-gray-500 mt-2">Join thousands of Nigerians on Corecity</p>
         </div>
 
         <div className="card p-8">

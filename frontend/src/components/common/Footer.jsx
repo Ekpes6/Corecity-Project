@@ -84,7 +84,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-3 text-sm text-white/60">
                 <Phone size={16} className="shrink-0 text-clay-500" />
-                +234 800 corecity
+                +234 800 Corecity
               </li>
               <li className="flex items-center gap-3 text-sm text-white/60">
                 <Mail size={16} className="shrink-0 text-clay-500" />
@@ -102,7 +102,7 @@ export default function Footer() {
 
         <div className="border-t border-white/10 mt-12 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-white/40 text-sm">
-            © {new Date().getFullYear()} corecity Nigeria Ltd. All rights reserved.
+            © {new Date().getFullYear()} Corecity Nigeria Ltd. All rights reserved.
           </p>
           <div className="flex gap-6">
             {['Privacy Policy', 'Terms of Use', 'Cookie Policy'].map((t) => (

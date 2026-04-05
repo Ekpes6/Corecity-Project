@@ -155,10 +155,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── Why corecity ────────────────────────────────────── */}
+      {/* ── Why Corecity ────────────────────────────────────── */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="text-center mb-12">
-          <h2 className="section-title mb-4">Why Choose corecity?</h2>
+          <h2 className="section-title mb-4">Why Choose Corecity?</h2>
           <p className="text-gray-500 max-w-xl mx-auto">Built specifically for Nigeria's property market with local payment methods and nationwide coverage.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -185,7 +185,7 @@ export default function HomePage() {
             Ready to List Your Property?
           </h2>
           <p className="text-white/70 mb-8 text-lg">
-            Join thousands of landlords, developers, and agents who trust corecity
+            Join thousands of landlords, developers, and agents who trust Corecity
             to reach serious buyers and tenants across Nigeria.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
