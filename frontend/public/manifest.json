@@ -1,0 +1,9 @@
+{
+  "short_name": "Corecity",
+  "name": "Corecity Nigeria",
+  "description": "Find properties for sale, rent, and short let across Nigeria.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1B5E20"
+}
