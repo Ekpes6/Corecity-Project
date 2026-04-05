@@ -52,7 +52,7 @@ Nigeria's full-stack real estate platform built with Java (Spring Boot microserv
 
 - **Paystack** payment gateway with NGN (₦) — card, bank transfer, USSD, QR
 - **Termii** SMS API for OTPs and alerts to Nigerian numbers (+234)
-- **37 states + LGAs** pre-seeded in the database
+- **37 states + all 774 LGAs** pre-seeded in the database
 - Phone validation for Nigerian numbers (080x, 081x, 090x, 070x)
 - **BVN / NIN** fields for identity verification
 - Nigerian property types: Bungalow, Duplex, Terraced, Semi-Detached, BQ
