@@ -32,7 +32,7 @@ export function LoginPage() {
               <Home size={20} className="text-white" />
             </div>
             <span className="font-display font-bold text-2xl text-forest-900">
-              House<span className="text-clay-500">Link</span>
+              Core<span className="text-clay-500">City</span>
             </span>
           </Link>
           <h1 className="font-display text-3xl font-bold text-forest-900">Welcome back</h1>
