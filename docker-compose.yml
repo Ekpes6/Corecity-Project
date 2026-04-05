@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ─── Database ───────────────────────────────────────────────
   mysql:
@@ -30,7 +28,9 @@ services:
 
   # ─── API Gateway ────────────────────────────────────────────
   api-gateway:
-    build: ./backend/api-gateway
+    build:
+      context: ./backend
+      dockerfile: api-gateway/Dockerfile
     container_name: corecity-gateway
     ports:
       - "8080:8080"
@@ -44,7 +44,9 @@ services:
 
   # ─── Microservices ──────────────────────────────────────────
   user-service:
-    build: ./backend/user-service
+    build:
+      context: ./backend
+      dockerfile: user-service/Dockerfile
     container_name: corecity-user-service
     ports:
       - "8081:8081"
@@ -60,7 +62,9 @@ services:
       - corecity-network
 
   property-service:
-    build: ./backend/property-service
+    build:
+      context: ./backend
+      dockerfile: property-service/Dockerfile
     container_name: corecity-property-service
     ports:
       - "8082:8082"
@@ -76,7 +80,9 @@ services:
       - corecity-network
 
   file-service:
-    build: ./backend/file-service
+    build:
+      context: ./backend
+      dockerfile: file-service/Dockerfile
     container_name: corecity-file-service
     ports:
       - "8083:8083"
@@ -93,7 +99,9 @@ services:
       - corecity-network
 
   transaction-service:
-    build: ./backend/transaction-service
+    build:
+      context: ./backend
+      dockerfile: transaction-service/Dockerfile
     container_name: corecity-transaction-service
     ports:
       - "8084:8084"
@@ -110,7 +118,9 @@ services:
       - corecity-network
 
   notification-service:
-    build: ./backend/notification-service
+    build:
+      context: ./backend
+      dockerfile: notification-service/Dockerfile
     container_name: corecity-notification-service
     ports:
       - "8085:8085"

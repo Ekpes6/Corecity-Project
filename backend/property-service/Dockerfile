@@ -1,12 +1,11 @@
 FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
-COPY pom.xml .
-COPY ../pom.xml ../pom.xml
-RUN mvn dependency:go-offline -q
-COPY src ./src
-RUN mvn package -DskipTests -q
+COPY pom.xml ./pom.xml
+COPY property-service/pom.xml ./property-service/pom.xml
+COPY property-service/src ./property-service/src
+RUN mvn -B -ntp -Dstyle.color=never -f property-service/pom.xml package -DskipTests
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
+COPY --from=build /app/property-service/target/*.jar app.jar
 ENTRYPOINT ["java","-jar","app.jar"]

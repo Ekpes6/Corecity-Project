@@ -1,0 +1,6 @@
+
+> corecity-frontend@1.0.0 build
+> react-scripts build
+
+'react-scripts' is not recognized as an internal or external command,
+operable program or batch file.
