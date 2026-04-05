@@ -11,6 +11,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +40,7 @@ public class PaystackService {
         // Paystack amounts are in kobo (1 NGN = 100 kobo)
         long amountKobo = amountNgn.multiply(BigDecimal.valueOf(100)).longValue();
 
-        Map<String, Object> body = Map.of(
+        Map<String, Object> body = Objects.requireNonNull(Map.of(
             "email", email,
             "amount", amountKobo,
             "reference", reference,
@@ -47,15 +48,15 @@ public class PaystackService {
             "callback_url", "https://corecity.com.ng/payment/verify",
             "metadata", meta,
             "channels", new String[]{"card", "bank", "ussd", "bank_transfer", "qr"}
-        );
+        ), "paystack initialize request body must not be null");
 
         try {
             String response = webClientBuilder.build()
                 .post()
                 .uri(PAYSTACK_BASE + "/transaction/initialize")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + secretKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .bodyValue(Objects.requireNonNull(body, "paystack initialize request body must not be null"))
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();

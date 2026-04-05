@@ -11,6 +11,7 @@ import org.thymeleaf.context.Context;
 
 import jakarta.mail.internet.MimeMessage;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -25,15 +26,21 @@ public class EmailService {
 
     public void sendTemplatedEmail(String to, String subject, String template, Map<String, Object> vars) {
         try {
+            String safeTemplate = Objects.requireNonNull(template, "template name must not be null");
+            Map<String, Object> safeVars = Objects.requireNonNull(vars, "vars map must not be null");
+            String recipient = Objects.requireNonNull(to, "recipient email must not be null");
+            String safeSubject = Objects.requireNonNull(subject, "email subject must not be null");
+
             Context ctx = new Context();
-            vars.forEach(ctx::setVariable);
-            String htmlBody = templateEngine.process(template, ctx);
+            safeVars.forEach(ctx::setVariable);
+            String htmlBody = Objects.requireNonNull(templateEngine.process(safeTemplate, ctx), "generated email body must not be null");
 
             MimeMessage msg = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(msg, true, "UTF-8");
-            helper.setFrom(fromAddress, "corecity Nigeria");
-            helper.setTo(to);
-            helper.setSubject(subject);
+            String from = Objects.requireNonNull(fromAddress, "spring.mail.username must not be null");
+            helper.setFrom(from, "corecity Nigeria");
+            helper.setTo(recipient);
+            helper.setSubject(safeSubject);
             helper.setText(htmlBody, true);
             mailSender.send(msg);
             log.info("Email sent → {} subject: {}", to, subject);

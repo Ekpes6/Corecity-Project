@@ -21,6 +21,7 @@ public class AuthDTOs {
         @NotBlank private String firstName;
         @NotBlank private String lastName;
 
+        @Builder.Default
         private User.Role role = User.Role.BUYER;
     }
 
@@ -33,6 +34,7 @@ public class AuthDTOs {
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class AuthResponse {
         private String accessToken;
+        @Builder.Default
         private String tokenType = "Bearer";
         private UserDTO user;
     }

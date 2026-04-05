@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,38 +29,40 @@ public class TransactionService {
 
     @Transactional
     public InitTransactionResponse initTransaction(InitTransactionRequest req, Long buyerId) {
+        Long safeBuyerId = Objects.requireNonNull(buyerId, "buyer id must not be null");
         BigDecimal fee = paystackService.calculateFee(req.getAmount());
         String reference = "HLK-" + Instant.now().toEpochMilli();
 
         // Persist in INITIATED state before hitting Paystack
-        Transaction tx = Transaction.builder()
+        var builtTransaction = Transaction.builder()
             .reference(reference)
             .propertyId(req.getPropertyId())
-            .buyerId(buyerId)
+            .buyerId(safeBuyerId)
             .sellerId(req.getSellerId())
             .amount(req.getAmount())
             .serviceFee(fee)
             .type(req.getType())
             .status(Transaction.TransactionStatus.INITIATED)
             .build();
-        tx = transactionRepository.save(tx);
+        var savedTransaction = transactionRepository.save(
+            Objects.requireNonNull(builtTransaction, "built transaction must not be null"));
 
         // Call Paystack
         Map<String, Object> meta = Map.of(
             "propertyId", req.getPropertyId(),
-            "transactionId", tx.getId(),
+            "transactionId", savedTransaction.getId(),
             "type", req.getType().name()
         );
         PaystackService.InitResult result =
             paystackService.initializeTransaction(req.getBuyerEmail(), req.getAmount().add(fee), reference, meta);
 
         // Update with Paystack URL
-        tx.setAuthorizationUrl(result.authorizationUrl());
-        tx.setStatus(Transaction.TransactionStatus.PENDING);
-        transactionRepository.save(tx);
+        savedTransaction.setAuthorizationUrl(result.authorizationUrl());
+        savedTransaction.setStatus(Transaction.TransactionStatus.PENDING);
+        transactionRepository.save(savedTransaction);
 
         return InitTransactionResponse.builder()
-            .transactionId(tx.getId())
+            .transactionId(savedTransaction.getId())
             .reference(reference)
             .authorizationUrl(result.authorizationUrl())
             .amount(req.getAmount())
@@ -93,20 +96,25 @@ public class TransactionService {
             log.warn("Transaction {} failed, Paystack status: {}", reference, result.status());
         }
 
-        return toResponse(transactionRepository.save(tx));
+        var savedTransaction = transactionRepository.save(
+            Objects.requireNonNull(tx, "verified transaction must not be null"));
+        return toResponse(savedTransaction);
     }
 
     public List<TransactionResponse> getMyTransactions(Long userId, String role) {
+        Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
         List<Transaction> txs = "seller".equalsIgnoreCase(role)
-            ? transactionRepository.findBySellerIdOrderByCreatedAtDesc(userId)
-            : transactionRepository.findByBuyerIdOrderByCreatedAtDesc(userId);
+            ? transactionRepository.findBySellerIdOrderByCreatedAtDesc(safeUserId)
+            : transactionRepository.findByBuyerIdOrderByCreatedAtDesc(safeUserId);
         return txs.stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     public TransactionResponse getTransaction(Long id, Long userId) {
-        Transaction tx = transactionRepository.findById(id)
+        Long safeId = Objects.requireNonNull(id, "transaction id must not be null");
+        Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
+        Transaction tx = transactionRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Transaction not found"));
-        if (!tx.getBuyerId().equals(userId) && !tx.getSellerId().equals(userId))
+        if (!tx.getBuyerId().equals(safeUserId) && !tx.getSellerId().equals(safeUserId))
             throw new RuntimeException("Unauthorized");
         return toResponse(tx);
     }

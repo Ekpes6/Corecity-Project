@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Termii is a leading Nigerian bulk SMS provider.
@@ -38,21 +39,21 @@ public class TermiiSmsService {
         String normalised = phoneNumber.startsWith("+")
             ? phoneNumber.substring(1) : phoneNumber;
 
-        Map<String, Object> body = Map.of(
+        Map<String, Object> body = Objects.requireNonNull(Map.of(
             "to", normalised,
             "from", senderId,
             "sms", message,
             "type", "plain",
             "api_key", apiKey,
             "channel", "generic"
-        );
+        ), "sms request body must not be null");
 
         try {
             String response = webClientBuilder.build()
                 .post()
                 .uri(TERMII_BASE + "/sms/send")
-                .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(body)
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_JSON))
+                .bodyValue(Objects.requireNonNull(body, "sms body must not be null"))
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();

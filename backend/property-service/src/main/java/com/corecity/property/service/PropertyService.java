@@ -27,6 +27,7 @@ public class PropertyService {
 
     @Transactional
     public PropertyResponse createProperty(CreatePropertyRequest req, Long ownerId) {
+        Long safeOwnerId = Objects.requireNonNull(ownerId, "owner id must not be null");
         String amenitiesJson = null;
         if (req.getAmenities() != null) {
             try { amenitiesJson = objectMapper.writeValueAsString(req.getAmenities()); }
@@ -49,19 +50,20 @@ public class PropertyService {
             .lgaId(req.getLgaId())
             .latitude(req.getLatitude())
             .longitude(req.getLongitude())
-            .ownerId(ownerId)
+            .ownerId(safeOwnerId)
             .negotiable(req.getNegotiable())
             .amenities(amenitiesJson)
             .status(Property.PropertyStatus.PENDING)
             .build();
 
-        property = propertyRepository.save(property);
+        var savedProperty = propertyRepository.save(
+            Objects.requireNonNull(property, "property must not be null"));
 
         // Notify admin of new listing
         rabbitTemplate.convertAndSend("corecity.exchange", "notification.new_listing",
-            Map.of("propertyId", property.getId(), "ownerId", ownerId, "title", property.getTitle()));
+            Map.of("propertyId", savedProperty.getId(), "ownerId", safeOwnerId, "title", savedProperty.getTitle()));
 
-        return toResponse(property);
+        return toResponse(savedProperty);
     }
 
     @Transactional(readOnly = true)
@@ -82,23 +84,27 @@ public class PropertyService {
 
     @Transactional
     public PropertyResponse getProperty(Long id) {
-        Property property = propertyRepository.findById(id)
+        Long safeId = Objects.requireNonNull(id, "property id must not be null");
+        Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
-        propertyRepository.incrementViews(id);
+        propertyRepository.incrementViews(safeId);
         return toResponse(property);
     }
 
     @Transactional(readOnly = true)
     public List<PropertyResponse> getMyProperties(Long ownerId) {
-        return propertyRepository.findByOwnerIdOrderByCreatedAtDesc(ownerId)
+        Long safeOwnerId = Objects.requireNonNull(ownerId, "owner id must not be null");
+        return propertyRepository.findByOwnerIdOrderByCreatedAtDesc(safeOwnerId)
             .stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Transactional
     public PropertyResponse updateProperty(Long id, CreatePropertyRequest req, Long userId) {
-        Property property = propertyRepository.findById(id)
+        Long safeId = Objects.requireNonNull(id, "property id must not be null");
+        Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
+        Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
-        if (!property.getOwnerId().equals(userId))
+        if (!property.getOwnerId().equals(safeUserId))
             throw new RuntimeException("Unauthorized: not the property owner");
 
         property.setTitle(req.getTitle());
@@ -107,17 +113,21 @@ public class PropertyService {
         property.setAddress(req.getAddress());
         if (req.getBedrooms() != null) property.setBedrooms(req.getBedrooms());
         if (req.getBathrooms() != null) property.setBathrooms(req.getBathrooms());
-        return toResponse(propertyRepository.save(property));
+        var savedProperty = propertyRepository.save(
+            Objects.requireNonNull(property, "updated property must not be null"));
+        return toResponse(savedProperty);
     }
 
     @Transactional
     public void deleteProperty(Long id, Long userId) {
-        Property property = propertyRepository.findById(id)
+        Long safeId = Objects.requireNonNull(id, "property id must not be null");
+        Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
+        Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
-        if (!property.getOwnerId().equals(userId))
+        if (!property.getOwnerId().equals(safeUserId))
             throw new RuntimeException("Unauthorized");
         property.setStatus(Property.PropertyStatus.INACTIVE);
-        propertyRepository.save(property);
+        propertyRepository.save(Objects.requireNonNull(property, "property must not be null"));
     }
 
     public List<PropertyResponse> getFeaturedProperties() {

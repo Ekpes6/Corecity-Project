@@ -33,12 +33,14 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private Role role = Role.BUYER;
 
     private String nin;   // National Identification Number
     private String bvn;   // Bank Verification Number
 
     @Column(name = "is_verified")
+    @Builder.Default
     private boolean verified = false;
 
     @Column(name = "avatar_url")
