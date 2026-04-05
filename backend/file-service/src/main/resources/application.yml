@@ -1,0 +1,18 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: file-service
+  datasource:
+    url: jdbc:mysql://mysql:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos
+    username: corecity_user
+    password: corecity_pass
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+file:
+  upload-dir: ${FILE_UPLOAD_DIR:/uploads}
+  base-url: ${FILE_BASE_URL:http://localhost:8083/api/v1/files/serve}

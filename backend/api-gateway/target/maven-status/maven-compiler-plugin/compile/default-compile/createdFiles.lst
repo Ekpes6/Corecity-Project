@@ -1,0 +1,3 @@
+com\corecity\gateway\ApiGatewayApplication.class
+com\corecity\gateway\filter\AuthFilter$Config.class
+com\corecity\gateway\filter\AuthFilter.class

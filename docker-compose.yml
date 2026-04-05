@@ -1,0 +1,146 @@
+version: '3.8'
+
+services:
+  # ─── Database ───────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: corecity-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: corecity_root
+      MYSQL_DATABASE: corecity_db
+      MYSQL_USER: corecity_user
+      MYSQL_PASSWORD: corecity_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - corecity-network
+
+  # ─── Message Broker ─────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: corecity-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - corecity-network
+
+  # ─── API Gateway ────────────────────────────────────────────
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: corecity-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      - mysql
+      - rabbitmq
+    networks:
+      - corecity-network
+
+  # ─── Microservices ──────────────────────────────────────────
+  user-service:
+    build: ./backend/user-service
+    container_name: corecity-user-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
+      - SPRING_DATASOURCE_USERNAME=corecity_user
+      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - mysql
+      - rabbitmq
+    networks:
+      - corecity-network
+
+  property-service:
+    build: ./backend/property-service
+    container_name: corecity-property-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
+      - SPRING_DATASOURCE_USERNAME=corecity_user
+      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      - mysql
+      - rabbitmq
+    networks:
+      - corecity-network
+
+  file-service:
+    build: ./backend/file-service
+    container_name: corecity-file-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
+      - SPRING_DATASOURCE_USERNAME=corecity_user
+      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - FILE_UPLOAD_DIR=/uploads
+    volumes:
+      - file_uploads:/uploads
+    depends_on:
+      - mysql
+    networks:
+      - corecity-network
+
+  transaction-service:
+    build: ./backend/transaction-service
+    container_name: corecity-transaction-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
+      - SPRING_DATASOURCE_USERNAME=corecity_user
+      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+    depends_on:
+      - mysql
+      - rabbitmq
+    networks:
+      - corecity-network
+
+  notification-service:
+    build: ./backend/notification-service
+    container_name: corecity-notification-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - TERMII_API_KEY=${TERMII_API_KEY}
+    depends_on:
+      - rabbitmq
+    networks:
+      - corecity-network
+
+  # ─── Frontend ───────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: corecity-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - corecity-network
+
+volumes:
+  mysql_data:
+  file_uploads:
+
+networks:
+  corecity-network:
+    driver: bridge

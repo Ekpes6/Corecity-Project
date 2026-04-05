@@ -1,0 +1,10 @@
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\dto\AuthDTOs.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\repository\UserRepository.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\service\AuthService.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\controller\AuthController.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\config\SecurityConfig.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\security\JwtUtil.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\config\RabbitConfig.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\UserServiceApplication.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\dto\UpdateProfileRequest.java
+C:\Users\FELIX\Documents\corecity-properties\backend\user-service\src\main\java\com\corecity\user\entity\User.java

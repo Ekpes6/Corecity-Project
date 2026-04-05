@@ -1,0 +1,31 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: jdbc:mysql://mysql:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos
+    username: corecity_user
+    password: corecity_pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: guest
+    password: guest
+
+jwt:
+  secret: ${JWT_SECRET:corecityNigeriaSecretKey2024VeryLongAndSecure!}
+  expiration: 86400000
+
+logging:
+  level:
+    com.corecity: DEBUG

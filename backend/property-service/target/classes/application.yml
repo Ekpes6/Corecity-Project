@@ -1,0 +1,17 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: property-service
+  datasource:
+    url: jdbc:mysql://mysql:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos
+    username: corecity_user
+    password: corecity_pass
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  rabbitmq:
+    host: rabbitmq
+    port: 5672

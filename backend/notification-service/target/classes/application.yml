@@ -1,0 +1,30 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: notification-service
+  datasource:
+    url: jdbc:mysql://mysql:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos
+    username: corecity_user
+    password: corecity_pass
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:noreply@corecity.com.ng}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+
+termii:
+  api-key: ${TERMII_API_KEY:}
+  sender-id: corecity

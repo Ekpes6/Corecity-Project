@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --forest-900: #1B5E20;
+  --forest-800: #2E7D32;
+  --forest-600: #7CB342;
+  --clay-500:   #E8824A;
+  --cream:      #FAFAF7;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background-color: var(--cream);
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: 'Playfair Display', Georgia, serif; }
+
+@layer components {
+  .btn-primary {
+    @apply bg-forest-800 text-white font-semibold px-6 py-3 rounded-xl
+           hover:bg-forest-900 active:scale-[0.98] transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply border-2 border-forest-800 text-forest-800 font-semibold px-6 py-3 rounded-xl
+           hover:bg-forest-50 active:scale-[0.98] transition-all duration-150;
+  }
+  .btn-clay {
+    @apply bg-clay-500 text-white font-semibold px-6 py-3 rounded-xl
+           hover:bg-clay-700 active:scale-[0.98] transition-all duration-150;
+  }
+  .input-field {
+    @apply w-full border border-gray-200 rounded-xl px-4 py-3 text-sm
+           focus:outline-none focus:ring-2 focus:ring-forest-600 focus:border-transparent
+           placeholder:text-gray-400 bg-white transition;
+  }
+  .card {
+    @apply bg-white rounded-xl2 shadow-card overflow-hidden;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold;
+  }
+  .badge-sale  { @apply bg-forest-50 text-forest-900; }
+  .badge-rent  { @apply bg-blue-50 text-blue-800; }
+  .badge-shortlet { @apply bg-amber-50 text-amber-800; }
+  .section-title {
+    @apply font-display text-3xl font-bold text-forest-900 leading-tight;
+  }
+  .naira { font-family: 'DM Sans', sans-serif; }
+}
+
+/* Page transition */
+.page-enter { animation: fadeUp 0.3s ease forwards; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #c5e1a5; border-radius: 3px; }
+
+/* Leaflet map overrides */
+.leaflet-container { border-radius: 1rem; }
