@@ -130,6 +130,7 @@ public class PropertyService {
         propertyRepository.save(Objects.requireNonNull(property, "property must not be null"));
     }
 
+    @Transactional(readOnly = true)
     public List<PropertyResponse> getFeaturedProperties() {
         return propertyRepository.findFeatured(PageRequest.of(0, 8))
             .stream().map(this::toResponse).collect(Collectors.toList());
