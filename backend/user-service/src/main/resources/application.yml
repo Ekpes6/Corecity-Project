@@ -5,9 +5,9 @@ spring:
   application:
     name: user-service
   datasource:
-    url: jdbc:mysql://mysql:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos
-    username: corecity_user
-    password: corecity_pass
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos}
+    username: ${SPRING_DATASOURCE_USERNAME:corecity_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:corecity_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -17,10 +17,10 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
   rabbitmq:
-    host: rabbitmq
-    port: 5672
-    username: guest
-    password: guest
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
 
 jwt:
   secret: ${JWT_SECRET:corecityNigeriaSecretKey2024VeryLongAndSecure!}

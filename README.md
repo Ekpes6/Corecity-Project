@@ -91,12 +91,14 @@ docker-compose up --build
 
 Wait ~2 minutes for all services to start. Then open:
 
+Note: inside Docker Compose, Spring services must use `mysql` and `rabbitmq` as hostnames because those names are resolved on the internal Compose network. From your host machine, use `localhost` with the published ports.
+
 | URL | Service |
 |-----|---------|
 | http://localhost:3000 | corecity Frontend |
 | http://localhost:8080 | API Gateway |
 | http://localhost:15672 | RabbitMQ Dashboard (guest/guest) |
-| http://localhost:3306 | MySQL |
+| localhost:3307 | MySQL |
 
 ### 3. Stop
 
@@ -148,6 +150,8 @@ docker run -d -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 ### 3. Start Java microservices
 
 Open a terminal for each service:
+
+Note: local Maven runs use `localhost` for MySQL and RabbitMQ. The Compose-only hostnames `mysql` and `rabbitmq` will fail outside Docker unless you override them in your environment or hosts configuration.
 
 ```bash
 # Terminal 1 — User Service
@@ -264,7 +268,7 @@ enquiries
 
 saved_properties (user_id, property_id) — composite PK
 
-states
+state
   └── lgas (stateId → states.id)
 ```
 
