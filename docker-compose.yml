@@ -151,6 +151,9 @@ services:
     ports:
       - "8085:8085"
     environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
+      - SPRING_DATASOURCE_USERNAME=corecity_user
+      - SPRING_DATASOURCE_PASSWORD=corecity_pass
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
