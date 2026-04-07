@@ -5,15 +5,16 @@ spring:
   application:
     name: notification-service
   datasource:
-    url: jdbc:mysql://mysql:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos
-    username: corecity_user
-    password: corecity_pass
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos}
+    username: ${SPRING_DATASOURCE_USERNAME:corecity_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:corecity_pass}
   jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
       ddl-auto: validate
   rabbitmq:
-    host: rabbitmq
-    port: 5672
+    host: ${SPRING_RABBITMQ_HOST:localhost}
+    port: ${SPRING_RABBITMQ_PORT:5672}
   mail:
     host: ${SMTP_HOST:smtp.gmail.com}
     port: ${SMTP_PORT:587}

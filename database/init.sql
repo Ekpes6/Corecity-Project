@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     type             ENUM('RENT','PURCHASE','INSPECTION_FEE','AGENT_FEE') NOT NULL,
     status           ENUM('INITIATED','PENDING','SUCCESS','FAILED','REFUNDED') DEFAULT 'INITIATED',
     payment_channel  VARCHAR(50),                    -- card, bank_transfer, ussd
+    authorization_url VARCHAR(500),                 -- Paystack checkout URL
     paystack_data    JSON,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
