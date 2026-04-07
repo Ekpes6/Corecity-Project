@@ -1,0 +1,18 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "run-api-gateway-from-source",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Location \"c:\\Users\\FELIX\\Documents\\corecity-properties\\backend\"; $env:SPRING_PROFILES_ACTIVE='docker'; $env:USER_SERVICE_URI='http://localhost:8081'; $env:PROPERTY_SERVICE_URI='http://localhost:8082'; $env:FILE_SERVICE_URI='http://localhost:8083'; $env:TRANSACTION_SERVICE_URI='http://localhost:8084'; $env:NOTIFICATION_SERVICE_URI='http://localhost:8085'; mvn -q -f api-gateway/pom.xml spring-boot:run"
+			],
+			"isBackground": true,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
