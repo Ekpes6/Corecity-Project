@@ -13,6 +13,12 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "corecity_user", "-pcorecity_pass"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
     networks:
       - corecity-network
 
@@ -23,6 +29,12 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     networks:
       - corecity-network
 
@@ -42,8 +54,10 @@ services:
       - TRANSACTION_SERVICE_URI=http://transaction-service:8084
       - NOTIFICATION_SERVICE_URI=http://notification-service:8085
     depends_on:
-      - mysql
-      - rabbitmq
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - corecity-network
 
@@ -61,8 +75,10 @@ services:
       - SPRING_DATASOURCE_PASSWORD=corecity_pass
       - SPRING_RABBITMQ_HOST=rabbitmq
     depends_on:
-      - mysql
-      - rabbitmq
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - corecity-network
 
@@ -79,8 +95,10 @@ services:
       - SPRING_DATASOURCE_PASSWORD=corecity_pass
       - SPRING_RABBITMQ_HOST=rabbitmq
     depends_on:
-      - mysql
-      - rabbitmq
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - corecity-network
 
@@ -99,7 +117,8 @@ services:
     volumes:
       - file_uploads:/uploads
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     networks:
       - corecity-network
 
@@ -117,8 +136,10 @@ services:
       - SPRING_RABBITMQ_HOST=rabbitmq
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
     depends_on:
-      - mysql
-      - rabbitmq
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - corecity-network
 
@@ -137,7 +158,8 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - TERMII_API_KEY=${TERMII_API_KEY}
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
     networks:
       - corecity-network
 

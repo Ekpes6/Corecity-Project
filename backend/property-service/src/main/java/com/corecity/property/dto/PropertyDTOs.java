@@ -25,8 +25,8 @@ public class PropertyDTOs {
         @NotBlank private String address;
         private Integer stateId;
         private Integer lgaId;
-        private Double latitude;
-        private Double longitude;
+        private BigDecimal latitude;
+        private BigDecimal longitude;
         @Builder.Default
         private Boolean negotiable = true;
         private List<String> amenities;
@@ -50,8 +50,8 @@ public class PropertyDTOs {
         private String stateName;
         private Integer lgaId;
         private String lgaName;
-        private Double latitude;
-        private Double longitude;
+        private BigDecimal latitude;
+        private BigDecimal longitude;
         private Long ownerId;
         private String status;
         private Boolean negotiable;

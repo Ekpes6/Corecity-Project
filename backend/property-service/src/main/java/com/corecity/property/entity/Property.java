@@ -59,8 +59,11 @@ public class Property {
     @Column(name = "lga_id")
     private Integer lgaId;
 
-    private Double latitude;
-    private Double longitude;
+    @Column(precision = 10, scale = 8)
+    private BigDecimal latitude;
+
+    @Column(precision = 11, scale = 8)
+    private BigDecimal longitude;
 
     @Column(name = "owner_id", nullable = false)
     private Long ownerId;
