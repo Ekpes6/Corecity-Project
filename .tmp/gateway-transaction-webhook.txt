@@ -1,0 +1,10 @@
+﻿Invoke-WebRequest : The operation has timed out
+At line:1 char:26
++ ... $response = Invoke-WebRequest -UseBasicParsing -Uri http://localhost: ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation: (System.Net.HttpWebRequest:Htt 
+   pWebRequest) [Invoke-WebRequest], WebException
+    + FullyQualifiedErrorId : WebCmdletWebResponseException,Microsoft.PowerShe 
+   ll.Commands.InvokeWebRequestCommand
+ 
+
