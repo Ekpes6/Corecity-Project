@@ -4,10 +4,19 @@ server:
 spring:
   application:
     name: property-service
+  backgroundpreinitializer:
+    ignore: true
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos}
     username: ${SPRING_DATASOURCE_USERNAME:corecity_user}
     password: ${SPRING_DATASOURCE_PASSWORD:corecity_pass}
+    hikari:
+      connection-timeout: 10000
+      validation-timeout: 5000
+      max-lifetime: 240000
+      keepalive-time: 120000
+      minimum-idle: 1
+      maximum-pool-size: 10
   jpa:
     hibernate:
       ddl-auto: validate
