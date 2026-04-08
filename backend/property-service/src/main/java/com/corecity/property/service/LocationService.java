@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -44,5 +45,13 @@ public class LocationService {
         if (!locationRepository.stateExists(stateId)) {
             throw new InvalidLocationException("Selected state is invalid.");
         }
+    }
+
+    public Optional<String> getStateName(Integer stateId) {
+        return locationRepository.findStateName(stateId);
+    }
+
+    public Optional<String> getLgaName(Integer lgaId) {
+        return locationRepository.findLgaName(lgaId);
     }
 }

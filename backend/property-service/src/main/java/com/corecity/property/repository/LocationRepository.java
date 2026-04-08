@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @RequiredArgsConstructor
@@ -60,5 +61,27 @@ public class LocationRepository {
             .query(Integer.class)
             .single();
         return count != null && count > 0;
+    }
+
+    public Optional<String> findStateName(Integer stateId) {
+        if (stateId == null) {
+            return Optional.empty();
+        }
+
+        return jdbcClient.sql("SELECT name FROM states WHERE id = :stateId")
+            .param("stateId", stateId)
+            .query(String.class)
+            .optional();
+    }
+
+    public Optional<String> findLgaName(Integer lgaId) {
+        if (lgaId == null) {
+            return Optional.empty();
+        }
+
+        return jdbcClient.sql("SELECT name FROM lgas WHERE id = :lgaId")
+            .param("lgaId", lgaId)
+            .query(String.class)
+            .optional();
     }
 }
