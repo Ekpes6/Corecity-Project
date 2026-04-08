@@ -227,6 +227,57 @@ PUT  /api/v1/properties/{id}      (requires JWT + owner)
 DEL  /api/v1/properties/{id}      (requires JWT + owner)
 ```
 
+Valid property enums:
+
+- `propertyType`: `APARTMENT`, `BUNGALOW`, `DUPLEX`, `TERRACED`, `SEMI_DETACHED`, `DETACHED`, `LAND`, `COMMERCIAL`
+- `listingType`: `FOR_SALE`, `FOR_RENT`, `SHORT_LET`
+- `pricePeriod`: `OUTRIGHT`, `PER_YEAR`, `PER_MONTH`, `PER_NIGHT`
+
+Example create payload:
+
+```http
+POST /api/v1/properties
+Content-Type: application/json
+Authorization: Bearer {token}
+X-User-Id: 5
+
+{
+  "title": "Palm View Duplex",
+  "description": "Four-bedroom duplex in Lekki Phase 1",
+  "propertyType": "DUPLEX",
+  "listingType": "FOR_SALE",
+  "price": 85000000,
+  "pricePeriod": "OUTRIGHT",
+  "bedrooms": 4,
+  "bathrooms": 4,
+  "toilets": 5,
+  "sizeSqm": 320,
+  "address": "12 Admiralty Way, Lekki Phase 1",
+  "stateId": 25,
+  "lgaId": 9,
+  "latitude": 6.4474,
+  "longitude": 3.4553,
+  "negotiable": true,
+  "amenities": ["PARKING", "SECURITY", "BALCONY"]
+}
+```
+
+Property responses now include both IDs and resolved location names:
+
+- `stateId` and `stateName`
+- `lgaId` and `lgaName`
+
+Invalid `stateId` / `lgaId` combinations return `400 Bad Request` instead of bubbling up as a database foreign-key error.
+
+### Locations
+
+```http
+GET /api/v1/states
+GET /api/v1/states/{stateId}/lgas
+```
+
+These endpoints are served by `property-service` and return the seeded Nigerian states and LGAs used by listing creation and property search.
+
 ### File Upload
 
 ```http
@@ -391,6 +442,14 @@ SMS events that are sent:
 | Email | Spring Mail + Thymeleaf templates |
 | File Processing | Thumbnailator (image resizing) |
 | Containerisation | Docker, Docker Compose |
+
+---
+
+## 🧪 Runtime Notes
+
+- Inside Docker Compose, Spring services should use `mysql` and `rabbitmq` as hostnames. From the host machine, use `localhost` with the published ports.
+- `property-service` startup is sensitive to MySQL readiness. If it starts before JDBC metadata is available, restart `property-service` after MySQL is healthy.
+- The frontend listing page depends on `/api/v1/states` and `/api/v1/states/{stateId}/lgas` to populate valid location choices.
 
 ---
 
