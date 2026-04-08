@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,6 +29,7 @@ public class PropertyService {
     @Transactional
     public PropertyResponse createProperty(CreatePropertyRequest req, Long ownerId) {
         Long safeOwnerId = Objects.requireNonNull(ownerId, "owner id must not be null");
+        log.info("Creating property for owner {} with title '{}'", safeOwnerId, req.getTitle());
         String amenitiesJson = null;
         if (req.getAmenities() != null) {
             try { amenitiesJson = objectMapper.writeValueAsString(req.getAmenities()); }
@@ -58,12 +60,22 @@ public class PropertyService {
 
         var savedProperty = propertyRepository.save(
             Objects.requireNonNull(property, "property must not be null"));
+        log.info("Property {} saved with status {}", savedProperty.getId(), savedProperty.getStatus());
 
-        // Notify admin of new listing
-        rabbitTemplate.convertAndSend("corecity.exchange", "notification.new_listing",
-            Map.of("propertyId", savedProperty.getId(), "ownerId", safeOwnerId, "title", savedProperty.getTitle()));
+        // Keep listing creation responsive even if RabbitMQ is slow or temporarily unavailable.
+        CompletableFuture.runAsync(() -> {
+            try {
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.new_listing",
+                    Map.of("propertyId", savedProperty.getId(), "ownerId", safeOwnerId, "title", savedProperty.getTitle()));
+                log.info("Published new listing notification for property {}", savedProperty.getId());
+            } catch (Exception exception) {
+                log.warn("Could not publish new listing notification for property {}", savedProperty.getId(), exception);
+            }
+        });
 
-        return toResponse(savedProperty);
+        var response = toResponse(savedProperty);
+        log.info("Returning property create response for property {}", savedProperty.getId());
+        return response;
     }
 
     @Transactional(readOnly = true)

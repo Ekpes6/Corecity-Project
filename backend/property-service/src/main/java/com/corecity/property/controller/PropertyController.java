@@ -4,6 +4,7 @@ import com.corecity.property.dto.PropertyDTOs.*;
 import com.corecity.property.entity.Property;
 import com.corecity.property.service.PropertyService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
@@ -16,6 +17,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/properties")
 @RequiredArgsConstructor
+@Slf4j
 public class PropertyController {
 
     private final PropertyService propertyService;
@@ -24,6 +26,7 @@ public class PropertyController {
     public ResponseEntity<PropertyResponse> create(
             @Valid @RequestBody CreatePropertyRequest req,
             @RequestHeader("X-User-Id") Long userId) {
+        log.info("Property create request received for user {} with title '{}'", userId, req.getTitle());
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(propertyService.createProperty(req, userId));
     }
