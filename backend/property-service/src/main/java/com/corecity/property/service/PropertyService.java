@@ -23,6 +23,7 @@ import java.util.stream.Collectors;
 public class PropertyService {
 
     private final PropertyRepository propertyRepository;
+    private final LocationService locationService;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
 
@@ -30,6 +31,7 @@ public class PropertyService {
     public PropertyResponse createProperty(CreatePropertyRequest req, Long ownerId) {
         Long safeOwnerId = Objects.requireNonNull(ownerId, "owner id must not be null");
         log.info("Creating property for owner {} with title '{}'", safeOwnerId, req.getTitle());
+        locationService.validateLocation(req.getStateId(), req.getLgaId());
         String amenitiesJson = null;
         if (req.getAmenities() != null) {
             try { amenitiesJson = objectMapper.writeValueAsString(req.getAmenities()); }
@@ -114,6 +116,7 @@ public class PropertyService {
     public PropertyResponse updateProperty(Long id, CreatePropertyRequest req, Long userId) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
+        locationService.validateLocation(req.getStateId(), req.getLgaId());
         Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
         if (!property.getOwnerId().equals(safeUserId))
@@ -123,6 +126,10 @@ public class PropertyService {
         property.setDescription(req.getDescription());
         property.setPrice(req.getPrice());
         property.setAddress(req.getAddress());
+        property.setStateId(req.getStateId());
+        property.setLgaId(req.getLgaId());
+        property.setLatitude(req.getLatitude());
+        property.setLongitude(req.getLongitude());
         if (req.getBedrooms() != null) property.setBedrooms(req.getBedrooms());
         if (req.getBathrooms() != null) property.setBathrooms(req.getBathrooms());
         var savedProperty = propertyRepository.save(

@@ -1,9 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useDropzone } from 'react-dropzone';
 import { Upload, X, CheckCircle2, ArrowRight } from 'lucide-react';
-import { propertyAPI, fileAPI } from '../services/api';
+import { propertyAPI, fileAPI, locationAPI } from '../services/api';
 import { PROPERTY_TYPES, LISTING_TYPES, PRICE_PERIODS, ALL_AMENITIES, AMENITY_LABELS } from '../utils/nigeria';
 import toast from 'react-hot-toast';
 
@@ -14,12 +14,49 @@ export default function ListPropertyPage() {
   const [previews, setPreviews]   = useState([]);      // data URLs
   const [amenities, setAmenities] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [states, setStates] = useState([]);
+  const [lgas, setLgas] = useState([]);
 
-  const { register, handleSubmit, control, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: { listingType: 'FOR_RENT', propertyType: 'APARTMENT', pricePeriod: 'PER_YEAR', negotiable: true }
   });
 
   const listingType = watch('listingType');
+  const selectedStateId = watch('stateId');
+
+  useEffect(() => {
+    const loadStates = async () => {
+      try {
+        const { data } = await locationAPI.getStates();
+        setStates(data);
+      } catch {
+        toast.error('Could not load states');
+      }
+    };
+
+    loadStates();
+  }, []);
+
+  useEffect(() => {
+    const stateId = selectedStateId ? parseInt(selectedStateId, 10) : null;
+    setValue('lgaId', '');
+    setLgas([]);
+
+    if (!stateId) {
+      return;
+    }
+
+    const loadLgas = async () => {
+      try {
+        const { data } = await locationAPI.getLgas(stateId);
+        setLgas(data);
+      } catch {
+        toast.error('Could not load LGAs for the selected state');
+      }
+    };
+
+    loadLgas();
+  }, [selectedStateId, setValue]);
 
   // ── Dropzone ──────────────────────────────────────────────
   const onDrop = useCallback((accepted) => {
@@ -59,6 +96,10 @@ export default function ListPropertyPage() {
         toilets:   parseInt(data.toilets)   || 0,
         price:     parseFloat(data.price),
         sizeSqm:   data.sizeSqm ? parseFloat(data.sizeSqm) : null,
+        stateId:   data.stateId ? parseInt(data.stateId, 10) : null,
+        lgaId:     data.lgaId ? parseInt(data.lgaId, 10) : null,
+        latitude:  data.latitude ? parseFloat(data.latitude) : null,
+        longitude: data.longitude ? parseFloat(data.longitude) : null,
         amenities,
       };
 
@@ -221,20 +262,18 @@ export default function ListPropertyPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">State *</label>
-                <select {...register('stateId')} className="input-field">
+                <select {...register('stateId', { required: 'State is required' })} className="input-field">
                   <option value="">Select State</option>
-                  <option value="25">Lagos</option>
-                  <option value="15">FCT - Abuja</option>
-                  <option value="33">Rivers</option>
-                  <option value="20">Kano</option>
-                  <option value="31">Oyo</option>
-                  <option value="12">Edo</option>
-                  {/* Full list loaded from API in production */}
+                  {states.map((state) => <option key={state.id} value={state.id}>{state.name}</option>)}
                 </select>
+                {errors.stateId && <p className="text-red-500 text-xs mt-1">{errors.stateId.message}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">LGA</label>
-                <input {...register('lgaId')} placeholder="LGA ID or select" className="input-field" />
+                <select {...register('lgaId')} className="input-field" disabled={!selectedStateId || lgas.length === 0}>
+                  <option value="">Select LGA</option>
+                  {lgas.map((lga) => <option key={lga.id} value={lga.id}>{lga.name}</option>)}
+                </select>
               </div>
             </div>
 
