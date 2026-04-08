@@ -18,6 +18,7 @@ spring:
       minimum-idle: 1
       maximum-pool-size: 10
   jpa:
+    database-platform: org.hibernate.dialect.MySQLDialect
     hibernate:
       ddl-auto: validate
     open-in-view: false
