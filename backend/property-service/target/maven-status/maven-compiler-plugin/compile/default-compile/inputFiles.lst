@@ -1,0 +1,13 @@
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\PropertyServiceApplication.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\exception\ApiExceptionHandler.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\dto\PropertyDTOs.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\entity\PropertyFile.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\service\LocationService.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\service\PropertyService.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\repository\PropertyRepository.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\controller\PropertyController.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\entity\Property.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\exception\InvalidLocationException.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\repository\LocationRepository.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\controller\LocationController.java
+C:\Users\FELIX\Documents\corecity-properties\backend\property-service\src\main\java\com\corecity\property\dto\LocationDTOs.java
