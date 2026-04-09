@@ -176,9 +176,6 @@ public class PropertyService {
             }
         }
 
-        String stateName = locationService.getStateName(p.getStateId()).orElse(null);
-        String lgaName = locationService.getLgaName(p.getLgaId()).orElse(null);
-
         return PropertyResponse.builder()
             .id(p.getId()).title(p.getTitle()).description(p.getDescription())
             .propertyType(p.getPropertyType().name())
@@ -186,8 +183,8 @@ public class PropertyService {
             .price(p.getPrice()).pricePeriod(p.getPricePeriod().name())
             .bedrooms(p.getBedrooms()).bathrooms(p.getBathrooms()).toilets(p.getToilets())
             .sizeSqm(p.getSizeSqm()).address(p.getAddress())
-            .stateId(p.getStateId()).stateName(stateName)
-            .lgaId(p.getLgaId()).lgaName(lgaName)
+            .stateId(p.getStateId()).stateName(null)
+            .lgaId(p.getLgaId()).lgaName(null)
             .latitude(p.getLatitude()).longitude(p.getLongitude())
             .ownerId(p.getOwnerId()).status(p.getStatus().name())
             .negotiable(p.getNegotiable()).amenities(amenities)
