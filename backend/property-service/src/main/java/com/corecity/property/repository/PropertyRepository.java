@@ -1,6 +1,7 @@
 package com.corecity.property.repository;
 
 import com.corecity.property.entity.Property;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -13,8 +14,10 @@ import java.util.List;
 
 public interface PropertyRepository extends JpaRepository<Property, Long> {
 
+    @EntityGraph(attributePaths = "files")
     Page<Property> findByStatus(Property.PropertyStatus status, Pageable pageable);
 
+    @EntityGraph(attributePaths = "files")
     @Query("""
         SELECT p FROM Property p
         WHERE p.status = 'ACTIVE'
@@ -40,12 +43,12 @@ public interface PropertyRepository extends JpaRepository<Property, Long> {
         Pageable pageable
     );
 
+    @EntityGraph(attributePaths = "files")
+    Page<Property> findByStatusOrderByCreatedAtDesc(Property.PropertyStatus status, Pageable pageable);
+
     List<Property> findByOwnerIdOrderByCreatedAtDesc(Long ownerId);
 
     @Modifying
     @Query("UPDATE Property p SET p.viewsCount = p.viewsCount + 1 WHERE p.id = :id")
     void incrementViews(@Param("id") Long id);
-
-    @Query("SELECT p FROM Property p WHERE p.status = 'ACTIVE' ORDER BY p.createdAt DESC")
-    List<Property> findFeatured(Pageable pageable);
 }

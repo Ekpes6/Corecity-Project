@@ -151,8 +151,11 @@ public class PropertyService {
 
     @Transactional(readOnly = true)
     public List<PropertyResponse> getFeaturedProperties() {
-        return propertyRepository.findFeatured(PageRequest.of(0, 8))
-            .stream().map(this::toResponse).collect(Collectors.toList());
+        return propertyRepository.findByStatusOrderByCreatedAtDesc(Property.PropertyStatus.ACTIVE, PageRequest.of(0, 8))
+            .getContent()
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
     }
 
     private PropertyResponse toResponse(Property p) {
