@@ -3,6 +3,7 @@ services:
   mysql:
     image: mysql:8.0
     container_name: corecity-mysql
+    restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: corecity_root
       MYSQL_DATABASE: corecity_db
@@ -26,9 +27,13 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: corecity-rabbitmq
+    user: "999:999"
+    restart: unless-stopped
     ports:
       - "5672:5672"
       - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -44,6 +49,7 @@ services:
       context: ./backend
       dockerfile: api-gateway/Dockerfile
     container_name: corecity-gateway
+    restart: on-failure
     ports:
       - "8080:8080"
     environment:
@@ -58,6 +64,22 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      user-service:
+        condition: service_healthy
+      property-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+      transaction-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
     networks:
       - corecity-network
 
@@ -67,6 +89,7 @@ services:
       context: ./backend
       dockerfile: user-service/Dockerfile
     container_name: corecity-user-service
+    restart: on-failure
     ports:
       - "8081:8081"
     environment:
@@ -79,6 +102,12 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8081"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
     networks:
       - corecity-network
 
@@ -87,6 +116,7 @@ services:
       context: ./backend
       dockerfile: property-service/Dockerfile
     container_name: corecity-property-service
+    restart: on-failure
     ports:
       - "8082:8082"
     environment:
@@ -99,6 +129,12 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8082"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
     networks:
       - corecity-network
 
@@ -107,6 +143,7 @@ services:
       context: ./backend
       dockerfile: file-service/Dockerfile
     container_name: corecity-file-service
+    restart: on-failure
     ports:
       - "8083:8083"
     environment:
@@ -119,6 +156,12 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8083"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
     networks:
       - corecity-network
 
@@ -127,6 +170,7 @@ services:
       context: ./backend
       dockerfile: transaction-service/Dockerfile
     container_name: corecity-transaction-service
+    restart: on-failure
     ports:
       - "8084:8084"
     environment:
@@ -140,6 +184,12 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8084"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
     networks:
       - corecity-network
 
@@ -148,6 +198,7 @@ services:
       context: ./backend
       dockerfile: notification-service/Dockerfile
     container_name: corecity-notification-service
+    restart: on-failure
     ports:
       - "8085:8085"
     environment:
@@ -161,8 +212,16 @@ services:
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - TERMII_API_KEY=${TERMII_API_KEY}
     depends_on:
+      mysql:
+        condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8085"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
     networks:
       - corecity-network
 
@@ -170,15 +229,18 @@ services:
   frontend:
     build: ./frontend
     container_name: corecity-frontend
+    restart: on-failure
     ports:
       - "3000:80"
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
     networks:
       - corecity-network
 
 volumes:
   mysql_data:
+  rabbitmq_data:
   file_uploads:
 
 networks:

@@ -91,6 +91,8 @@ docker-compose up --build
 
 Wait ~2 minutes for all services to start. Then open:
 
+The Compose stack now uses restart policies plus port-based healthchecks for the Java services, so a slow MySQL or RabbitMQ startup is less likely to leave the gateway routing to an unavailable backend.
+
 Note: inside Docker Compose, Spring services must use `mysql` and `rabbitmq` as hostnames because those names are resolved on the internal Compose network. From your host machine, use `localhost` with the published ports.
 
 | URL | Service |
@@ -105,6 +107,16 @@ Note: inside Docker Compose, Spring services must use `mysql` and `rabbitmq` as 
 ```bash
 docker-compose down          # stop
 docker-compose down -v       # stop + delete data volumes
+```
+
+RabbitMQ is configured to run as the broker user (`999:999`) so the Erlang cookie is created with the right ownership on Docker volumes.
+
+If RabbitMQ still fails with `Error when reading /var/lib/rabbitmq/.erlang.cookie: eacces`, remove the broker container and its volume so Docker recreates the cookie cleanly:
+
+```bash
+docker compose down
+docker volume rm corecity-properties_rabbitmq_data
+docker compose up -d rabbitmq
 ```
 
 ---
