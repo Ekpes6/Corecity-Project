@@ -10,6 +10,7 @@ import {
   formatPricePeriod, listingLabel, listingBadgeClass, propertyTypeLabel,
   AMENITY_LABELS, timeAgo
 } from '../utils/nigeria';
+import { getDemoProperty } from '../services/demoProperties';
 import toast from 'react-hot-toast';
 
 const PLACEHOLDER = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80';
@@ -26,7 +27,14 @@ export default function PropertyDetailPage() {
   useEffect(() => {
     propertyAPI.getOne(id)
       .then((r) => setProperty(r.data))
-      .catch(() => toast.error('Property not found'))
+      .catch(() => {
+        const demoProperty = getDemoProperty(id);
+        if (demoProperty) {
+          setProperty(demoProperty);
+          return;
+        }
+        toast.error('Property not found');
+      })
       .finally(() => setLoading(false));
   }, [id]);
 

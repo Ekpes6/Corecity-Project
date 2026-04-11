@@ -4,7 +4,7 @@ import { Home, Search, PlusSquare, Bell, User, LogOut, Menu, X, ChevronDown } fr
 import { useAuth } from '../../context/AuthContext';
 
 export default function Navbar() {
-  const { user, logout, isAuthenticated, isSeller } = useAuth();
+  const { user, logout, isAuthenticated, isSeller, isAdmin } = useAuth();
   const navigate  = useNavigate();
   const location  = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -24,6 +24,7 @@ export default function Navbar() {
   const navLinks = [
     { to: '/properties',          label: 'Browse',   icon: Search },
     ...(isSeller ? [{ to: '/dashboard/list', label: 'List Property', icon: PlusSquare }] : []),
+    ...(isAdmin ? [{ to: '/dashboard/moderation', label: 'Moderation', icon: Bell, auth: true }] : []),
     { to: '/dashboard',            label: 'Dashboard', icon: User, auth: true },
   ];
 
@@ -38,7 +39,7 @@ export default function Navbar() {
               <Home size={18} className="text-white" />
             </div>
             <span className="font-display font-bold text-xl text-forest-900">
-              House<span className="text-clay-500">Link</span>
+              Core<span className="text-clay-500">City</span>
             </span>
           </Link>
 
@@ -89,6 +90,11 @@ export default function Navbar() {
                       {isSeller && (
                         <Link to="/dashboard/list" className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
                           <PlusSquare size={15} /> List a Property
+                        </Link>
+                      )}
+                      {isAdmin && (
+                        <Link to="/dashboard/moderation" className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+                          <Bell size={15} /> Moderation
                         </Link>
                       )}
                       <button onClick={handleLogout}

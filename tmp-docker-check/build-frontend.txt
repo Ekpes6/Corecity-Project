@@ -1,0 +1,99 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 273B 0.3s done
+#1 DONE 1.3s
+
+#2 [internal] load metadata for docker.io/library/nginx:alpine
+#2 ...
+
+#3 [auth] library/node:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#4 [auth] library/nginx:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:22-alpine
+#5 DONE 13.4s
+
+#2 [internal] load metadata for docker.io/library/nginx:alpine
+#2 DONE 13.8s
+
+#6 [internal] load .dockerignore
+#6 transferring context:
+#6 transferring context: 85B 0.1s done
+#6 DONE 1.5s
+
+#7 [internal] load build context
+#7 DONE 0.0s
+
+#8 [build 1/6] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
+#8 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
+#8 ...
+
+#9 [stage-1 1/3] FROM docker.io/library/nginx:alpine@sha256:582c496ccf79d8aa6f8203a79d32aaf7ffd8b13362c60a701a2f9ac64886c93d
+#9 resolve docker.io/library/nginx:alpine@sha256:582c496ccf79d8aa6f8203a79d32aaf7ffd8b13362c60a701a2f9ac64886c93d 5.1s done
+#9 DONE 5.4s
+
+#7 [internal] load build context
+#7 transferring context: 19.10kB 0.7s
+#7 ...
+
+#9 [stage-1 1/3] FROM docker.io/library/nginx:alpine@sha256:582c496ccf79d8aa6f8203a79d32aaf7ffd8b13362c60a701a2f9ac64886c93d
+#9 DONE 5.4s
+
+#7 [internal] load build context
+#7 ...
+
+#8 [build 1/6] FROM docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3
+#8 resolve docker.io/library/node:22-alpine@sha256:4d64b49e6c891c8fc821007cb1cdc6c0db7773110ac2c34bf2e6960adef62ed3 5.4s done
+#8 DONE 6.1s
+
+#7 [internal] load build context
+#7 transferring context: 126.00kB 7.2s
+#7 transferring context: 126.01kB 7.2s done
+#7 DONE 12.7s
+
+#10 [build 2/6] WORKDIR /app
+#10 CACHED
+
+#11 [build 3/6] COPY package*.json ./
+#11 CACHED
+
+#12 [build 4/6] RUN npm install
+#12 CACHED
+
+#13 [build 5/6] COPY . .
+#13 DONE 4.3s
+
+#14 [build 6/6] RUN npm run build
+#14 33.73 
+#14 33.73 > corecity-frontend@1.0.0 build
+#14 33.73 > react-scripts build
+#14 33.73 
+#14 93.38 Creating an optimized production build...
+#14 249.0 Compiled successfully.
+#14 249.0 
+#14 249.0 File sizes after gzip:
+#14 249.0 
+#14 249.1   120.75 kB  build/static/js/main.cb2bc5e3.js
+#14 249.1   6.09 kB    build/static/css/main.11a61df7.css
+#14 249.1 
+#14 249.1 The project was built assuming it is hosted at /.
+#14 249.1 You can control this with the homepage field in your package.json.
+#14 249.1 
+#14 249.1 The build folder is ready to be deployed.
+#14 249.1 You may serve it with a static server:
+#14 249.1 
+#14 249.1   npm install -g serve
+#14 249.1   serve -s build
+#14 249.1 
+#14 249.1 Find out more about deployment here:
+#14 249.1 
+#14 249.1   https://cra.link/deployment
+#14 249.1 
+#14 DONE 251.0s

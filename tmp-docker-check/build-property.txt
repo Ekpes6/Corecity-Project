@@ -1,0 +1,90 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 457B 0.5s done
+#1 DONE 4.8s
+
+#2 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#2 ...
+
+#3 [internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21
+#3 DONE 12.6s
+
+#2 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#2 DONE 12.8s
+
+#4 [internal] load .dockerignore
+#4 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context:
+#4 transferring context: 2B 0.3s done
+#4 DONE 2.7s
+
+#5 [internal] load build context
+#5 DONE 0.0s
+
+#6 [stage-1 1/3] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d
+#6 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d
+#6 ...
+
+#7 [build 1/6] FROM docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb
+#7 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb
+#7 ...
+
+#6 [stage-1 1/3] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d
+#6 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d 11.2s done
+#6 DONE 11.5s
+
+#7 [build 1/6] FROM docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb
+#7 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb 11.0s done
+#7 DONE 11.5s
+
+#5 [internal] load build context
+#5 transferring context:
+#5 transferring context: 37.17kB 1.1s done
+#5 DONE 5.3s
+
+#8 [build 5/6] COPY property-service/src ./property-service/src
+#8 CACHED
+
+#9 [build 6/6] RUN mvn -B -ntp -Dstyle.color=never -f property-service/pom.xml package -DskipTests
+#9 CACHED
+
+#10 [stage-1 2/3] WORKDIR /app
+#10 CACHED
+
+#11 [build 2/6] WORKDIR /app
+#11 CACHED
+
+#12 [build 3/6] COPY pom.xml ./pom.xml
+#12 CACHED
+
+#13 [build 4/6] COPY property-service/pom.xml ./property-service/pom.xml
+#13 CACHED
+
+#14 [stage-1 3/3] COPY --from=build /app/property-service/target/*.jar app.jar
+#14 CACHED
+
+#15 exporting to image
+#15 exporting layers
+#15 exporting layers 0.1s done
+#15 exporting manifest sha256:2301868e4c9e50517d615b1966cf076f61e04a747fb3c5072702293487878bc2
+#15 exporting manifest sha256:2301868e4c9e50517d615b1966cf076f61e04a747fb3c5072702293487878bc2 7.3s done
+#15 exporting config sha256:4316c21791bbff4da76858acaa63386c35d7c6e57d67b0d35438f11200f9a4d1
+#15 exporting config sha256:4316c21791bbff4da76858acaa63386c35d7c6e57d67b0d35438f11200f9a4d1 7.0s done
+#15 exporting attestation manifest sha256:ce4d2382373e725dcfca77353105547b2b873b37b4234921082210e715f06be7
+#15 exporting attestation manifest sha256:ce4d2382373e725dcfca77353105547b2b873b37b4234921082210e715f06be7 6.9s done
+#15 exporting manifest list sha256:256df16001f00feb07ee02186278e5c29af4382b11f1098683525a1eb0f3aafc
+#15 exporting manifest list sha256:256df16001f00feb07ee02186278e5c29af4382b11f1098683525a1eb0f3aafc 6.4s done
+#15 naming to docker.io/library/corecity-properties-property-service:latest
+#15 naming to docker.io/library/corecity-properties-property-service:latest 1.7s done
+#15 unpacking to docker.io/library/corecity-properties-property-service:latest
+#15 unpacking to docker.io/library/corecity-properties-property-service:latest 1.7s done
+#15 DONE 41.5s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/pkw3wn5e8bzftmuv599f0kfqs

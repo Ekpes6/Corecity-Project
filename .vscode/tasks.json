@@ -13,6 +13,18 @@
 			"isBackground": true,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "run-property-service-local-debug",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set SERVER_PORT=9082 && set SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db && set SPRING_DATASOURCE_USERNAME=corecity_user && set SPRING_DATASOURCE_PASSWORD=corecity_pass && set SPRING_RABBITMQ_HOST=localhost && mvn.cmd -f property-service/pom.xml spring-boot:run"
+			],
+			"isBackground": true,
+			"group": "build"
 		}
 	]
 }

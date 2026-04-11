@@ -1,0 +1,10 @@
+ Container corecity-mysql Running 
+ Container corecity-file-service Recreate 
+ Container corecity-rabbitmq Running 
+ Container corecity-user-service Running 
+ Container corecity-property-service Creating 
+ Container corecity-transaction-service Recreate 
+ Container corecity-notification-service Recreate 
+ Container corecity-property-service Error response from daemon: Conflict. The container name "/corecity-property-service" is already in use by container "b922b97284a6dcc860b3ebdfd7d9c9bb68baa7bc50636558174ff90a82055ad7". You have to remove (or rename) that container to be able to reuse that name. 
+ Container corecity-transaction-service Error response from daemon: Conflict. The container name "/281ad46d6a3f_corecity-transaction-service" is already in use by container "eddd1074627d56e23e61d5df084de8e8b8b2223f16928fc64ca0eea9024ec598". You have to remove (or rename) that container to be able to reuse that name. 
+Error response from daemon: Conflict. The container name "/281ad46d6a3f_corecity-transaction-service" is already in use by container "eddd1074627d56e23e61d5df084de8e8b8b2223f16928fc64ca0eea9024ec598". You have to remove (or rename) that container to be able to reuse that name.

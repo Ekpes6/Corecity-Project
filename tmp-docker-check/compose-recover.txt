@@ -1,0 +1,114 @@
+ Image corecity-properties-file-service Building 
+ Image corecity-properties-user-service Building 
+ Image corecity-properties-transaction-service Building 
+ Image corecity-properties-frontend Building 
+ Image corecity-properties-api-gateway Building 
+ Image corecity-properties-notification-service Building 
+ Image corecity-properties-property-service Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 3.94kB 0.4s done
+#1 DONE 0.4s
+
+#2 [frontend internal] load build definition from Dockerfile
+#2 ...
+
+#3 [transaction-service internal] load build definition from Dockerfile
+#3 DONE 0.6s
+
+#4 [property-service internal] load build definition from Dockerfile
+#4 DONE 0.6s
+
+#5 [user-service internal] load build definition from Dockerfile
+#5 DONE 0.6s
+
+#6 [api-gateway internal] load build definition from Dockerfile
+#6 DONE 0.6s
+
+#7 [notification-service internal] load build definition from Dockerfile
+#7 DONE 0.6s
+
+#8 [file-service internal] load build definition from Dockerfile
+#8 DONE 0.6s
+
+#2 [frontend internal] load build definition from Dockerfile
+#2 DONE 0.6s
+
+#3 [transaction-service internal] load build definition from Dockerfile
+#3 transferring dockerfile:
+#3 ...
+
+#4 [property-service internal] load build definition from Dockerfile
+#4 ...
+
+#5 [user-service internal] load build definition from Dockerfile
+#5 ...
+
+#2 [frontend internal] load build definition from Dockerfile
+#2 ...
+
+#5 [user-service internal] load build definition from Dockerfile
+#5 transferring dockerfile: 433B 3.4s done
+#5 ...
+
+#6 [api-gateway internal] load build definition from Dockerfile
+#6 transferring dockerfile: 427B 2.9s done
+#6 DONE 10.8s
+
+#7 [notification-service internal] load build definition from Dockerfile
+#7 transferring dockerfile: 481B 2.6s done
+#7 ...
+
+#8 [file-service internal] load build definition from Dockerfile
+#8 transferring dockerfile: 433B 3.4s done
+#8 ...
+
+#3 [transaction-service internal] load build definition from Dockerfile
+#3 transferring dockerfile: 475B 3.4s done
+#3 ...
+
+#8 [file-service internal] load build definition from Dockerfile
+#8 DONE 12.6s
+
+#2 [frontend internal] load build definition from Dockerfile
+#2 transferring dockerfile: 273B 3.5s done
+#2 ...
+
+#4 [property-service internal] load build definition from Dockerfile
+#4 transferring dockerfile: 457B 2.3s done
+#4 DONE 13.5s
+
+#2 [frontend internal] load build definition from Dockerfile
+#2 ...
+
+#3 [transaction-service internal] load build definition from Dockerfile
+#3 DONE 14.5s
+
+#9 [file-service internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21
+#9 ...
+
+#7 [notification-service internal] load build definition from Dockerfile
+#7 DONE 14.9s
+
+#10 [file-service internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#10 ...
+
+#5 [user-service internal] load build definition from Dockerfile
+#5 DONE 15.9s
+
+#9 [transaction-service internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21
+#9 ...
+
+#2 [frontend internal] load build definition from Dockerfile
+#2 DONE 16.6s
+
+#10 [notification-service internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#10 ...
+
+#9 [user-service internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21
+#9 ...
+
+#11 [frontend internal] load metadata for docker.io/library/nginx:alpine
+#11 ...
+
+#12 [frontend internal] load metadata for docker.io/library/node:22-alpine
+

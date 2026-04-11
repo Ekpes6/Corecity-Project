@@ -73,6 +73,19 @@ public class PropertyController {
         return ResponseEntity.ok(propertyService.getMyProperties(userId));
     }
 
+    @GetMapping("/pending")
+    public ResponseEntity<List<PropertyResponse>> pendingListings(
+            @RequestHeader("X-User-Role") String userRole) {
+        return ResponseEntity.ok(propertyService.getPendingProperties(userRole));
+    }
+
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<PropertyResponse> approve(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Role") String userRole) {
+        return ResponseEntity.ok(propertyService.approveProperty(id, userRole));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<PropertyResponse> update(
             @PathVariable Long id,

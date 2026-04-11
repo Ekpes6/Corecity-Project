@@ -1,8 +1,10 @@
-FROM node:22-alpine AS build
+FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm install --include=dev --no-audit --no-fund
 COPY . .
+ENV CI=true
+ENV GENERATE_SOURCEMAP=false
 RUN npm run build
 
 FROM nginx:alpine

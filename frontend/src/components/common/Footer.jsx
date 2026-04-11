@@ -15,7 +15,7 @@ export default function Footer() {
                 <Home size={18} className="text-white" />
               </div>
               <span className="font-display font-bold text-xl">
-                House<span className="text-clay-500">Link</span>
+                Core<span className="text-clay-500">City</span>
               </span>
             </div>
             <p className="text-white/60 text-sm leading-relaxed mb-6">

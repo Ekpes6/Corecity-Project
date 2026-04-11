@@ -2,7 +2,7 @@ USE corecity_db;
 
 DELETE FROM property_files WHERE property_id IN (8001, 8002, 8003, 8004);
 DELETE FROM properties WHERE id IN (8001, 8002, 8003, 8004);
-DELETE FROM users WHERE id IN (9001, 9002);
+DELETE FROM users WHERE id IN (9001, 9002, 9003);
 
 INSERT INTO users (
     id,
@@ -19,7 +19,7 @@ INSERT INTO users (
         9001,
         'seller.demo@corecity.local',
         '+2348011111111',
-        '$2a$10$7EqJtq98hPqEX7fNZaFWoOHiM1s9K6M6R9GqQ8K/ux1DPdhWS9Vy.',
+        '$2a$10$/Axnzps6SFqbzdEGqRXbtesOHPris0.zFuL9w8zO5jt45GtO0D2o6',
         'Adaobi',
         'Okafor',
         'SELLER',
@@ -30,12 +30,23 @@ INSERT INTO users (
         9002,
         'agent.demo@corecity.local',
         '+2348022222222',
-        '$2a$10$7EqJtq98hPqEX7fNZaFWoOHiM1s9K6M6R9GqQ8K/ux1DPdhWS9Vy.',
+        '$2a$10$/Axnzps6SFqbzdEGqRXbtesOHPris0.zFuL9w8zO5jt45GtO0D2o6',
         'Tunde',
         'Balogun',
         'AGENT',
         TRUE,
         'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&q=80'
+    ),
+    (
+        9003,
+        'admin.demo@corecity.local',
+        '+2348033333333',
+        '$2a$10$/Axnzps6SFqbzdEGqRXbtesOHPris0.zFuL9w8zO5jt45GtO0D2o6',
+        'Ifeoma',
+        'Nwosu',
+        'ADMIN',
+        TRUE,
+        'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=300&q=80'
     );
 
 INSERT INTO properties (

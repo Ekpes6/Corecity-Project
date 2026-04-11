@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Star, TrendingUp, Users, Building2, MapPin } from 'lucide-react';
 import { propertyAPI } from '../services/api';
+import { getDemoFeaturedProperties } from '../services/demoProperties';
 import PropertyCard from '../components/property/PropertyCard';
 import SearchBar from '../components/property/SearchBar';
 import { formatNaira } from '../utils/nigeria';
@@ -27,7 +28,7 @@ export default function HomePage() {
   useEffect(() => {
     propertyAPI.featured()
       .then((r) => setFeatured(r.data))
-      .catch(() => {})
+      .catch(() => setFeatured(getDemoFeaturedProperties()))
       .finally(() => setLoadingFeatured(false));
   }, []);
 

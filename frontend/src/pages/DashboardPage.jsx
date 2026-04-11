@@ -159,15 +159,111 @@ function MyListings() {
   );
 }
 
+function ModerationPage() {
+  const { isAdmin } = useAuth();
+  const [properties, setProperties] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [approvingId, setApprovingId] = useState(null);
+
+  useEffect(() => {
+    if (!isAdmin) {
+      setLoading(false);
+      return;
+    }
+
+    propertyAPI.getPending()
+      .then((response) => setProperties(response.data))
+      .catch(() => toast.error('Failed to load pending listings'))
+      .finally(() => setLoading(false));
+  }, [isAdmin]);
+
+  const handleApprove = async (propertyId) => {
+    setApprovingId(propertyId);
+    try {
+      const response = await propertyAPI.approve(propertyId);
+      setProperties((current) => current.filter((property) => property.id !== propertyId));
+      toast.success(`Listing approved: ${response.data.title}`);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to approve listing');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  if (!isAdmin) {
+    return (
+      <div className="text-center py-16 card">
+        <div className="text-5xl mb-4">🔒</div>
+        <h3 className="font-display text-xl font-bold text-gray-700 mb-2">Admin access required</h3>
+        <p className="text-gray-400">Only administrators can review pending listings.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return <div className="animate-pulse space-y-4">{[...Array(3)].map((_, index) => <div key={index} className="h-40 bg-gray-100 rounded-xl" />)}</div>;
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-forest-900">Moderation Queue</h2>
+          <p className="text-gray-500 text-sm mt-1">Approve pending listings so they appear in public search.</p>
+        </div>
+        <span className="text-sm bg-forest-50 text-forest-800 px-3 py-1 rounded-full font-medium">
+          {properties.length} pending
+        </span>
+      </div>
+
+      {properties.length === 0 ? (
+        <div className="text-center py-16 card">
+          <div className="text-5xl mb-4">✅</div>
+          <h3 className="font-display text-xl font-bold text-gray-700 mb-2">No pending listings</h3>
+          <p className="text-gray-400">Everything in the moderation queue has been reviewed.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {properties.map((property) => (
+            <div key={property.id} className="card p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded-full font-medium">{property.status}</span>
+                  <span className="text-xs text-gray-400">#{property.id}</span>
+                </div>
+                <h3 className="font-semibold text-gray-800 mb-1">{property.title}</h3>
+                <p className="text-sm text-gray-500 mb-2">{property.address}</p>
+                <p className="text-sm text-gray-500">{formatNaira(property.price, true)} · {property.listingType.replaceAll('_', ' ')}</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Link to={`/properties/${property.id}`} className="btn-secondary text-sm">View</Link>
+                <button
+                  type="button"
+                  onClick={() => handleApprove(property.id)}
+                  disabled={approvingId === property.id}
+                  className="btn-primary text-sm"
+                >
+                  {approvingId === property.id ? 'Approving…' : 'Approve'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main dashboard shell ────────────────────────────────────────
 export default function DashboardPage() {
-  const { user, logout, isSeller } = useAuth();
+  const { user, logout, isSeller, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const navItems = [
     { to: '/dashboard',          label: 'Overview',       icon: LayoutDashboard, end: true },
     { to: '/dashboard/listings', label: 'My Listings',    icon: Home },
     { to: '/dashboard/list',     label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
+    { to: '/dashboard/moderation', label: 'Moderation',   icon: Bell, adminOnly: true },
     { to: '/dashboard/payments', label: 'Payments',       icon: CreditCard },
     { to: '/dashboard/messages', label: 'Messages',       icon: MessageSquare },
     { to: '/dashboard/settings', label: 'Settings',       icon: Settings },
@@ -191,8 +287,9 @@ export default function DashboardPage() {
           </div>
 
           <nav className="card p-2 space-y-0.5">
-            {navItems.map(({ to, label, icon: Icon, end, sellerOnly }) => {
+            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly }) => {
               if (sellerOnly && !isSeller) return null;
+              if (adminOnly && !isAdmin) return null;
               return (
                 <NavLink key={to} to={to} end={end}
                   className={({ isActive }) =>
@@ -217,6 +314,7 @@ export default function DashboardPage() {
             <Route index               element={<DashboardHome />} />
             <Route path="listings"     element={<MyListings />} />
             <Route path="list"         element={<ListPropertyPage />} />
+            <Route path="moderation"   element={<ModerationPage />} />
             <Route path="payments"     element={<PaymentsPage />} />
             <Route path="messages"     element={<PlaceholderPage icon="💬" title="Messages" />} />
             <Route path="settings"     element={<PlaceholderPage icon="⚙️" title="Settings" />} />

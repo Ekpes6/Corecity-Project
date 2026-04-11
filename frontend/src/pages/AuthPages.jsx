@@ -17,7 +17,7 @@ export function LoginPage() {
     const result = await login(data);
     if (result.success) {
       toast.success(`Welcome back! 🏠`);
-      navigate(result.user.role === 'ADMIN' ? '/admin' : '/dashboard');
+      navigate(result.user.role === 'ADMIN' ? '/dashboard/moderation' : '/dashboard');
     } else {
       toast.error(result.error);
     }

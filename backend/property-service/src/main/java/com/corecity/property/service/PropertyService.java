@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.corecity.property.dto.PropertyDTOs.*;
 import com.corecity.property.entity.Property;
-import com.corecity.property.entity.PropertyFile;
 import com.corecity.property.repository.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,10 +11,15 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+
+import static org.springframework.http.HttpStatus.FORBIDDEN;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 
 @Service
 @RequiredArgsConstructor
@@ -82,26 +86,27 @@ public class PropertyService {
 
     @Transactional(readOnly = true)
     public Page<PropertyResponse> searchProperties(PropertySearchRequest req) {
-        Sort sort = req.getSortDir().equalsIgnoreCase("asc")
-            ? Sort.by(req.getSortBy()).ascending()
-            : Sort.by(req.getSortBy()).descending();
-        Pageable pageable = PageRequest.of(req.getPage(), req.getSize(), sort);
-
-        return propertyRepository.search(
-            req.getListingType(), req.getPropertyType(),
-            req.getStateId(), req.getLgaId(),
-            req.getMinPrice(), req.getMaxPrice(),
-            req.getBedrooms(), req.getKeyword(),
+        Pageable pageable = buildPageable(req);
+        Page<Property> properties = propertyRepository.search(
+            req.getListingType(),
+            req.getPropertyType(),
+            req.getStateId(),
+            req.getLgaId(),
+            req.getMinPrice(),
+            req.getMaxPrice(),
+            req.getBedrooms(),
+            req.getKeyword(),
             pageable
-        ).map(this::toResponse);
+        );
+
+        return properties.map(this::toResponse);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public PropertyResponse getProperty(Long id) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
-        propertyRepository.incrementViews(safeId);
         return toResponse(property);
     }
 
@@ -110,6 +115,28 @@ public class PropertyService {
         Long safeOwnerId = Objects.requireNonNull(ownerId, "owner id must not be null");
         return propertyRepository.findByOwnerIdOrderByCreatedAtDesc(safeOwnerId)
             .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<PropertyResponse> getPendingProperties(String userRole) {
+        requireAdmin(userRole);
+        return propertyRepository
+            .findByStatusOrderByCreatedAtDesc(Property.PropertyStatus.PENDING, PageRequest.of(0, 100))
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public PropertyResponse approveProperty(Long id, String userRole) {
+        requireAdmin(userRole);
+        Long safeId = Objects.requireNonNull(id, "property id must not be null");
+        Property property = propertyRepository.findById(safeId)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
+
+        property.setStatus(Property.PropertyStatus.ACTIVE);
+        Property savedProperty = propertyRepository.save(property);
+        return toResponse(savedProperty);
     }
 
     @Transactional
@@ -151,8 +178,8 @@ public class PropertyService {
 
     @Transactional(readOnly = true)
     public List<PropertyResponse> getFeaturedProperties() {
-        return propertyRepository.findByStatusOrderByCreatedAtDesc(Property.PropertyStatus.ACTIVE, PageRequest.of(0, 8))
-            .getContent()
+        return propertyRepository
+            .findByStatusOrderByCreatedAtDesc(Property.PropertyStatus.ACTIVE, PageRequest.of(0, 8))
             .stream()
             .map(this::toResponse)
             .collect(Collectors.toList());
@@ -165,16 +192,25 @@ public class PropertyService {
             catch (Exception ignored) {}
         }
 
-        List<String> imageUrls = new ArrayList<>();
-        String primaryImage = null;
-        if (p.getFiles() != null) {
-            for (PropertyFile f : p.getFiles()) {
-                if (f.getFileType() == PropertyFile.FileType.IMAGE) {
-                    imageUrls.add(f.getFileUrl());
-                    if (Boolean.TRUE.equals(f.getPrimary())) primaryImage = f.getFileUrl();
-                }
-            }
-        }
+        List<String> imageUrls = Optional.ofNullable(p.getFiles())
+            .orElseGet(List::of)
+            .stream()
+            .sorted(Comparator.comparing(file -> !Boolean.TRUE.equals(file.getPrimary())))
+            .map(file -> file.getFileUrl())
+            .filter(Objects::nonNull)
+            .collect(Collectors.toList());
+
+        String primaryImage = Optional.ofNullable(p.getFiles())
+            .orElseGet(List::of)
+            .stream()
+            .filter(file -> Boolean.TRUE.equals(file.getPrimary()))
+            .map(file -> file.getFileUrl())
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse(imageUrls.isEmpty() ? null : imageUrls.get(0));
+
+        String stateName = locationService.getStateName(p.getStateId()).orElse(null);
+        String lgaName = locationService.getLgaName(p.getLgaId()).orElse(null);
 
         return PropertyResponse.builder()
             .id(p.getId()).title(p.getTitle()).description(p.getDescription())
@@ -183,13 +219,33 @@ public class PropertyService {
             .price(p.getPrice()).pricePeriod(p.getPricePeriod().name())
             .bedrooms(p.getBedrooms()).bathrooms(p.getBathrooms()).toilets(p.getToilets())
             .sizeSqm(p.getSizeSqm()).address(p.getAddress())
-            .stateId(p.getStateId()).stateName(null)
-            .lgaId(p.getLgaId()).lgaName(null)
+            .stateId(p.getStateId()).stateName(stateName)
+            .lgaId(p.getLgaId()).lgaName(lgaName)
             .latitude(p.getLatitude()).longitude(p.getLongitude())
             .ownerId(p.getOwnerId()).status(p.getStatus().name())
             .negotiable(p.getNegotiable()).amenities(amenities)
             .imageUrls(imageUrls).primaryImageUrl(primaryImage)
             .viewsCount(p.getViewsCount()).createdAt(p.getCreatedAt())
             .build();
+    }
+
+    private Pageable buildPageable(PropertySearchRequest req) {
+        String sortField = switch (req.getSortBy()) {
+            case "price" -> "price";
+            case "viewsCount" -> "viewsCount";
+            default -> "createdAt";
+        };
+
+        Sort.Direction direction = "asc".equalsIgnoreCase(req.getSortDir())
+            ? Sort.Direction.ASC
+            : Sort.Direction.DESC;
+
+        return PageRequest.of(req.getPage(), req.getSize(), Sort.by(direction, sortField));
+    }
+
+    private void requireAdmin(String userRole) {
+        if (!"ADMIN".equalsIgnoreCase(userRole)) {
+            throw new ResponseStatusException(FORBIDDEN, "Admin access required");
+        }
     }
 }

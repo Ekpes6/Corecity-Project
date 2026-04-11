@@ -1,0 +1,99 @@
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 427B 1.0s done
+#1 DONE 3.7s
+
+#2 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#2 ...
+
+#3 [auth] library/maven:pull token for registry-1.docker.io
+#3 DONE 0.0s
+
+#4 [auth] library/eclipse-temurin:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/maven:3.9.6-eclipse-temurin-21
+#5 DONE 13.6s
+
+#2 [internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#2 DONE 13.8s
+
+#6 [internal] load .dockerignore
+#6 DONE 0.0s
+
+#6 [internal] load .dockerignore
+#6 transferring context:
+#6 transferring context: 2B 0.3s done
+#6 DONE 3.6s
+
+#7 [stage-1 1/3] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d
+#7 ...
+
+#8 [internal] load build context
+#8 DONE 0.0s
+
+#7 [stage-1 1/3] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d
+#7 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d
+#7 ...
+
+#9 [build 1/6] FROM docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb
+#9 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb
+#9 ...
+
+#7 [stage-1 1/3] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d
+#7 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:6ad8ed080d9be96b61438ec3ce99388e294af216ed57356000c06070e85c5d5d 11.2s done
+#7 DONE 11.5s
+
+#9 [build 1/6] FROM docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb
+#9 resolve docker.io/library/maven:3.9.6-eclipse-temurin-21@sha256:8d63d4c1902cb12d9e79a70671b18ebe26358cb592561af33ca1808f00d935cb 11.0s done
+#9 DONE 11.5s
+
+#8 [internal] load build context
+#8 transferring context:
+#8 transferring context: 8.38kB 1.9s done
+#8 DONE 7.0s
+
+#10 [build 3/6] COPY pom.xml ./pom.xml
+#10 CACHED
+
+#11 [build 4/6] COPY api-gateway/pom.xml ./api-gateway/pom.xml
+#11 CACHED
+
+#12 [build 5/6] COPY api-gateway/src ./api-gateway/src
+#12 CACHED
+
+#13 [build 6/6] RUN mvn -B -ntp -Dstyle.color=never -f api-gateway/pom.xml package -DskipTests
+#13 CACHED
+
+#14 [stage-1 2/3] WORKDIR /app
+#14 CACHED
+
+#15 [build 2/6] WORKDIR /app
+#15 CACHED
+
+#16 [stage-1 3/3] COPY --from=build /app/api-gateway/target/*.jar app.jar
+#16 CACHED
+
+#17 exporting to image
+#17 exporting layers
+#17 exporting layers 0.0s done
+#17 exporting manifest sha256:6bd1a4216ad359a5812a0f8d79f17ecd037b68eaeada00f05383209a6c9c8eb7
+#17 exporting manifest sha256:6bd1a4216ad359a5812a0f8d79f17ecd037b68eaeada00f05383209a6c9c8eb7 6.1s done
+#17 exporting config sha256:1725f816f9b52c5346cc877e8258b6fedf4e3589322ec9b2a241347aef31aec9
+#17 exporting config sha256:1725f816f9b52c5346cc877e8258b6fedf4e3589322ec9b2a241347aef31aec9 7.1s done
+#17 exporting attestation manifest sha256:c892605d6c5dd5a44073b71b5fdbc7dc8f4728ff244dab7513573694c69152ec
+#17 exporting attestation manifest sha256:c892605d6c5dd5a44073b71b5fdbc7dc8f4728ff244dab7513573694c69152ec 7.4s done
+#17 exporting manifest list sha256:3abe0ab44bf274fb11e3d9309d0d89c0ea02635ea2c5977dfcfe55d7aa38aaa5
+#17 exporting manifest list sha256:3abe0ab44bf274fb11e3d9309d0d89c0ea02635ea2c5977dfcfe55d7aa38aaa5 5.3s done
+#17 naming to docker.io/library/corecity-properties-api-gateway:latest
+#17 naming to docker.io/library/corecity-properties-api-gateway:latest 3.2s done
+#17 unpacking to docker.io/library/corecity-properties-api-gateway:latest
+#17 unpacking to docker.io/library/corecity-properties-api-gateway:latest 0.7s done
+#17 DONE 40.2s
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/pbzuvm5lp2tz8yc95ltrq9mbe
