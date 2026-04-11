@@ -1,1 +1,9 @@
 .env
+
+# Build outputs
+**/target/
+**/node_modules/
+
+# Local logs
+frontend/build-local.log
+tmp-docker-check/*.log
