@@ -25,6 +25,18 @@
 			],
 			"isBackground": true,
 			"group": "build"
+		},
+		{
+			"label": "frontend-lockfile-only",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Location \"c:\\Users\\FELIX\\Documents\\corecity-properties\\frontend\"; npm install --package-lock-only --include=dev --no-audit --no-fund"
+			],
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }
