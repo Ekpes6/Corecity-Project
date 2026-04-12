@@ -1,0 +1,10 @@
+corecity-frontend corecity-properties-frontend Created
+corecity-mysql mysql:8.0 Up About an hour (healthy)
+corecity-gateway corecity-properties-api-gateway Up About an hour (healthy)
+corecity-transaction-service corecity-properties-transaction-service Up About an hour (healthy)
+corecity-file-service corecity-properties-file-service Up About an hour (healthy)
+corecity-user-service corecity-properties-user-service Up About an hour (healthy)
+corecity-notification-service corecity-properties-notification-service Up About an hour (healthy)
+corecity-property-service corecity-properties-property-service Up About an hour (healthy)
+corecity-rabbitmq rabbitmq:3-management Up About an hour (healthy)
+

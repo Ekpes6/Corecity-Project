@@ -1,0 +1,5 @@
+
+corecity-frontend Up 22 seconds 0.0.0.0:3000->80/tcp, [::]:3000->80/tcp
+
+
+
