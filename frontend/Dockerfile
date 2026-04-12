@@ -1,7 +1,7 @@
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm install --no-audit --no-fund
+COPY package.json ./
+RUN npm install --no-audit --no-fund --legacy-peer-deps
 COPY . .
 ENV CI=true
 ENV GENERATE_SOURCEMAP=false
