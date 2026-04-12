@@ -34,6 +34,9 @@
     "start": "react-scripts start",
     "build": "react-scripts build"
   },
+  "overrides": {
+    "ajv": "7.2.4"
+  },
   "proxy": "http://localhost:8080",
   "browserslist": {
     "production": [">0.2%", "not dead"],
