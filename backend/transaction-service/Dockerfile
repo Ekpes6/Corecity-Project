@@ -3,7 +3,7 @@ WORKDIR /app
 COPY pom.xml ./pom.xml
 COPY transaction-service/pom.xml ./transaction-service/pom.xml
 COPY transaction-service/src ./transaction-service/src
-RUN mvn -B -ntp -Dstyle.color=never -f transaction-service/pom.xml package -DskipTests
+RUN mvn -B -ntp -Dstyle.color=never -f transaction-service/pom.xml package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

@@ -3,7 +3,7 @@ WORKDIR /app
 COPY pom.xml ./pom.xml
 COPY user-service/pom.xml ./user-service/pom.xml
 COPY user-service/src ./user-service/src
-RUN mvn -B -ntp -Dstyle.color=never -f user-service/pom.xml package -DskipTests
+RUN mvn -B -ntp -Dstyle.color=never -f user-service/pom.xml package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

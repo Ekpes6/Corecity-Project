@@ -3,7 +3,7 @@ WORKDIR /app
 COPY pom.xml ./pom.xml
 COPY api-gateway/pom.xml ./api-gateway/pom.xml
 COPY api-gateway/src ./api-gateway/src
-RUN mvn -B -ntp -Dstyle.color=never -f api-gateway/pom.xml package -DskipTests
+RUN mvn -B -ntp -Dstyle.color=never -f api-gateway/pom.xml package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

@@ -3,7 +3,7 @@ WORKDIR /app
 COPY pom.xml ./pom.xml
 COPY property-service/pom.xml ./property-service/pom.xml
 COPY property-service/src ./property-service/src
-RUN mvn -B -ntp -Dstyle.color=never -f property-service/pom.xml package -DskipTests
+RUN mvn -B -ntp -Dstyle.color=never -f property-service/pom.xml package
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
