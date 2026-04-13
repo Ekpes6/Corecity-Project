@@ -26,4 +26,8 @@ jwt:
 
 logging:
   level:
-    com.corecity: DEBUG
+    # INFO in production — avoids leaking user IDs, SQL, and token data into logs.
+    # Set to DEBUG locally by exporting LOGGING_LEVEL_COM_CORECITY=DEBUG before running.
+    com.corecity: ${LOGGING_LEVEL_COM_CORECITY:INFO}
+    # Keep Spring framework itself at WARN to reduce noise
+    org.springframework: WARN
