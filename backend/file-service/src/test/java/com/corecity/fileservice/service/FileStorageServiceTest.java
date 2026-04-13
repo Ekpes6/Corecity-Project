@@ -21,17 +21,15 @@ class FileStorageServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new FileStorageService();
-        ReflectionTestUtils.setField(service, "uploadDir", tempDir.toString());
-        ReflectionTestUtils.setField(service, "baseUrl",
+        FileStorageService fileStorageService = new FileStorageService();
+        ReflectionTestUtils.setField(fileStorageService, "uploadDir", tempDir.toString());
+        ReflectionTestUtils.setField(fileStorageService, "baseUrl",
             "http://localhost:8083/api/v1/files/serve");
+        service = fileStorageService;
     }
 
     @Test
     void uploadFile_validImage_returnsUrlWithCorrectPath() throws IOException {
-        var file = new MockMultipartFile(
-            "file", "photo.jpg", "image/jpeg", new byte[]{1, 2, 3});
-
         var pdf = new MockMultipartFile(
             "file", "deed.pdf", "application/pdf", "PDF content".getBytes());
 
