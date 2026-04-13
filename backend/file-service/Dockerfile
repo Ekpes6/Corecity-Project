@@ -3,7 +3,7 @@ WORKDIR /app
 COPY pom.xml ./pom.xml
 COPY file-service/pom.xml ./file-service/pom.xml
 COPY file-service/src ./file-service/src
-RUN mvn -B -ntp -Dstyle.color=never -f file-service/pom.xml package -DskipTests
+RUN mvn -B -ntp -Dstyle.color=never -f file-service/pom.xml package -Dmaven.test.skip=true -Dmaven.wagon.http.retryHandler.count=5
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

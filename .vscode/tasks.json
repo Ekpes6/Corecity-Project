@@ -48,6 +48,68 @@
 				"Set-Location \"c:\\Users\\FELIX\\Documents\\corecity-properties\\frontend\"; docker build --progress=plain --no-cache -t corecity-properties-frontend:latest ."
 			],
 			"isBackground": false
+		},
+		{
+			"label": "compose-up-corecity",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d",
+				"--build"
+			],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "compose-up-corecity-fresh",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d",
+				"--build"
+			],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "compose-build-file-service",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"build",
+				"file-service"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "compose-up-corecity-no-build",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d"
+			],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "compose-up-no-build-now",
+			"type": "shell",
+			"command": "docker",
+			"args": [
+				"compose",
+				"up",
+				"-d"
+			],
+			"isBackground": true,
+			"group": "build"
 		}
 	]
 }
