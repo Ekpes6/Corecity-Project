@@ -1,3 +1,10 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// FILE 1 of 2  —  PropertyDTOs.java (add @Max to PropertySearchRequest)
+// Replace the existing PropertySearchRequest inner class only (the rest of the
+// file is unchanged).
+// Full path:
+//   backend/property-service/src/main/java/com/corecity/property/dto/PropertyDTOs.java
+// ─────────────────────────────────────────────────────────────────────────────
 package com.corecity.property.dto;
 
 import com.corecity.property.entity.Property;
@@ -72,12 +79,25 @@ public class PropertyDTOs {
         private BigDecimal maxPrice;
         private Integer bedrooms;
         private String keyword;
+
         @Builder.Default
+        @Min(value = 0, message = "Page must be >= 0")
         private int page = 0;
+
+        /**
+         * Max page size capped at 50.
+         * A request like ?size=100000 would load that many rows from MySQL into
+         * memory, easily causing an OOM error. 50 is generous for a property
+         * listing UI; raise it only if you have a documented use case.
+         */
         @Builder.Default
+        @Min(value = 1, message = "Size must be >= 1")
+        @Max(value = 50, message = "Size must be <= 50")
         private int size = 12;
+
         @Builder.Default
         private String sortBy = "createdAt";
+
         @Builder.Default
         private String sortDir = "desc";
     }
