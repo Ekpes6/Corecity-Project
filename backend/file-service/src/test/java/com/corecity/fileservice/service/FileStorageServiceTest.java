@@ -32,7 +32,6 @@ class FileStorageServiceTest {
         var file = new MockMultipartFile(
             "file", "photo.jpg", "image/jpeg", new byte[]{1, 2, 3});
 
-        // Note: Thumbnailator needs a real image, so we test with a PDF instead
         var pdf = new MockMultipartFile(
             "file", "deed.pdf", "application/pdf", "PDF content".getBytes());
 
