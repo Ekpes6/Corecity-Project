@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.MediaType;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -14,6 +13,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
+import java.util.Objects;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -38,7 +38,8 @@ class TransactionControllerWebhookTest {
 
     @BeforeEach
     void injectSecret() {
-        ReflectionTestUtils.setField(controller, "paystackSecretKey", TEST_SECRET);
+        TransactionController target = Objects.requireNonNull(controller, "controller must be autowired");
+        ReflectionTestUtils.setField(target, "paystackSecretKey", TEST_SECRET);
     }
 
     @Test
@@ -46,7 +47,7 @@ class TransactionControllerWebhookTest {
         String signature = computeHmac(TEST_SECRET, CHARGE_SUCCESS_BODY);
 
         mockMvc.perform(post("/api/v1/transactions/webhook/paystack")
-                .contentType(MediaType.APPLICATION_JSON)
+            .contentType("application/json")
                 .content(CHARGE_SUCCESS_BODY)
                 .header("x-paystack-signature", signature))
             .andExpect(status().isOk());
@@ -57,7 +58,7 @@ class TransactionControllerWebhookTest {
     @Test
     void webhook_invalidSignature_returns401_doesNotProcess() throws Exception {
         mockMvc.perform(post("/api/v1/transactions/webhook/paystack")
-                .contentType(MediaType.APPLICATION_JSON)
+            .contentType("application/json")
                 .content(CHARGE_SUCCESS_BODY)
                 .header("x-paystack-signature", "aaaabbbbccccdddd_wrong_signature"))
             .andExpect(status().isUnauthorized());
@@ -68,7 +69,7 @@ class TransactionControllerWebhookTest {
     @Test
     void webhook_missingSignature_returns401_doesNotProcess() throws Exception {
         mockMvc.perform(post("/api/v1/transactions/webhook/paystack")
-                .contentType(MediaType.APPLICATION_JSON)
+            .contentType("application/json")
                 .content(CHARGE_SUCCESS_BODY))
             .andExpect(status().isUnauthorized());
 
@@ -83,7 +84,7 @@ class TransactionControllerWebhookTest {
         String signature = computeHmac(TEST_SECRET, body);
 
         mockMvc.perform(post("/api/v1/transactions/webhook/paystack")
-                .contentType(MediaType.APPLICATION_JSON)
+            .contentType("application/json")
                 .content(body)
                 .header("x-paystack-signature", signature))
             .andExpect(status().isOk());
