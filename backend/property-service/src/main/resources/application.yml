@@ -1,9 +1,8 @@
 server:
   port: 8082
-  error:
-    include-message: always
-    include-binding-errors: always
-    include-exception: true
+  # Do NOT expose exception class names or stack traces to API consumers.
+  # Spring Boot defaults are already safe (include-exception=false, include-message=never)
+  # so we simply remove the dangerous overrides that were here.
 
 spring:
   application:
