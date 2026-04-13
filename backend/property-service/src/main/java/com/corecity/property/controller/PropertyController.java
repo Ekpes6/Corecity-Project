@@ -1,13 +1,23 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// FILE 2 of 2  —  PropertyController.java
+// Adds @Validated + @Min/@Max directly on the search() method params so Spring
+// validates them before the DTO is built — catching bad values at the boundary.
+// Full path:
+//   backend/property-service/src/main/java/com/corecity/property/controller/PropertyController.java
+// ─────────────────────────────────────────────────────────────────────────────
 package com.corecity.property.controller;
 
 import com.corecity.property.dto.PropertyDTOs.*;
 import com.corecity.property.entity.Property;
 import com.corecity.property.service.PropertyService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.*;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -17,6 +27,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/properties")
 @RequiredArgsConstructor
+@Validated   // enables constraint annotations on @RequestParam directly
 @Slf4j
 public class PropertyController {
 
@@ -41,10 +52,10 @@ public class PropertyController {
             @RequestParam(required = false) BigDecimal maxPrice,
             @RequestParam(required = false) Integer bedrooms,
             @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "0")  @Min(0)       int page,
+            @RequestParam(defaultValue = "12") @Min(1) @Max(50) int size,
             @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
+            @RequestParam(defaultValue = "desc")      String sortDir) {
 
         PropertySearchRequest req = PropertySearchRequest.builder()
             .listingType(listingType).propertyType(propertyType)

@@ -8,7 +8,7 @@
 			"args": [
 				"-NoProfile",
 				"-Command",
-				"Set-Location \"c:\\Users\\FELIX\\Documents\\corecity-properties\\backend\"; $env:SPRING_PROFILES_ACTIVE='docker'; $env:USER_SERVICE_URI='http://localhost:8081'; $env:PROPERTY_SERVICE_URI='http://localhost:8082'; $env:FILE_SERVICE_URI='http://localhost:8083'; $env:TRANSACTION_SERVICE_URI='http://localhost:8084'; $env:NOTIFICATION_SERVICE_URI='http://localhost:8085'; mvn -q -f api-gateway/pom.xml spring-boot:run"
+				"Set-Location \"c:\\Users\\FELIX\\Documents\\corecity-properties\\backend\"; $env:SPRING_PROFILES_ACTIVE=\"docker\"; $env:USER_SERVICE_URI=\"http://localhost:8081\"; $env:PROPERTY_SERVICE_URI=\"http://localhost:8082\"; $env:FILE_SERVICE_URI=\"http://localhost:8083\"; $env:TRANSACTION_SERVICE_URI=\"http://localhost:8084\"; $env:NOTIFICATION_SERVICE_URI=\"http://localhost:8085\"; mvn -q -f api-gateway/pom.xml spring-boot:run"
 			],
 			"isBackground": true,
 			"problemMatcher": [],
@@ -21,7 +21,7 @@
 			"args": [
 				"/d",
 				"/c",
-				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set SERVER_PORT=9082 && set SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db && set SPRING_DATASOURCE_USERNAME=corecity_user && set SPRING_DATASOURCE_PASSWORD=corecity_pass && set SPRING_RABBITMQ_HOST=localhost && mvn.cmd -f property-service/pom.xml spring-boot:run"
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set \"SERVER_PORT=9082\" && set \"SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db\" && set \"SPRING_DATASOURCE_USERNAME=corecity_user\" && set \"SPRING_DATASOURCE_PASSWORD=corecity_pass\" && set \"SPRING_RABBITMQ_HOST=localhost\" && mvn.cmd -f property-service/pom.xml spring-boot:run"
 			],
 			"isBackground": true,
 			"group": "build"
@@ -109,6 +109,270 @@
 				"-d"
 			],
 			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "run-user-service-local-now",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set \"SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db\" && set \"SPRING_DATASOURCE_USERNAME=corecity_user\" && set \"SPRING_DATASOURCE_PASSWORD=corecity_pass\" && set \"SPRING_RABBITMQ_HOST=localhost\" && mvn.cmd -f user-service/pom.xml spring-boot:run"
+			],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "check-corecity-containers-now",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker ps -a --format \"table {{.Names}}\\t{{.Status}}\\t{{.Ports}}\""
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "check-corecity-containers-simple",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker ps -a"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "start-mysql-rabbitmq-only",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker compose up -d mysql rabbitmq"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "docker-ps-corecity-now",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker ps"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "docker-logs-mysql-now",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker logs --tail 120 corecity-mysql"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "mysql-auth-check-now",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker exec corecity-mysql mysql -u corecity_user -pcorecity_pass -e \"SHOW DATABASES;\""
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "mysql-auth-check-fixed",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker exec corecity-mysql sh -lc \"mysql -u corecity_user -pcorecity_pass -e 'SHOW DATABASES;'\""
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "mysql-select1",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker exec -e MYSQL_PWD=corecity_pass corecity-mysql mysql -u corecity_user -D corecity_db -e \"SELECT 1;\""
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "run-user-service-local-jdbc-fixed",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC && set SPRING_DATASOURCE_USERNAME=corecity_user && set SPRING_DATASOURCE_PASSWORD=corecity_pass && set SPRING_RABBITMQ_HOST=localhost && mvn.cmd -f user-service/pom.xml spring-boot:run"
+			],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "run-user-service-local-jdbc-fixed2",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db?useSSL=false^&allowPublicKeyRetrieval=true^&serverTimezone=UTC && set SPRING_DATASOURCE_USERNAME=corecity_user && set SPRING_DATASOURCE_PASSWORD=corecity_pass && set SPRING_RABBITMQ_HOST=localhost && mvn.cmd -f user-service/pom.xml spring-boot:run"
+			],
+			"isBackground": true,
+			"group": "build"
+		},
+		{
+			"label": "run-user-service-quiet-diagnose",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db?useSSL=false^&allowPublicKeyRetrieval=true^&serverTimezone=UTC && set SPRING_DATASOURCE_USERNAME=corecity_user && set SPRING_DATASOURCE_PASSWORD=corecity_pass && set SPRING_RABBITMQ_HOST=localhost && mvn.cmd -q -f user-service/pom.xml spring-boot:run"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "run-user-service-clean-once",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db?useSSL=false^&allowPublicKeyRetrieval=true^&serverTimezone=UTC && set SPRING_DATASOURCE_USERNAME=corecity_user && set SPRING_DATASOURCE_PASSWORD=corecity_pass && set SPRING_RABBITMQ_HOST=localhost && mvn.cmd -q -f user-service/pom.xml spring-boot:run"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "mysql-user-grants-check",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"docker exec corecity-mysql mysql -uroot -pcorecity_root -e \"SELECT user,host,plugin FROM mysql.user;\""
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "seed-mysql-from-init-sql-now",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Get-Content \"c:\\Users\\FELIX\\Documents\\corecity-properties\\database\\init.sql\" | docker exec -i corecity-mysql mysql -uroot -pcorecity_root"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "run-user-service-after-seed",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db?useSSL=false^&allowPublicKeyRetrieval=true^&serverTimezone=UTC && set SPRING_DATASOURCE_USERNAME=corecity_user && set SPRING_DATASOURCE_PASSWORD=corecity_pass && set SPRING_RABBITMQ_HOST=localhost && mvn.cmd -q -f user-service/pom.xml spring-boot:run"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "run-user-service-with-dialect",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db && set SPRING_DATASOURCE_USERNAME=corecity_user && set SPRING_DATASOURCE_PASSWORD=corecity_pass && set SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.MySQLDialect && set SPRING_RABBITMQ_HOST=localhost && mvn.cmd -q -f user-service/pom.xml spring-boot:run"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "run-user-service-clean-log",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"cd /d c:\\Users\\FELIX\\Documents\\corecity-properties\\backend && set \"SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3307/corecity_db\" && set \"SPRING_DATASOURCE_USERNAME=corecity_user\" && set \"SPRING_DATASOURCE_PASSWORD=corecity_pass\" && set \"SPRING_RABBITMQ_HOST=localhost\" && mvn.cmd -q -f user-service/pom.xml spring-boot:run > c:\\Users\\FELIX\\Documents\\corecity-properties\\tmp-docker-check\\user-service-run.log 2>&1"
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "run-gateway-clean-log",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"Set-Location \"c:\\Users\\FELIX\\Documents\\corecity-properties\\backend\"; $env:SPRING_PROFILES_ACTIVE=\"docker\"; $env:USER_SERVICE_URI=\"http://localhost:8081\"; $env:PROPERTY_SERVICE_URI=\"http://localhost:8082\"; $env:FILE_SERVICE_URI=\"http://localhost:8083\"; $env:TRANSACTION_SERVICE_URI=\"http://localhost:8084\"; $env:NOTIFICATION_SERVICE_URI=\"http://localhost:8085\"; mvn -q -f api-gateway/pom.xml spring-boot:run *> \"c:\\Users\\FELIX\\Documents\\corecity-properties\\tmp-docker-check\\api-gateway-run.log\""
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "mysql-list-users-bracketed",
+			"type": "shell",
+			"command": "cmd",
+			"args": [
+				"/d",
+				"/c",
+				"docker exec corecity-mysql mysql -uroot -pcorecity_root -e \"select concat('[',user,']') as user_name, concat('[',host,']') as host_name from mysql.user;\""
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "mysql-list-users-check2",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"docker exec corecity-mysql mysql -uroot -pcorecity_root -e \"select user,host from mysql.user\""
+			],
+			"isBackground": false,
+			"group": "build"
+		},
+		{
+			"label": "mysql-fix-corecity-user-grants",
+			"type": "shell",
+			"command": "powershell",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"@\"\nCREATE DATABASE IF NOT EXISTS corecity_db;\nCREATE USER IF NOT EXISTS 'corecity_user'@'%' IDENTIFIED BY 'corecity_pass';\nCREATE USER IF NOT EXISTS 'corecity_user'@'localhost' IDENTIFIED BY 'corecity_pass';\nALTER USER 'corecity_user'@'%' IDENTIFIED BY 'corecity_pass';\nALTER USER 'corecity_user'@'localhost' IDENTIFIED BY 'corecity_pass';\nGRANT ALL PRIVILEGES ON corecity_db.* TO 'corecity_user'@'%';\nGRANT ALL PRIVILEGES ON corecity_db.* TO 'corecity_user'@'localhost';\nFLUSH PRIVILEGES;\n\"@ | docker exec -i corecity-mysql mysql -uroot -pcorecity_root"
+			],
+			"isBackground": false,
 			"group": "build"
 		}
 	]

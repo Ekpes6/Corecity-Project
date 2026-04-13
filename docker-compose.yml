@@ -5,17 +5,19 @@ services:
     container_name: corecity-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: corecity_root
-      MYSQL_DATABASE: corecity_db
-      MYSQL_USER: corecity_user
-      MYSQL_PASSWORD: corecity_pass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3307:3306"
+      # Bind to localhost only — not reachable from outside the host machine
+      - "127.0.0.1:3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "corecity_user", "-pcorecity_pass"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -30,8 +32,8 @@ services:
     user: "999:999"
     restart: unless-stopped
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -54,6 +56,7 @@ services:
       - "8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - JWT_SECRET=${JWT_SECRET}
       - USER_SERVICE_URI=http://user-service:8081
       - PROPERTY_SERVICE_URI=http://property-service:8082
       - FILE_SERVICE_URI=http://file-service:8083
@@ -91,12 +94,13 @@ services:
     container_name: corecity-user-service
     restart: on-failure
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
-      - SPRING_DATASOURCE_USERNAME=corecity_user
-      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
       mysql:
         condition: service_healthy
@@ -118,11 +122,11 @@ services:
     container_name: corecity-property-service
     restart: on-failure
     ports:
-      - "8082:8082"
+      - "127.0.0.1:8082:8082"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
-      - SPRING_DATASOURCE_USERNAME=corecity_user
-      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
     depends_on:
       mysql:
@@ -145,12 +149,13 @@ services:
     container_name: corecity-file-service
     restart: on-failure
     ports:
-      - "8083:8083"
+      - "127.0.0.1:8083:8083"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
-      - SPRING_DATASOURCE_USERNAME=corecity_user
-      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - FILE_UPLOAD_DIR=/uploads
+      - FILE_BASE_URL=${FILE_BASE_URL}
     volumes:
       - file_uploads:/uploads
     depends_on:
@@ -172,11 +177,11 @@ services:
     container_name: corecity-transaction-service
     restart: on-failure
     ports:
-      - "8084:8084"
+      - "127.0.0.1:8084:8084"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
-      - SPRING_DATASOURCE_USERNAME=corecity_user
-      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
     depends_on:
@@ -200,11 +205,527 @@ services:
     container_name: corecity-notification-service
     restart: on-failure
     ports:
-      - "8085:8085"
+      - "127.0.0.1:8085:8085"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/corecity_db
-      - SPRING_DATASOURCE_USERNAME=corecity_user
-      - SPRING_DATASOURCE_PASSWORD=corecity_pass
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - TERMII_API_KEY=${TERMII_API_KEY}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8085"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  # ─── Frontend ───────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: corecity-frontend
+    restart: on-failure
+    ports:
+      - "3000:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - corecity-network
+
+volumes:
+  mysql_data:
+  rabbitmq_data:
+  file_uploads:
+
+networks:
+  corecity-network:
+    driver: bridgeservices:
+  # ─── Database ───────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: corecity-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      # Bind to localhost only — not reachable from outside the host machine
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    networks:
+      - corecity-network
+
+  # ─── Message Broker ─────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: corecity-rabbitmq
+    user: "999:999"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - corecity-network
+
+  # ─── API Gateway ────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./backend
+      dockerfile: api-gateway/Dockerfile
+    container_name: corecity-gateway
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JWT_SECRET=${JWT_SECRET}
+      - USER_SERVICE_URI=http://user-service:8081
+      - PROPERTY_SERVICE_URI=http://property-service:8082
+      - FILE_SERVICE_URI=http://file-service:8083
+      - TRANSACTION_SERVICE_URI=http://transaction-service:8084
+      - NOTIFICATION_SERVICE_URI=http://notification-service:8085
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      property-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+      transaction-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    networks:
+      - corecity-network
+
+  # ─── Microservices ──────────────────────────────────────────
+  user-service:
+    build:
+      context: ./backend
+      dockerfile: user-service/Dockerfile
+    container_name: corecity-user-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8081"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  property-service:
+    build:
+      context: ./backend
+      dockerfile: property-service/Dockerfile
+    container_name: corecity-property-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8082"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  file-service:
+    build:
+      context: ./backend
+      dockerfile: file-service/Dockerfile
+    container_name: corecity-file-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - FILE_UPLOAD_DIR=/uploads
+      - FILE_BASE_URL=${FILE_BASE_URL}
+    volumes:
+      - file_uploads:/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8083"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  transaction-service:
+    build:
+      context: ./backend
+      dockerfile: transaction-service/Dockerfile
+    container_name: corecity-transaction-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8084"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  notification-service:
+    build:
+      context: ./backend
+      dockerfile: notification-service/Dockerfile
+    container_name: corecity-notification-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8085:8085"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - TERMII_API_KEY=${TERMII_API_KEY}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8085"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  # ─── Frontend ───────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    container_name: corecity-frontend
+    restart: on-failure
+    ports:
+      - "3000:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - corecity-network
+
+volumes:
+  mysql_data:
+  rabbitmq_data:
+  file_uploads:
+
+networks:
+  corecity-network:
+    driver: bridgeservices:
+  # ─── Database ───────────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: corecity-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      # Bind to localhost only — not reachable from outside the host machine
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 45s
+    networks:
+      - corecity-network
+
+  # ─── Message Broker ─────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: corecity-rabbitmq
+    user: "999:999"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    networks:
+      - corecity-network
+
+  # ─── API Gateway ────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./backend
+      dockerfile: api-gateway/Dockerfile
+    container_name: corecity-gateway
+    restart: on-failure
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JWT_SECRET=${JWT_SECRET}
+      - USER_SERVICE_URI=http://user-service:8081
+      - PROPERTY_SERVICE_URI=http://property-service:8082
+      - FILE_SERVICE_URI=http://file-service:8083
+      - TRANSACTION_SERVICE_URI=http://transaction-service:8084
+      - NOTIFICATION_SERVICE_URI=http://notification-service:8085
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      property-service:
+        condition: service_healthy
+      file-service:
+        condition: service_healthy
+      transaction-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    networks:
+      - corecity-network
+
+  # ─── Microservices ──────────────────────────────────────────
+  user-service:
+    build:
+      context: ./backend
+      dockerfile: user-service/Dockerfile
+    container_name: corecity-user-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8081"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  property-service:
+    build:
+      context: ./backend
+      dockerfile: property-service/Dockerfile
+    container_name: corecity-property-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8082"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  file-service:
+    build:
+      context: ./backend
+      dockerfile: file-service/Dockerfile
+    container_name: corecity-file-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - FILE_UPLOAD_DIR=/uploads
+      - FILE_BASE_URL=${FILE_BASE_URL}
+    volumes:
+      - file_uploads:/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8083"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  transaction-service:
+    build:
+      context: ./backend
+      dockerfile: transaction-service/Dockerfile
+    container_name: corecity-transaction-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8084:8084"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8084"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  notification-service:
+    build:
+      context: ./backend
+      dockerfile: notification-service/Dockerfile
+    container_name: corecity-notification-service
+    restart: on-failure
+    ports:
+      - "127.0.0.1:8085:8085"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=Africa/Lagos
+      - SPRING_DATASOURCE_USERNAME=${MYSQL_USER}
+      - SPRING_DATASOURCE_PASSWORD=${MYSQL_PASSWORD}
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
