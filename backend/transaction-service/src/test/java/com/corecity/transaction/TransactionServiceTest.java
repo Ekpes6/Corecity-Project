@@ -16,7 +16,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -32,12 +32,10 @@ class TransactionServiceTest {
 
     @InjectMocks TransactionService transactionService;
 
-    private ObjectMapper objectMapper;
-
     @BeforeEach
     void setUp() {
         // Inject real ObjectMapper via reflection (field injection for non-Spring test)
-        objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = new ObjectMapper();
         try {
             var field = TransactionService.class.getDeclaredField("objectMapper");
             field.setAccessible(true);
@@ -50,6 +48,7 @@ class TransactionServiceTest {
     // ─── initTransaction ────────────────────────────────────────────────────
 
     @Test
+    @SuppressWarnings("null")
     void initTransaction_persistsBeforeCallingPaystack() {
         // Arrange
         var req = InitTransactionRequest.builder()
@@ -59,9 +58,14 @@ class TransactionServiceTest {
             .build();
 
         var savedTx = buildTransaction(1L, Transaction.TransactionStatus.INITIATED);
-        when(transactionRepository.save(any())).thenReturn(savedTx);
-        when(paystackService.calculateFee(any())).thenReturn(new BigDecimal("2000"));
-        when(paystackService.initializeTransaction(any(), any(), any(), any()))
+        doReturn(savedTx).when(transactionRepository).save(argThat(Objects::nonNull));
+        when(paystackService.calculateFee(argThat((BigDecimal amount) -> amount != null)))
+            .thenReturn(new BigDecimal("2000"));
+        when(paystackService.initializeTransaction(
+            argThat((String email) -> email != null),
+            argThat((BigDecimal amount) -> amount != null),
+            argThat((String reference) -> reference != null),
+            argThat((java.util.Map<String, Object> metadata) -> metadata != null)))
             .thenReturn(new PaystackService.InitResult(
                 "https://checkout.paystack.com/abc", "HLK-ref", "code"));
 
@@ -69,8 +73,12 @@ class TransactionServiceTest {
         var response = transactionService.initTransaction(req, 10L);
 
         // Assert — Paystack is called exactly once, after the initial save
-        verify(transactionRepository, times(2)).save(any()); // initial + update with URL
-        verify(paystackService).initializeTransaction(any(), any(), any(), any());
+        verify(transactionRepository, times(2)).save(argThat(Objects::nonNull)); // initial + update with URL
+        verify(paystackService).initializeTransaction(
+            argThat((String email) -> email != null),
+            argThat((BigDecimal amount) -> amount != null),
+            argThat((String reference) -> reference != null),
+            argThat((java.util.Map<String, Object> metadata) -> metadata != null));
         assertThat(response.getAuthorizationUrl()).isNotBlank();
     }
 
@@ -89,27 +97,30 @@ class TransactionServiceTest {
     // ─── verifyTransaction ───────────────────────────────────────────────────
 
     @Test
+    @SuppressWarnings("null")
     void verifyTransaction_successfulPayment_setsStatusAndPublishesEvent() {
         var tx = buildTransaction(1L, Transaction.TransactionStatus.PENDING);
         when(transactionRepository.findByReference("REF-001")).thenReturn(Optional.of(tx));
         when(paystackService.verifyTransaction("REF-001"))
             .thenReturn(new PaystackService.VerifyResult(true, "success", "card", null));
-        when(transactionRepository.save(any())).thenReturn(tx);
+        doReturn(tx).when(transactionRepository).save(argThat(Objects::nonNull));
 
         var response = transactionService.verifyTransaction("REF-001");
 
         assertThat(response.getStatus()).isEqualTo("SUCCESS");
         verify(rabbitTemplate).convertAndSend(eq("corecity.exchange"),
-            eq("notification.payment_success"), any(java.util.Map.class));
+            eq("notification.payment_success"),
+            argThat((java.util.Map<String, Object> payload) -> payload != null));
     }
 
     @Test
+    @SuppressWarnings("null")
     void verifyTransaction_failedPayment_setsStatusFailed_doesNotPublishEvent() {
         var tx = buildTransaction(1L, Transaction.TransactionStatus.PENDING);
         when(transactionRepository.findByReference("REF-002")).thenReturn(Optional.of(tx));
         when(paystackService.verifyTransaction("REF-002"))
             .thenReturn(new PaystackService.VerifyResult(false, "failed", "card", null));
-        when(transactionRepository.save(any())).thenReturn(tx);
+        doReturn(tx).when(transactionRepository).save(argThat(Objects::nonNull));
 
         var response = transactionService.verifyTransaction("REF-002");
 

@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.*;
@@ -32,21 +33,22 @@ class AuthServiceTest {
     // ─── register ────────────────────────────────────────────────────────────
 
     @Test
+    @SuppressWarnings("null")
     void register_success_returnsTokenAndUser() {
         when(userRepository.existsByEmail("a@b.com")).thenReturn(false);
         when(userRepository.existsByPhone("+2348012345678")).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("$bcrypt$hash");
-        when(userRepository.save(any())).thenAnswer(inv -> {
-            User u = inv.getArgument(0);
+        doAnswer(inv -> {
+            User user = inv.getArgument(0);
             // Simulate DB assigning an ID
             try {
                 var idField = User.class.getDeclaredField("id");
                 idField.setAccessible(true);
-                idField.set(u, 1L);
+                idField.set(user, 1L);
             } catch (Exception ignored) {}
-            return u;
-        });
-        when(jwtUtil.generateToken(any())).thenReturn("jwt.token.here");
+            return user;
+        }).when(userRepository).save(argThat(Objects::nonNull));
+        when(jwtUtil.generateToken(argThat((User user) -> user != null))).thenReturn("jwt.token.here");
 
         var req = RegisterRequest.builder()
             .email("a@b.com").phone("+2348012345678").password("password123")
@@ -63,6 +65,7 @@ class AuthServiceTest {
     }
 
     @Test
+    @SuppressWarnings("null")
     void register_duplicateEmail_throwsException() {
         when(userRepository.existsByEmail("a@b.com")).thenReturn(true);
 
@@ -74,7 +77,7 @@ class AuthServiceTest {
             .isThrownBy(() -> authService.register(req))
             .withMessageContaining("Email already registered");
 
-        verify(userRepository, never()).save(any());
+        verify(userRepository, never()).save(argThat(Objects::nonNull));
     }
 
     @Test
@@ -134,7 +137,8 @@ class AuthServiceTest {
         when(userRepository.findByEmail("+2348012345678")).thenReturn(Optional.empty());
         when(userRepository.findByPhone("+2348012345678")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("password123", "$bcrypt$hash")).thenReturn(true);
-        when(jwtUtil.generateToken(user)).thenReturn("jwt.by.phone");
+        when(jwtUtil.generateToken(argThat((User matchedUser) -> matchedUser != null && matchedUser.equals(user))))
+            .thenReturn("jwt.by.phone");
 
         var result = authService.login(new LoginRequest("+2348012345678", "password123"));
         assertThat(result.getAccessToken()).isEqualTo("jwt.by.phone");
