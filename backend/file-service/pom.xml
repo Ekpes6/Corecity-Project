@@ -38,5 +38,17 @@
             <artifactId>tika-core</artifactId>
             <version>2.9.2</version>
         </dependency>
+        <!-- AWS SDK v2 S3 client (compatible with Cloudflare R2 via S3-compatible API) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.16</version>
+        </dependency>
+        <!-- Mockito for S3Client mocking in tests -->
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
