@@ -4,6 +4,7 @@
 nginx/certs/*.pem
 nginx/certs/*.crt
 nginx/certs/*.key
+nginx/certs/*.md
 
 # Build outputs
 **/target/
