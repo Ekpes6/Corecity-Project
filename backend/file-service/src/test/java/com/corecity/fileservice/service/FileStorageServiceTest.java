@@ -29,9 +29,10 @@ class FileStorageServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new FileStorageService(s3Client);
-        ReflectionTestUtils.setField(service, "bucket", "corecity-test");
-        ReflectionTestUtils.setField(service, "publicBaseUrl", PUBLIC_BASE_URL);
+        FileStorageService svc = new FileStorageService(s3Client);
+        ReflectionTestUtils.setField(svc, "bucket", "corecity-test");
+        ReflectionTestUtils.setField(svc, "publicBaseUrl", PUBLIC_BASE_URL);
+        service = svc;
 
         when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
             .thenReturn(PutObjectResponse.builder().build());
