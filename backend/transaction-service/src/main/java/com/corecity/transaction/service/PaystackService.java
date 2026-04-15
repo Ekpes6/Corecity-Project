@@ -21,6 +21,9 @@ public class PaystackService {
     @Value("${paystack.secret-key}")
     private String secretKey;
 
+    @Value("${paystack.callback-url:https://corecity.com.ng/payment/verify}")
+    private String callbackUrl;
+
     private static final String PAYSTACK_BASE = "https://api.paystack.co";
     // Nigerian service fee: 1.5% + ₦100 (capped at ₦2,000)
     private static final BigDecimal FEE_RATE = new BigDecimal("0.015");
@@ -45,7 +48,7 @@ public class PaystackService {
             "amount", amountKobo,
             "reference", reference,
             "currency", "NGN",
-            "callback_url", "https://corecity.com.ng/payment/verify",
+            "callback_url", callbackUrl,
             "metadata", meta,
             "channels", new String[]{"card", "bank", "ussd", "bank_transfer", "qr"}
         ), "paystack initialize request body must not be null");

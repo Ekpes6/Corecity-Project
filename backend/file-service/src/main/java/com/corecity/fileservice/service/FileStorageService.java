@@ -2,6 +2,7 @@ package com.corecity.fileservice.service;
 
 import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
+import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +29,8 @@ public class FileStorageService {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
     private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+    private final Tika tika = new Tika();
 
     /**
      * Whitelist of permitted category values.
@@ -131,14 +134,15 @@ public class FileStorageService {
 
     // ─── Private helpers ────────────────────────────────────────────────────
 
-    private void validateFile(MultipartFile file) {
+    private void validateFile(MultipartFile file) throws IOException {
         if (file.isEmpty()) throw new IllegalArgumentException("File is empty");
         if (file.getSize() > MAX_FILE_SIZE)
             throw new IllegalArgumentException("File exceeds maximum size of 10MB");
-        String contentType = file.getContentType();
-        if (contentType == null ||
-            (!ALLOWED_IMAGE_TYPES.contains(contentType) && !ALLOWED_DOC_TYPES.contains(contentType)))
-            throw new IllegalArgumentException("File type not allowed: " + contentType);
+
+        // Detect the real MIME type from the file's magic bytes (ignores client-supplied content-type)
+        String detectedType = tika.detect(file.getInputStream());
+        if (!ALLOWED_IMAGE_TYPES.contains(detectedType) && !ALLOWED_DOC_TYPES.contains(detectedType))
+            throw new IllegalArgumentException("File type not allowed: " + detectedType);
     }
 
     /**

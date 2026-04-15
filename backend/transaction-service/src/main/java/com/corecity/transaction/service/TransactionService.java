@@ -11,10 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,7 +31,8 @@ public class TransactionService {
     public InitTransactionResponse initTransaction(InitTransactionRequest req, Long buyerId) {
         Long safeBuyerId = Objects.requireNonNull(buyerId, "buyer id must not be null");
         BigDecimal fee = paystackService.calculateFee(req.getAmount());
-        String reference = "HLK-" + Instant.now().toEpochMilli();
+        // UUID reference: globally unique, no millisecond-collision risk under concurrent load
+        String reference = "HLK-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
 
         // Persist in INITIATED state before hitting Paystack
         var builtTransaction = Transaction.builder()

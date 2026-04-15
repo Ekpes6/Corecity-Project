@@ -9,6 +9,27 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.*;
 
+/** Maps file extension to MIME type for accurate Content-Type responses. */
+final class MimeTypes {
+    private MimeTypes() {}
+    static final Map<String, String> EXT = Map.of(
+        "jpg",  "image/jpeg",
+        "jpeg", "image/jpeg",
+        "png",  "image/png",
+        "webp", "image/webp",
+        "gif",  "image/gif",
+        "pdf",  "application/pdf",
+        "doc",  "application/msword",
+        "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+    static String detect(String filename) {
+        int dot = filename.lastIndexOf('.');
+        if (dot < 0) return MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        return EXT.getOrDefault(filename.substring(dot + 1).toLowerCase(),
+                                MediaType.APPLICATION_OCTET_STREAM_VALUE);
+    }
+}
+
 @RestController
 @RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
@@ -73,7 +94,8 @@ public class FileController {
         try {
             String[] parts = path.split("/");
             byte[] data = fileStorageService.serveFile(parts);
-            String contentType = path.endsWith(".pdf") ? "application/pdf" : "image/jpeg";
+            String filename = parts[parts.length - 1];
+            String contentType = MimeTypes.detect(filename);
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
