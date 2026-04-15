@@ -151,10 +151,6 @@ public class FileStorageService {
     }
 }
 
-
-    @Value("${file.base-url:http://localhost:8083/api/v1/files/serve}")
-    private String baseUrl;
-
     private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
         "image/jpeg", "image/png", "image/webp", "image/gif"
     );
