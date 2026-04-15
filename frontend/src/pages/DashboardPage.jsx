@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Home, PlusSquare, CreditCard, Bell, Settings,
   TrendingUp, Eye, MessageSquare, Star, ChevronRight, LogOut,
   CheckCircle, XCircle, Clock, RefreshCw, Search, Filter,
-  Bed, Bath, MapPin, Building2, AlertCircle,
+  Bed, Bath, MapPin, Building2, AlertCircle, ShieldCheck,
 } from 'lucide-react';
 import { propertyAPI, transactionAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -161,147 +161,364 @@ function MyListings() {
   );
 }
 
+const PLACEHOLDER_IMG = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70';
+
 function ModerationPage() {
   const { isAdmin } = useAuth();
-  const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tab, setTab]           = useState('pending');
+  const [pending, setPending]   = useState([]);
+  const [rejected, setRejected] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [approvingId, setApprovingId] = useState(null);
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [search, setSearch]     = useState('');
+  const [filterListing, setFilterListing] = useState('');
+  // tracks how many approvals happened this session, for the stats bar
+  const [sessionApproved, setSessionApproved] = useState(0);
 
-  useEffect(() => {
-    if (!isAdmin) {
+  const loadQueues = useCallback(async (silent = false) => {
+    if (!isAdmin) { setLoading(false); return; }
+    if (!silent) setLoading(true); else setRefreshing(true);
+    try {
+      const [p, r] = await Promise.all([
+        propertyAPI.getPending().catch(() => ({ data: [] })),
+        propertyAPI.getRejected().catch(() => ({ data: [] })),
+      ]);
+      setPending(p.data);
+      setRejected(r.data);
+    } catch {
+      toast.error('Failed to load moderation queue');
+    } finally {
       setLoading(false);
-      return;
+      setRefreshing(false);
     }
-
-    propertyAPI.getPending()
-      .then((response) => setProperties(response.data))
-      .catch(() => toast.error('Failed to load pending listings'))
-      .finally(() => setLoading(false));
   }, [isAdmin]);
 
+  useEffect(() => { loadQueues(); }, [loadQueues]);
+
+  /* ── actions ── */
   const handleApprove = async (propertyId) => {
     setApprovingId(propertyId);
     try {
-      const response = await propertyAPI.approve(propertyId);
-      setProperties((current) => current.filter((property) => property.id !== propertyId));
-      toast.success(`Listing approved: ${response.data.title}`);
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to approve listing');
+      const res = await propertyAPI.approve(propertyId);
+      setPending((cur) => cur.filter((p) => p.id !== propertyId));
+      setSessionApproved((n) => n + 1);
+      toast.success(`"${res.data.title}" is now live`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Approval failed');
     } finally {
       setApprovingId(null);
     }
   };
 
-  const handleRejectStart = (propertyId) => {
-    setRejectingId(propertyId);
-    setRejectReason('');
-  };
+  const handleRejectStart = (id) => { setRejectingId(id); setRejectReason(''); };
+  const handleRejectCancel = () => { setRejectingId(null); setRejectReason(''); };
 
   const handleRejectConfirm = async () => {
     const id = rejectingId;
     setRejectingId(null);
     try {
-      await propertyAPI.reject(id, rejectReason.trim() || null);
-      setProperties((current) => current.filter((property) => property.id !== id));
+      const res = await propertyAPI.reject(id, rejectReason.trim() || null);
+      setPending((cur) => cur.filter((p) => p.id !== id));
+      setRejected((cur) => [res.data, ...cur]);
       toast.success('Listing rejected');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to reject listing');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Rejection failed');
     }
     setRejectReason('');
   };
 
-  const handleRejectCancel = () => {
-    setRejectingId(null);
-    setRejectReason('');
-  };
-
+  /* ── guard ── */
   if (!isAdmin) {
     return (
-      <div className="text-center py-16 card">
-        <div className="text-5xl mb-4">🔒</div>
+      <div className="text-center py-20 card">
+        <AlertCircle size={40} className="mx-auto mb-4 text-gray-300" />
         <h3 className="font-display text-xl font-bold text-gray-700 mb-2">Admin access required</h3>
-        <p className="text-gray-400">Only administrators can review pending listings.</p>
+        <p className="text-gray-400 text-sm">Only administrators can review pending listings.</p>
       </div>
     );
   }
 
+  /* ── filter ── */
+  const source     = tab === 'pending' ? pending : rejected;
+  const displayed  = source.filter((p) => {
+    const q = search.toLowerCase();
+    const matchSearch = !q || p.title.toLowerCase().includes(q) || p.address.toLowerCase().includes(q);
+    const matchListing = !filterListing || p.listingType === filterListing;
+    return matchSearch && matchListing;
+  });
+
+  /* ── skeleton ── */
   if (loading) {
-    return <div className="animate-pulse space-y-4">{[...Array(3)].map((_, index) => <div key={index} className="h-40 bg-gray-100 rounded-xl" />)}</div>;
+    return (
+      <div className="space-y-4 animate-pulse">
+        <div className="h-28 bg-gray-100 rounded-2xl" />
+        {[...Array(4)].map((_, i) => <div key={i} className="h-32 bg-gray-100 rounded-2xl" />)}
+      </div>
+    );
   }
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+
+      {/* ── Header ── */}
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl font-bold text-forest-900">Moderation Queue</h2>
-          <p className="text-gray-500 text-sm mt-1">Approve pending listings so they appear in public search.</p>
+          <h2 className="font-display text-2xl font-bold text-forest-900">Listing Moderation</h2>
+          <p className="text-gray-500 text-sm mt-1">Review, approve, or reject submitted listings before they go public.</p>
         </div>
-        <span className="text-sm bg-forest-50 text-forest-800 px-3 py-1 rounded-full font-medium">
-          {properties.length} pending
-        </span>
+        <button
+          type="button"
+          onClick={() => loadQueues(true)}
+          disabled={refreshing}
+          className="flex items-center gap-2 btn-secondary text-sm shrink-0"
+        >
+          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+          Refresh
+        </button>
       </div>
 
-      {properties.length === 0 ? (
-        <div className="text-center py-16 card">
-          <div className="text-5xl mb-4">✅</div>
-          <h3 className="font-display text-xl font-bold text-gray-700 mb-2">No pending listings</h3>
-          <p className="text-gray-400">Everything in the moderation queue has been reviewed.</p>
+      {/* ── Stats ── */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="card p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center shrink-0">
+            <Clock size={18} className="text-yellow-600" />
+          </div>
+          <div>
+            <p className="text-xl font-bold text-gray-800">{pending.length}</p>
+            <p className="text-xs text-gray-400">Awaiting review</p>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {properties.map((property) => (
-            <div key={property.id} className="card p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded-full font-medium">{property.status}</span>
-                  <span className="text-xs text-gray-400">#{property.id}</span>
-                </div>
-                <h3 className="font-semibold text-gray-800 mb-1">{property.title}</h3>
-                <p className="text-sm text-gray-500 mb-2">{property.address}</p>
-                <p className="text-sm text-gray-500">{formatNaira(property.price, true)} · {property.listingType.replaceAll('_', ' ')}</p>
-              </div>
-              {rejectingId === property.id ? (
-                <div className="flex flex-col gap-2 lg:items-end">
-                  <input
-                    type="text"
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder="Reason (optional)"
-                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-full lg:w-64 focus:outline-none focus:ring-2 focus:ring-red-300"
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    <button type="button" onClick={handleRejectCancel} className="btn-secondary text-sm">Cancel</button>
-                    <button type="button" onClick={handleRejectConfirm} className="text-sm px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-colors">Confirm Reject</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Link to={`/properties/${property.id}`} className="btn-secondary text-sm">View</Link>
-                  <button
-                    type="button"
-                    onClick={() => handleRejectStart(property.id)}
-                    disabled={approvingId === property.id}
-                    className="text-sm px-4 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 font-medium transition-colors"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleApprove(property.id)}
-                    disabled={approvingId === property.id}
-                    className="btn-primary text-sm"
-                  >
-                    {approvingId === property.id ? 'Approving…' : 'Approve'}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="card p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
+            <CheckCircle size={18} className="text-green-600" />
+          </div>
+          <div>
+            <p className="text-xl font-bold text-gray-800">{sessionApproved}</p>
+            <p className="text-xs text-gray-400">Approved this session</p>
+          </div>
+        </div>
+        <div className="card p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+            <XCircle size={18} className="text-red-500" />
+          </div>
+          <div>
+            <p className="text-xl font-bold text-gray-800">{rejected.length}</p>
+            <p className="text-xs text-gray-400">Total rejected</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tabs ── */}
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+        {[
+          { key: 'pending',  label: 'Pending Review', count: pending.length,  icon: Clock },
+          { key: 'rejected', label: 'Rejected',        count: rejected.length, icon: XCircle },
+        ].map(({ key, label, count, icon: Icon }) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              tab === key
+                ? 'bg-white text-forest-900 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Icon size={14} />
+            {label}
+            <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+              tab === key
+                ? key === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'
+                : 'bg-gray-200 text-gray-500'
+            }`}>{count}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ── Filters ── */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by title or address…"
+            className="w-full pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-300 bg-white"
+          />
+        </div>
+        <div className="relative">
+          <Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <select
+            value={filterListing}
+            onChange={(e) => setFilterListing(e.target.value)}
+            className="pl-8 pr-4 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-forest-300 bg-white appearance-none cursor-pointer"
+          >
+            <option value="">All listing types</option>
+            <option value="FOR_SALE">For Sale</option>
+            <option value="FOR_RENT">For Rent</option>
+            <option value="SHORT_LET">Short Let</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ── Empty state ── */}
+      {displayed.length === 0 && (
+        <div className="text-center py-20 card">
+          {tab === 'pending'
+            ? <><CheckCircle size={40} className="mx-auto mb-4 text-green-300" />
+                <h3 className="font-display text-xl font-bold text-gray-700 mb-2">Queue is clear</h3>
+                <p className="text-gray-400 text-sm">No pending listings match your filters.</p></>
+            : <><XCircle size={40} className="mx-auto mb-4 text-gray-300" />
+                <h3 className="font-display text-xl font-bold text-gray-700 mb-2">No rejected listings</h3>
+                <p className="text-gray-400 text-sm">Listings you reject will appear here.</p></>
+          }
         </div>
       )}
+
+      {/* ── Property rows ── */}
+      <div className="space-y-3">
+        {displayed.map((property) => {
+          const image = property.primaryImageUrl || property.imageUrls?.[0] || PLACEHOLDER_IMG;
+          const isApproving = approvingId === property.id;
+          const isRejecting = rejectingId === property.id;
+
+          return (
+            <div key={property.id} className="card overflow-hidden">
+              <div className="flex gap-0">
+
+                {/* Thumbnail */}
+                <Link to={`/properties/${property.id}`} className="shrink-0 relative" style={{ width: 120 }}>
+                  <img
+                    src={image} alt={property.title}
+                    className="w-full h-full object-cover"
+                    style={{ minHeight: 120 }}
+                    onError={(e) => { e.target.src = PLACEHOLDER_IMG; }}
+                  />
+                  <span className={`absolute top-2 left-2 text-xs px-2 py-0.5 rounded-full font-medium ${
+                    tab === 'pending'
+                      ? 'bg-yellow-500 text-white'
+                      : 'bg-red-500 text-white'
+                  }`}>{property.status}</span>
+                </Link>
+
+                {/* Details */}
+                <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className={listingBadgeClass(property.listingType)}>{listingLabel(property.listingType)}</span>
+                      <span className="text-xs text-gray-400">{propertyTypeLabel(property.propertyType)}</span>
+                      <span className="text-xs text-gray-300">·</span>
+                      <span className="text-xs text-gray-400">ID #{property.id}</span>
+                      <span className="text-xs text-gray-300">·</span>
+                      <span className="text-xs text-gray-400">Owner #{property.ownerId}</span>
+                      <span className="ml-auto text-xs text-gray-300">{timeAgo(property.createdAt)}</span>
+                    </div>
+
+                    <Link to={`/properties/${property.id}`} className="hover:text-forest-800 transition-colors">
+                      <h3 className="font-semibold text-gray-800 text-sm leading-snug line-clamp-1">{property.title}</h3>
+                    </Link>
+
+                    <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+                      <MapPin size={11} className="shrink-0" />
+                      <span className="truncate">{property.address}{property.stateName ? `, ${property.stateName}` : ''}</span>
+                    </div>
+
+                    <div className="flex items-center gap-4 mt-2 flex-wrap">
+                      <span className="naira text-sm font-bold text-forest-900">{formatNaira(property.price, true)}</span>
+                      {property.bedrooms > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Bed size={12} className="text-forest-600" /> {property.bedrooms}
+                        </span>
+                      )}
+                      {property.bathrooms > 0 && (
+                        <span className="flex items-center gap-1 text-xs text-gray-500">
+                          <Bath size={12} className="text-forest-600" /> {property.bathrooms}
+                        </span>
+                      )}
+                      {property.description && (
+                        <span className="text-xs text-gray-400 line-clamp-1 hidden sm:block max-w-xs">{property.description}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  {tab === 'pending' && (
+                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                      {isRejecting ? (
+                        <>
+                          <input
+                            type="text"
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                            placeholder="Rejection reason (optional)"
+                            className="flex-1 min-w-0 border border-red-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-300"
+                            autoFocus
+                            onKeyDown={(e) => { if (e.key === 'Enter') handleRejectConfirm(); if (e.key === 'Escape') handleRejectCancel(); }}
+                          />
+                          <button type="button" onClick={handleRejectCancel}
+                            className="btn-secondary text-xs px-3 py-1.5 shrink-0">
+                            Cancel
+                          </button>
+                          <button type="button" onClick={handleRejectConfirm}
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-colors shrink-0">
+                            <XCircle size={13} /> Confirm Reject
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <Link to={`/properties/${property.id}`}
+                            className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
+                            <Eye size={13} /> Preview
+                          </Link>
+                          <button type="button"
+                            onClick={() => handleRejectStart(property.id)}
+                            disabled={isApproving}
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 font-medium transition-colors disabled:opacity-40">
+                            <XCircle size={13} /> Reject
+                          </button>
+                          <button type="button"
+                            onClick={() => handleApprove(property.id)}
+                            disabled={isApproving}
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-forest-800 hover:bg-forest-700 text-white font-medium transition-colors disabled:opacity-40">
+                            {isApproving
+                              ? <><RefreshCw size={13} className="animate-spin" /> Approving…</>
+                              : <><CheckCircle size={13} /> Approve & Publish</>
+                            }
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {tab === 'rejected' && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <Link to={`/properties/${property.id}`}
+                        className="btn-secondary text-xs px-3 py-1.5 flex items-center gap-1.5">
+                        <Eye size={13} /> Preview
+                      </Link>
+                      <button type="button"
+                        onClick={() => handleApprove(property.id)}
+                        disabled={isApproving}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-forest-800 hover:bg-forest-700 text-white font-medium transition-colors disabled:opacity-40">
+                        {isApproving
+                          ? <><RefreshCw size={13} className="animate-spin" /> Approving…</>
+                          : <><CheckCircle size={13} /> Approve anyway</>
+                        }
+                      </button>
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
     </div>
   );
 }
