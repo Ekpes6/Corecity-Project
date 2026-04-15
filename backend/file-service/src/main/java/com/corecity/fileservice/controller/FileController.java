@@ -9,27 +9,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.*;
 
-/** Maps file extension to MIME type for accurate Content-Type responses. */
-final class MimeTypes {
-    private MimeTypes() {}
-    static final Map<String, String> EXT = Map.of(
-        "jpg",  "image/jpeg",
-        "jpeg", "image/jpeg",
-        "png",  "image/png",
-        "webp", "image/webp",
-        "gif",  "image/gif",
-        "pdf",  "application/pdf",
-        "doc",  "application/msword",
-        "docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    );
-    static String detect(String filename) {
-        int dot = filename.lastIndexOf('.');
-        if (dot < 0) return MediaType.APPLICATION_OCTET_STREAM_VALUE;
-        return EXT.getOrDefault(filename.substring(dot + 1).toLowerCase(),
-                                MediaType.APPLICATION_OCTET_STREAM_VALUE);
-    }
-}
-
 @RestController
 @RequestMapping("/api/v1/files")
 @RequiredArgsConstructor
