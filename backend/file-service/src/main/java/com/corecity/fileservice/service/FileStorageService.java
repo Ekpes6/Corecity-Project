@@ -1,4 +1,4 @@
-﻿package com.corecity.fileservice.service;
+package com.corecity.fileservice.service;
 
 import lombok.RequiredArgsConstructor;
 import org.apache.tika.Tika;
