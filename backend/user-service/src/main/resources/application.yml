@@ -5,7 +5,7 @@ spring:
   application:
     name: user-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?allowPublicKeyRetrieval=true&serverTimezone=Africa/Lagos}
     username: ${SPRING_DATASOURCE_USERNAME:corecity_user}
     password: ${SPRING_DATASOURCE_PASSWORD:corecity_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -17,17 +17,29 @@ spring:
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
-    username: ${SPRING_RABBITMQ_USERNAME:guest}
-    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
 
 jwt:
-  secret: ${JWT_SECRET:corecityNigeriaSecretKey2024VeryLongAndSecure!}
+  # No default — the application will refuse to start if JWT_SECRET is absent.
+  secret: ${JWT_SECRET}
   expiration: 86400000
+  refresh-expiration: 2592000000  # 30 days
+
+encryption:
+  # Base64-encoded 32-byte AES-256 key. Generate with:
+  #   openssl rand -base64 32
+  key: ${ENCRYPTION_KEY}
+
+management:
+  server:
+    port: 9091  # Not published in docker-compose — actuator unreachable from outside
+  endpoints:
+    web:
+      exposure:
+        include: health
 
 logging:
   level:
-    # INFO in production — avoids leaking user IDs, SQL, and token data into logs.
-    # Set to DEBUG locally by exporting LOGGING_LEVEL_COM_CORECITY=DEBUG before running.
     com.corecity: ${LOGGING_LEVEL_COM_CORECITY:INFO}
-    # Keep Spring framework itself at WARN to reduce noise
     org.springframework: WARN
