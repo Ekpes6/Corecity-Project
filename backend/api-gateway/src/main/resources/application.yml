@@ -72,6 +72,7 @@ spring:
             allowedOrigins:
               - "http://localhost:3000"
               - "https://corecity.com.ng"
+              - "https://www.corecity.com.ng"
             allowedMethods:
               - GET
               - POST
