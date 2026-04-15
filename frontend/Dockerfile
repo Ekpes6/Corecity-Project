@@ -6,6 +6,7 @@ RUN npm install
 COPY . .
 ENV CI=true
 ENV GENERATE_SOURCEMAP=false
+ENV DISABLE_ESLINT_PLUGIN=true
 RUN npm run build
 
 FROM nginx:alpine
