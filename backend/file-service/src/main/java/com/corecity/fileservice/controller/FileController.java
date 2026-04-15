@@ -95,7 +95,8 @@ public class FileController {
             String[] parts = path.split("/");
             byte[] data = fileStorageService.serveFile(parts);
             String filename = parts[parts.length - 1];
-            String contentType = Objects.requireNonNullElse(MimeTypes.detect(filename), MediaType.APPLICATION_OCTET_STREAM_VALUE);
+            String detected = MimeTypes.detect(filename);
+            String contentType = detected != null ? detected : MediaType.APPLICATION_OCTET_STREAM_VALUE;
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
