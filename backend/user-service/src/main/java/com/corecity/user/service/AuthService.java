@@ -5,6 +5,8 @@ import com.corecity.user.dto.UpdateProfileRequest;
 import com.corecity.user.entity.User;
 import com.corecity.user.repository.UserRepository;
 import com.corecity.user.security.JwtUtil;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,6 +48,7 @@ public class AuthService {
 
         return AuthResponse.builder()
             .accessToken(jwtUtil.generateToken(savedUser))
+            .refreshToken(jwtUtil.generateRefreshToken(savedUser))
             .user(toDTO(savedUser))
             .build();
     }
@@ -60,6 +63,29 @@ public class AuthService {
 
         return AuthResponse.builder()
             .accessToken(jwtUtil.generateToken(user))
+            .refreshToken(jwtUtil.generateRefreshToken(user))
+            .user(toDTO(user))
+            .build();
+    }
+
+    /**
+     * Validates a refresh token and issues a new access token + refresh token pair.
+     * The old refresh token is implicitly invalidated when the new one is issued
+     * (clients must replace it). Use short refresh-token expiry for sensitive deployments.
+     */
+    public AuthResponse refresh(String refreshToken) {
+        Claims claims;
+        try {
+            claims = jwtUtil.extractRefreshClaims(refreshToken);
+        } catch (JwtException e) {
+            throw new RuntimeException("Invalid or expired refresh token");
+        }
+        Long userId = Long.parseLong(claims.getSubject());
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        return AuthResponse.builder()
+            .accessToken(jwtUtil.generateToken(user))
+            .refreshToken(jwtUtil.generateRefreshToken(user))
             .user(toDTO(user))
             .build();
     }

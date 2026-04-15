@@ -28,6 +28,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(req));
     }
 
+    @PostMapping("/auth/refresh")
+    public ResponseEntity<AuthResponse> refresh(@RequestBody Map<String, String> body) {
+        String token = body.get("refreshToken");
+        if (token == null || token.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(authService.refresh(token));
+    }
+
     @GetMapping("/users/me")
     public ResponseEntity<UserDTO> getProfile(@RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(authService.getProfile(userId));
