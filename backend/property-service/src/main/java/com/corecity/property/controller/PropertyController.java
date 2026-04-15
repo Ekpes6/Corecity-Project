@@ -90,6 +90,12 @@ public class PropertyController {
         return ResponseEntity.ok(propertyService.getPendingProperties(userRole));
     }
 
+    @GetMapping("/rejected")
+    public ResponseEntity<List<PropertyResponse>> rejectedListings(
+            @RequestHeader("X-User-Role") String userRole) {
+        return ResponseEntity.ok(propertyService.getRejectedProperties(userRole));
+    }
+
     @PostMapping("/{id}/approve")
     public ResponseEntity<PropertyResponse> approve(
             @PathVariable Long id,

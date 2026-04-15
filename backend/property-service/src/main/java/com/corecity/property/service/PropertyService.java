@@ -126,6 +126,16 @@ public class PropertyService {
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<PropertyResponse> getRejectedProperties(String userRole) {
+        requireAdmin(userRole);
+        return propertyRepository
+            .findByStatusOrderByCreatedAtDesc(Property.PropertyStatus.REJECTED, PageRequest.of(0, 100))
+            .stream()
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+    }
+
     @Transactional
     public PropertyResponse approveProperty(Long id, String userRole) {
         requireAdmin(userRole);
