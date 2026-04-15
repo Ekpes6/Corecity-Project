@@ -34,6 +34,7 @@ public class AuthDTOs {
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class AuthResponse {
         private String accessToken;
+        private String refreshToken;
         @Builder.Default
         private String tokenType = "Bearer";
         private UserDTO user;

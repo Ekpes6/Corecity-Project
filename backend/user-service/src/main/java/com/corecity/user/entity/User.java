@@ -1,5 +1,6 @@
 package com.corecity.user.entity;
 
+import com.corecity.user.security.EncryptedStringConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -36,8 +37,11 @@ public class User {
     @Builder.Default
     private Role role = Role.BUYER;
 
-    private String nin;   // National Identification Number
-    private String bvn;   // Bank Verification Number
+    @Convert(converter = EncryptedStringConverter.class)
+    private String nin;   // National Identification Number (AES-256-GCM encrypted)
+
+    @Convert(converter = EncryptedStringConverter.class)
+    private String bvn;   // Bank Verification Number (AES-256-GCM encrypted)
 
     @Column(name = "is_verified")
     @Builder.Default
