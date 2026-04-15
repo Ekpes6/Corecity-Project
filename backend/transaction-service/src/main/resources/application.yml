@@ -5,7 +5,7 @@ spring:
   application:
     name: transaction-service
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?allowPublicKeyRetrieval=true&serverTimezone=Africa/Lagos}
     username: ${SPRING_DATASOURCE_USERNAME:corecity_user}
     password: ${SPRING_DATASOURCE_PASSWORD:corecity_pass}
   jpa:
@@ -16,6 +16,17 @@ spring:
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
 
 paystack:
-  secret-key: ${PAYSTACK_SECRET_KEY:sk_test_your_paystack_secret_key_here}
+  secret-key: ${PAYSTACK_SECRET_KEY}
+  callback-url: ${PAYSTACK_CALLBACK_URL:https://corecity.com.ng/payment/verify}
+
+management:
+  server:
+    port: 9091
+  endpoints:
+    web:
+      exposure:
+        include: health

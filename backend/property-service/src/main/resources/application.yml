@@ -10,7 +10,7 @@ spring:
   backgroundpreinitializer:
     ignore: true
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?useSSL=false&serverTimezone=Africa/Lagos}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://localhost:3306/corecity_db?allowPublicKeyRetrieval=true&serverTimezone=Africa/Lagos}
     username: ${SPRING_DATASOURCE_USERNAME:corecity_user}
     password: ${SPRING_DATASOURCE_PASSWORD:corecity_pass}
     hikari:
@@ -29,3 +29,5 @@ spring:
   rabbitmq:
     host: ${SPRING_RABBITMQ_HOST:localhost}
     port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME}
+    password: ${SPRING_RABBITMQ_PASSWORD}
