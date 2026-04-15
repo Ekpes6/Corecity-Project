@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS properties (
     longitude        DECIMAL(11,8),
     owner_id         BIGINT NOT NULL,
     agent_id         BIGINT,
-    status           ENUM('PENDING','ACTIVE','SOLD','RENTED','INACTIVE') DEFAULT 'PENDING',
+    status           ENUM('PENDING','ACTIVE','SOLD','RENTED','INACTIVE','REJECTED') DEFAULT 'PENDING',
     is_negotiable    BOOLEAN DEFAULT TRUE,
     amenities        JSON,                          -- e.g. ["BOREHOLE","GENERATOR","CCTV","GYM"]
     views_count      INT DEFAULT 0,

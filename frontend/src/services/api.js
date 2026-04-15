@@ -42,6 +42,7 @@ export const propertyAPI = {
   getMyList:  ()       => api.get('/properties/my-listings'),
   getPending: ()       => api.get('/properties/pending'),
   approve:    (id)     => api.post(`/properties/${id}/approve`),
+  reject:     (id, reason) => api.post(`/properties/${id}/reject`, reason ? { reason } : {}),
   create:     (data)   => api.post('/properties', data),
   update:     (id, d)  => api.put(`/properties/${id}`, d),
   remove:     (id)     => api.delete(`/properties/${id}`),

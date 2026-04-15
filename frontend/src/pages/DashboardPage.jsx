@@ -164,6 +164,8 @@ function ModerationPage() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [approvingId, setApprovingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   useEffect(() => {
     if (!isAdmin) {
@@ -188,6 +190,29 @@ function ModerationPage() {
     } finally {
       setApprovingId(null);
     }
+  };
+
+  const handleRejectStart = (propertyId) => {
+    setRejectingId(propertyId);
+    setRejectReason('');
+  };
+
+  const handleRejectConfirm = async () => {
+    const id = rejectingId;
+    setRejectingId(null);
+    try {
+      await propertyAPI.reject(id, rejectReason.trim() || null);
+      setProperties((current) => current.filter((property) => property.id !== id));
+      toast.success('Listing rejected');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reject listing');
+    }
+    setRejectReason('');
+  };
+
+  const handleRejectCancel = () => {
+    setRejectingId(null);
+    setRejectReason('');
   };
 
   if (!isAdmin) {
@@ -235,17 +260,42 @@ function ModerationPage() {
                 <p className="text-sm text-gray-500 mb-2">{property.address}</p>
                 <p className="text-sm text-gray-500">{formatNaira(property.price, true)} · {property.listingType.replaceAll('_', ' ')}</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Link to={`/properties/${property.id}`} className="btn-secondary text-sm">View</Link>
-                <button
-                  type="button"
-                  onClick={() => handleApprove(property.id)}
-                  disabled={approvingId === property.id}
-                  className="btn-primary text-sm"
-                >
-                  {approvingId === property.id ? 'Approving…' : 'Approve'}
-                </button>
-              </div>
+              {rejectingId === property.id ? (
+                <div className="flex flex-col gap-2 lg:items-end">
+                  <input
+                    type="text"
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Reason (optional)"
+                    className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm w-full lg:w-64 focus:outline-none focus:ring-2 focus:ring-red-300"
+                    autoFocus
+                  />
+                  <div className="flex gap-2">
+                    <button type="button" onClick={handleRejectCancel} className="btn-secondary text-sm">Cancel</button>
+                    <button type="button" onClick={handleRejectConfirm} className="text-sm px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-medium transition-colors">Confirm Reject</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Link to={`/properties/${property.id}`} className="btn-secondary text-sm">View</Link>
+                  <button
+                    type="button"
+                    onClick={() => handleRejectStart(property.id)}
+                    disabled={approvingId === property.id}
+                    className="text-sm px-4 py-2 rounded-xl border border-red-300 text-red-600 hover:bg-red-50 font-medium transition-colors"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleApprove(property.id)}
+                    disabled={approvingId === property.id}
+                    className="btn-primary text-sm"
+                  >
+                    {approvingId === property.id ? 'Approving…' : 'Approve'}
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

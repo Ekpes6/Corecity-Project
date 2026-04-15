@@ -97,6 +97,15 @@ public class PropertyController {
         return ResponseEntity.ok(propertyService.approveProperty(id, userRole));
     }
 
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<PropertyResponse> reject(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Role") String userRole,
+            @RequestBody(required = false) RejectPropertyRequest req) {
+        String reason = req != null ? req.getReason() : null;
+        return ResponseEntity.ok(propertyService.rejectProperty(id, userRole, reason));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<PropertyResponse> update(
             @PathVariable Long id,

@@ -101,4 +101,9 @@ public class PropertyDTOs {
         @Builder.Default
         private String sortDir = "desc";
     }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class RejectPropertyRequest {
+        private String reason;
+    }
 }

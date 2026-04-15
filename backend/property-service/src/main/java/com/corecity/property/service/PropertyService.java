@@ -135,6 +135,44 @@ public class PropertyService {
 
         property.setStatus(Property.PropertyStatus.ACTIVE);
         Property savedProperty = propertyRepository.save(property);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.listing_approved",
+                    Map.of("propertyId", savedProperty.getId(), "ownerId", savedProperty.getOwnerId(), "title", savedProperty.getTitle()));
+                log.info("Published approval notification for property {}", savedProperty.getId());
+            } catch (Exception exception) {
+                log.warn("Could not publish approval notification for property {}", savedProperty.getId(), exception);
+            }
+        });
+
+        return toResponse(savedProperty);
+    }
+
+    @Transactional
+    public PropertyResponse rejectProperty(Long id, String userRole, String reason) {
+        requireAdmin(userRole);
+        Long safeId = Objects.requireNonNull(id, "property id must not be null");
+        Property property = propertyRepository.findById(safeId)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
+
+        property.setStatus(Property.PropertyStatus.REJECTED);
+        Property savedProperty = propertyRepository.save(property);
+
+        CompletableFuture.runAsync(() -> {
+            try {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("propertyId", savedProperty.getId());
+                payload.put("ownerId", savedProperty.getOwnerId());
+                payload.put("title", savedProperty.getTitle());
+                if (reason != null && !reason.isBlank()) payload.put("reason", reason);
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.listing_rejected", payload);
+                log.info("Published rejection notification for property {}", savedProperty.getId());
+            } catch (Exception exception) {
+                log.warn("Could not publish rejection notification for property {}", savedProperty.getId(), exception);
+            }
+        });
+
         return toResponse(savedProperty);
     }
 
