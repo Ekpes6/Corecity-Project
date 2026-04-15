@@ -151,7 +151,6 @@ public class FileStorageService {
     }
 }
 
-    private String uploadDir;
 
     @Value("${file.base-url:http://localhost:8083/api/v1/files/serve}")
     private String baseUrl;
