@@ -88,25 +88,7 @@ public class FileController {
         ));
     }
 
-    /** Serve file by path */
-    @GetMapping("/serve/**")
-    public ResponseEntity<byte[]> serveFile(@RequestParam String path) {
-        try {
-            String[] parts = path.split("/");
-            byte[] data = fileStorageService.serveFile(parts);
-            String filename = parts[parts.length - 1];
-            String detected = MimeTypes.detect(filename);
-            String contentType = detected != null ? detected : MediaType.APPLICATION_OCTET_STREAM_VALUE;
-            return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
-                .body(data);
-        } catch (IOException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    /** Delete a file */
+    /** Delete a file by its S3 public URL */
     @DeleteMapping
     public ResponseEntity<Map<String, Object>> deleteFile(
             @RequestParam String fileUrl,
@@ -114,9 +96,10 @@ public class FileController {
         try {
             fileStorageService.deleteFile(fileUrl);
             return ResponseEntity.ok(Map.of("success", true, "message", "File deleted"));
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError()
-                .body(Map.of("success", false, "error", "Delete failed"));
+        } catch (SecurityException e) {
+            return ResponseEntity.badRequest()
+                .body(Map.of("success", false, "error", e.getMessage()));
         }
     }
 }
+
