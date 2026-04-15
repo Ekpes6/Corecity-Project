@@ -532,7 +532,7 @@ export default function DashboardPage() {
     { to: '/dashboard',          label: 'Overview',       icon: LayoutDashboard, end: true },
     { to: '/dashboard/listings', label: 'My Listings',    icon: Home },
     { to: '/dashboard/list',     label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
-    { to: '/dashboard/moderation', label: 'Moderation',   icon: Bell, adminOnly: true },
+    { to: '/dashboard/moderation', label: 'Moderation',   icon: ShieldCheck, adminOnly: true },
     { to: '/dashboard/payments', label: 'Payments',       icon: CreditCard },
     { to: '/dashboard/messages', label: 'Messages',       icon: MessageSquare },
     { to: '/dashboard/settings', label: 'Settings',       icon: Settings },
