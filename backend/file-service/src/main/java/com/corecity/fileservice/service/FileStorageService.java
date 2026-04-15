@@ -54,8 +54,8 @@ public class FileStorageService {
             throw new IllegalArgumentException("File type not allowed: " + detectedType);
         }
 
-        String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
-        String safeName = originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
+        String safeName = (file.getOriginalFilename() != null ? file.getOriginalFilename() : "file")
+            .replaceAll("[^a-zA-Z0-9._-]", "_");
         String key = category + "/" + propertyId + "/" + UUID.randomUUID() + "-" + safeName;
 
         s3Client.putObject(
