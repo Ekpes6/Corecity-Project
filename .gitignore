@@ -1,5 +1,10 @@
 .env
 
+# TLS certificates and private keys — never commit
+nginx/certs/*.pem
+nginx/certs/*.crt
+nginx/certs/*.key
+
 # Build outputs
 **/target/
 **/node_modules/
