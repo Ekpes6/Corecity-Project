@@ -2,42 +2,54 @@ package com.corecity.fileservice.service;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class FileStorageServiceTest {
 
-    @TempDir
-    Path tempDir;
+    @Mock
+    S3Client s3Client;
 
     FileStorageService service;
+    private static final String PUBLIC_BASE_URL = "https://pub-test.r2.dev";
 
     @BeforeEach
     void setUp() {
-        FileStorageService fileStorageService = new FileStorageService();
-        ReflectionTestUtils.setField(fileStorageService, "uploadDir", tempDir.toString());
-        ReflectionTestUtils.setField(fileStorageService, "baseUrl",
-            "http://localhost:8083/api/v1/files/serve");
-        service = fileStorageService;
+        service = new FileStorageService(s3Client);
+        ReflectionTestUtils.setField(service, "bucket", "corecity-test");
+        ReflectionTestUtils.setField(service, "publicBaseUrl", PUBLIC_BASE_URL);
+
+        when(s3Client.putObject(any(PutObjectRequest.class), any(RequestBody.class)))
+            .thenReturn(PutObjectResponse.builder().build());
+        when(s3Client.deleteObject(any(DeleteObjectRequest.class)))
+            .thenReturn(DeleteObjectResponse.builder().build());
     }
 
     @Test
-    void uploadFile_validImage_returnsUrlWithCorrectPath() throws IOException {
+    void uploadFile_validPdf_returnsS3Url() throws Exception {
         var pdf = new MockMultipartFile(
             "file", "deed.pdf", "application/pdf", "PDF content".getBytes());
 
         var result = service.uploadFile(pdf, 42L, "documents");
 
-        assertThat(result.fileUrl()).contains("properties/42/documents/");
+        assertThat(result.fileUrl()).startsWith(PUBLIC_BASE_URL + "/properties/42/documents/");
         assertThat(result.fileType()).isEqualTo("application/pdf");
         assertThat(result.sizeBytes()).isGreaterThan(0);
+        verify(s3Client, atLeastOnce()).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
 
     @Test
@@ -72,42 +84,12 @@ class FileStorageServiceTest {
     }
 
     @Test
-    void serveFile_existingFile_returnsBytes() throws IOException {
-        Path dir = tempDir.resolve("properties/1/images");
-        Files.createDirectories(dir);
-        Path file = dir.resolve("test.jpg");
-        Files.write(file, "fake image bytes".getBytes());
+    void deleteFile_validUrl_callsS3Delete() {
+        String fileUrl = PUBLIC_BASE_URL + "/properties/1/images/abc.jpg";
 
-        byte[] result = service.serveFile("properties", "1", "images", "test.jpg");
+        service.deleteFile(fileUrl);
 
-        assertThat(new String(result)).isEqualTo("fake image bytes");
-    }
-
-    @Test
-    void serveFile_pathTraversalAttempt_throwsFileNotFound() {
-        assertThatExceptionOfType(java.io.FileNotFoundException.class)
-            .isThrownBy(() -> service.serveFile("..", "..", "etc", "passwd"));
-    }
-
-    @Test
-    void serveFile_encodedDotDotSegments_blocked() {
-        assertThatExceptionOfType(java.io.FileNotFoundException.class)
-            .isThrownBy(() -> service.serveFile("properties", "..", "..", "secret.txt"));
-    }
-
-    @Test
-    void serveFile_nonExistentFile_throwsFileNotFound() {
-        assertThatExceptionOfType(java.io.FileNotFoundException.class)
-            .isThrownBy(() -> service.serveFile("properties", "1", "images", "missing.jpg"));
-    }
-
-    @Test
-    void deleteFile_outsideUploadRoot_throwsSecurityException() {
-        String maliciousUrl =
-            "http://localhost:8083/api/v1/files/serve/../../etc/passwd";
-
-        assertThatExceptionOfType(SecurityException.class)
-            .isThrownBy(() -> service.deleteFile(maliciousUrl));
+        verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
     }
 
     @Test
