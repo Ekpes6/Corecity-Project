@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Home, PlusSquare, CreditCard, Bell, Settings,
-  TrendingUp, Eye, MessageSquare, Star, ChevronRight, LogOut
+  TrendingUp, Eye, MessageSquare, Star, ChevronRight, LogOut,
+  CheckCircle, XCircle, Clock, RefreshCw, Search, Filter,
+  Bed, Bath, MapPin, Building2, AlertCircle,
 } from 'lucide-react';
 import { propertyAPI, transactionAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import PropertyCard from '../components/property/PropertyCard';
 import ListPropertyPage from './ListPropertyPage';
-import { formatNaira, timeAgo } from '../utils/nigeria';
+import { formatNaira, timeAgo, listingLabel, listingBadgeClass, propertyTypeLabel } from '../utils/nigeria';
 import toast from 'react-hot-toast';
 
 // ── Dashboard Overview ─────────────────────────────────────────
