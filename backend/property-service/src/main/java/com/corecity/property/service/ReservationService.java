@@ -197,7 +197,7 @@ public class ReservationService {
             r.setStatus(Reservation.ReservationStatus.EXPIRED);
             reservationRepository.save(r);
 
-            propertyRepository.findById(r.getPropertyId()).ifPresent(p -> {
+            propertyRepository.findById(Objects.requireNonNull(r.getPropertyId())).ifPresent(p -> {
                 if (p.getStatus() == Property.PropertyStatus.ON_NEGOTIATION) {
                     p.setStatus(Property.PropertyStatus.ACTIVE);
                     propertyRepository.save(p);
