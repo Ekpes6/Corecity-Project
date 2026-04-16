@@ -108,7 +108,7 @@ public class SubscriptionService {
             .loan(useLoan)
             .paymentReference(reference)
             .build();
-        subscriptionRepo.save(subscription);
+        subscriptionRepo.save(Objects.requireNonNull(subscription));
 
         // For loan subscriptions the agent pays ₦0 upfront (loan covers it).
         // We still create a ₦1 Paystack link so the system can confirm intent,
