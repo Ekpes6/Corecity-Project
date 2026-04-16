@@ -52,7 +52,7 @@ public class ReputationService {
             .comment(req.getComment())
             .negative(negative)
             .build();
-        reputationRepo.save(event);
+        reputationRepo.save(Objects.requireNonNull(event));
 
         return refreshAgentReputation(agent);
     }
