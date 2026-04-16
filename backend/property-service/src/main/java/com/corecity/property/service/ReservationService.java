@@ -92,7 +92,7 @@ public class ReservationService {
             .authorizationUrl(initResult.authorizationUrl())
             .status(Reservation.ReservationStatus.PENDING_PAYMENT)
             .build();
-        reservationRepository.save(reservation);
+        reservationRepository.save(Objects.requireNonNull(reservation));
 
         log.info("Reservation initiated for property {} by customer {}, ref={}", propertyId, customerId, reference);
 
