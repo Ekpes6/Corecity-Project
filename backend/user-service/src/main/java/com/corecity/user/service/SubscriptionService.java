@@ -128,7 +128,7 @@ public class SubscriptionService {
                 .dueDate(today.plusMonths(MAX_LOAN_MONTHS))
                 .status(AgentLoan.LoanStatus.ACTIVE)
                 .build();
-            loanRepo.save(loan);
+            loanRepo.save(Objects.requireNonNull(loan));
         }
 
         return SubscriptionInitResponse.builder()
