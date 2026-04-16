@@ -258,7 +258,7 @@ public class SubscriptionService {
                 .uri(PAYSTACK_BASE + "/transaction/initialize")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + paystackSecretKey)
                 .header(HttpHeaders.CONTENT_TYPE, "application/json")
-                .bodyValue(body)
+                .bodyValue(Objects.requireNonNull(body))
                 .retrieve()
                 .bodyToMono(String.class)
                 .block();
