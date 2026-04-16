@@ -73,7 +73,7 @@ public class ReputationService {
                 .referenceId(transactionId)
                 .negative(false)
                 .build();
-            reputationRepo.save(event);
+            reputationRepo.save(Objects.requireNonNull(event));
             refreshAgentReputation(agent);
         });
     }
