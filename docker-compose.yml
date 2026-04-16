@@ -15,6 +15,11 @@
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
              "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
@@ -39,6 +44,11 @@
       - "127.0.0.1:15672:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -81,6 +91,11 @@
         condition: service_healthy
       notification-service:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "8080"]
       interval: 15s
@@ -114,6 +129,11 @@
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "8081"]
       interval: 15s
@@ -144,6 +164,11 @@
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "8082"]
       interval: 15s
@@ -175,6 +200,11 @@
     depends_on:
       mysql:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "8083"]
       interval: 15s
@@ -207,6 +237,11 @@
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "8084"]
       interval: 15s
@@ -242,6 +277,11 @@
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "nc", "-z", "127.0.0.1", "8085"]
       interval: 15s
@@ -262,6 +302,11 @@
     depends_on:
       api-gateway:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/"]
       interval: 15s
@@ -287,6 +332,11 @@
     depends_on:
       frontend:
         condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
     networks:
       - corecity-network
 
