@@ -152,7 +152,7 @@ public class TransactionService {
             .overallCost(value.add(totalC))
             .status(Commission.CommissionStatus.PENDING)
             .build();
-        commissionRepository.save(commission);
+        commissionRepository.save(Objects.requireNonNull(commission));
         log.info("Commission created for tx={}: CoreCity={} Agent={}", tx.getId(), coreCityC, agentC);
     }
 
