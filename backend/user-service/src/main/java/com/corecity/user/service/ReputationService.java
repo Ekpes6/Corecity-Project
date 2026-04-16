@@ -33,9 +33,7 @@ public class ReputationService {
      */
     @Transactional
     public AgentReputationResponse submitCustomerFeedback(SubmitFeedbackRequest req, Long customerId) {
-        Objects.requireNonNull(req.getAgentId(), "agentId must not be null");
-
-        User agent = userRepository.findById(req.getAgentId())
+        User agent = userRepository.findById(Objects.requireNonNull(req.getAgentId(), "agentId must not be null"))
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Agent not found"));
 
         if (agent.getRole() != User.Role.AGENT) {
