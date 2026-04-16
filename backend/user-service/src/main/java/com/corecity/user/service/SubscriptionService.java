@@ -191,7 +191,7 @@ public class SubscriptionService {
     /** Record a loan repayment. */
     @Transactional
     public LoanResponse repayLoan(Long loanId, BigDecimal amount, Long agentId) {
-        AgentLoan loan = loanRepo.findById(loanId)
+        AgentLoan loan = loanRepo.findById(Objects.requireNonNull(loanId, "loanId must not be null"))
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
 
         if (!loan.getAgentId().equals(agentId))
