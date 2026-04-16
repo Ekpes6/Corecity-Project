@@ -81,7 +81,7 @@ public class ReputationService {
     /** Get the current reputation summary for an agent. */
     @Transactional(readOnly = true)
     public AgentReputationResponse getAgentReputation(Long agentId) {
-        User agent = userRepository.findById(agentId)
+        User agent = userRepository.findById(Objects.requireNonNull(agentId, "agentId must not be null"))
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Agent not found"));
 
         boolean hasNegative = reputationRepo.existsByAgentIdAndNegativeTrue(agentId);
