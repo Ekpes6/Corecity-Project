@@ -101,11 +101,13 @@ public class PropertyService {
         return properties.map(this::toResponse);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PropertyResponse getProperty(Long id) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
+        propertyRepository.incrementViews(safeId);
+        property.setViewsCount(property.getViewsCount() + 1);
         return toResponse(property);
     }
 
