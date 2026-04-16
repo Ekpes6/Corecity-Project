@@ -127,7 +127,7 @@ public class ReservationService {
         reservationRepository.save(reservation);
 
         // Move property to ON_NEGOTIATION
-        propertyRepository.findById(reservation.getPropertyId()).ifPresent(p -> {
+        propertyRepository.findById(Objects.requireNonNull(reservation.getPropertyId())).ifPresent(p -> {
             p.setStatus(Property.PropertyStatus.ON_NEGOTIATION);
             propertyRepository.save(p);
         });
