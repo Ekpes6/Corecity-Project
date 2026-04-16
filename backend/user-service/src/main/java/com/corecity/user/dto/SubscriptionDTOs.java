@@ -1,7 +1,6 @@
 package com.corecity.user.dto;
 
 import com.corecity.user.entity.AgentSubscription;
-import com.corecity.user.entity.ReputationEvent;
 import jakarta.validation.constraints.*;
 import lombok.*;
 
