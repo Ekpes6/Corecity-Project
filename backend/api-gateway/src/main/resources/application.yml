@@ -10,11 +10,11 @@ spring:
         - id: user-service
           uri: ${USER_SERVICE_URI:http://localhost:8081}
           predicates:
-            - Path=/api/v1/auth/**, /api/v1/users/**
+            - Path=/api/v1/auth/**, /api/v1/users/**, /api/v1/subscriptions/**, /api/v1/agents/**
           filters:
             - name: AuthFilter
               args:
-                excludedPaths: /api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/refresh,/api/v1/auth/health
+                excludedPaths: /api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/refresh,/api/v1/auth/health,/api/v1/subscriptions/plans,/api/v1/agents/*/reputation,/api/v1/subscriptions/webhook/paystack
             - name: CircuitBreaker
               args:
                 name: user-service-cb
@@ -23,9 +23,11 @@ spring:
         - id: property-service
           uri: ${PROPERTY_SERVICE_URI:http://localhost:8082}
           predicates:
-            - Path=/api/v1/properties/**, /api/v1/states/**, /api/v1/enquiries/**
+            - Path=/api/v1/properties/**, /api/v1/states/**, /api/v1/enquiries/**, /api/v1/reservations/**
           filters:
             - name: AuthFilter
+              args:
+                excludedPaths: /api/v1/reservations/webhook/paystack
             - name: CircuitBreaker
               args:
                 name: property-service-cb
@@ -45,7 +47,7 @@ spring:
         - id: transaction-service
           uri: ${TRANSACTION_SERVICE_URI:http://localhost:8084}
           predicates:
-            - Path=/api/v1/transactions/**
+            - Path=/api/v1/transactions/**, /api/v1/commissions/**
           filters:
             - name: AuthFilter
               args:

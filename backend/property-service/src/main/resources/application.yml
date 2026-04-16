@@ -31,3 +31,11 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME}
     password: ${SPRING_RABBITMQ_PASSWORD}
+
+paystack:
+  secret-key: ${PAYSTACK_SECRET_KEY}
+  callback-url: ${PAYSTACK_CALLBACK_URL:https://corecity.com.ng/payment/verify}
+
+reservation:
+  fee: 1000
+  negotiation-days: 5

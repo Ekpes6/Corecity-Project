@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.corecity.property.dto.PropertyDTOs.*;
 import com.corecity.property.entity.Property;
 import com.corecity.property.repository.PropertyRepository;
+import com.corecity.property.repository.ReservationRepository;
+import com.corecity.property.entity.Reservation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -29,6 +31,7 @@ public class PropertyService {
     private final LocationService locationService;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
+    private final ReservationRepository reservationRepository;
 
     @Transactional
     public PropertyResponse createProperty(CreatePropertyRequest req, Long ownerId) {
@@ -103,12 +106,17 @@ public class PropertyService {
 
     @Transactional
     public PropertyResponse getProperty(Long id) {
+        return getProperty(id, null, null);
+    }
+
+    @Transactional
+    public PropertyResponse getProperty(Long id, Long requesterId, String requesterRole) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
         propertyRepository.incrementViews(safeId);
         property.setViewsCount(property.getViewsCount() + 1);
-        return toResponse(property);
+        return toResponse(property, requesterId, requesterRole);
     }
 
     @Transactional(readOnly = true)
@@ -235,6 +243,10 @@ public class PropertyService {
     }
 
     private PropertyResponse toResponse(Property p) {
+        return toResponse(p, null, null);
+    }
+
+    private PropertyResponse toResponse(Property p, Long requesterId, String requesterRole) {
         List<String> amenities = new ArrayList<>();
         if (p.getAmenities() != null) {
             try { amenities = objectMapper.readValue(p.getAmenities(), new TypeReference<>() {}); }
@@ -261,17 +273,31 @@ public class PropertyService {
         String stateName = locationService.getStateName(p.getStateId()).orElse(null);
         String lgaName = locationService.getLgaName(p.getLgaId()).orElse(null);
 
+        // Masking logic: during ON_NEGOTIATION the exact address and agent ID are hidden
+        // unless the requester is the property owner, an admin, or the active reservation holder.
+        boolean isOnNegotiation = p.getStatus() == Property.PropertyStatus.ON_NEGOTIATION;
+        boolean isOwner = requesterId != null && requesterId.equals(p.getOwnerId());
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(requesterRole);
+        boolean holdsReservation = isOnNegotiation && requesterId != null
+            && reservationRepository.existsByPropertyIdAndCustomerIdAndStatusIn(
+                p.getId(), requesterId, List.of(Reservation.ReservationStatus.ACTIVE));
+
+        boolean maskSensitive = isOnNegotiation && !isOwner && !isAdmin && !holdsReservation;
+        String address = maskSensitive ? null : p.getAddress();
+        Long agentId  = maskSensitive ? null : p.getAgentId();
+
         return PropertyResponse.builder()
             .id(p.getId()).title(p.getTitle()).description(p.getDescription())
             .propertyType(p.getPropertyType().name())
             .listingType(p.getListingType().name())
             .price(p.getPrice()).pricePeriod(p.getPricePeriod().name())
             .bedrooms(p.getBedrooms()).bathrooms(p.getBathrooms()).toilets(p.getToilets())
-            .sizeSqm(p.getSizeSqm()).address(p.getAddress())
+            .sizeSqm(p.getSizeSqm()).address(address)
             .stateId(p.getStateId()).stateName(stateName)
             .lgaId(p.getLgaId()).lgaName(lgaName)
             .latitude(p.getLatitude()).longitude(p.getLongitude())
-            .ownerId(p.getOwnerId()).status(p.getStatus().name())
+            .ownerId(p.getOwnerId()).agentId(agentId)
+            .status(p.getStatus().name())
             .negotiable(p.getNegotiable()).amenities(amenities)
             .imageUrls(imageUrls).primaryImageUrl(primaryImage)
             .viewsCount(p.getViewsCount()).createdAt(p.getCreatedAt())

@@ -2,7 +2,9 @@ package com.corecity.transaction.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.corecity.transaction.dto.TransactionDTOs.*;
+import com.corecity.transaction.entity.Commission;
 import com.corecity.transaction.entity.Transaction;
+import com.corecity.transaction.repository.CommissionRepository;
 import com.corecity.transaction.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -22,7 +25,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class TransactionService {
 
+    private static final BigDecimal CORECITY_RATE = new BigDecimal("0.03");
+    private static final BigDecimal AGENT_RATE    = new BigDecimal("0.07");
+
     private final TransactionRepository transactionRepository;
+    private final CommissionRepository commissionRepository;
     private final PaystackService paystackService;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
@@ -85,6 +92,12 @@ public class TransactionService {
             try { tx.setPaystackData(objectMapper.writeValueAsString(result.data())); }
             catch (Exception ignored) {}
 
+            // Auto-create commission for property transactions
+            if (tx.getType() == Transaction.TransactionType.PURCHASE
+                    || tx.getType() == Transaction.TransactionType.RENT) {
+                createCommission(tx);
+            }
+
             // Notify both parties
             rabbitTemplate.convertAndSend("corecity.exchange", "notification.payment_success", Map.of(
                 "buyerId", tx.getBuyerId(), "sellerId", tx.getSellerId(),
@@ -118,6 +131,48 @@ public class TransactionService {
         if (!tx.getBuyerId().equals(safeUserId) && !tx.getSellerId().equals(safeUserId))
             throw new RuntimeException("Unauthorized");
         return toResponse(tx);
+    }
+
+    // ── Commission helpers ────────────────────────────────────────────────────
+
+    private void createCommission(Transaction tx) {
+        if (commissionRepository.findByTransactionId(tx.getId()).isPresent()) return; // idempotent
+        BigDecimal value      = tx.getAmount();
+        BigDecimal coreCityC  = value.multiply(CORECITY_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal agentC     = value.multiply(AGENT_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalC     = coreCityC.add(agentC);
+        Commission commission = Commission.builder()
+            .transactionId(tx.getId())
+            .propertyId(tx.getPropertyId())
+            .agentId(tx.getSellerId())
+            .propertyValue(value)
+            .corecityCommission(coreCityC)
+            .agentCommission(agentC)
+            .totalCommission(totalC)
+            .overallCost(value.add(totalC))
+            .status(Commission.CommissionStatus.PENDING)
+            .build();
+        commissionRepository.save(commission);
+        log.info("Commission created for tx={}: CoreCity={} Agent={}", tx.getId(), coreCityC, agentC);
+    }
+
+    public List<CommissionResponse> getMyCommissions(Long agentId) {
+        return commissionRepository.findByAgentIdOrderByCreatedAtDesc(agentId)
+            .stream().map(this::toCommissionResponse).collect(Collectors.toList());
+    }
+
+    private CommissionResponse toCommissionResponse(Commission c) {
+        return CommissionResponse.builder()
+            .id(c.getId()).transactionId(c.getTransactionId())
+            .propertyId(c.getPropertyId()).agentId(c.getAgentId())
+            .propertyValue(c.getPropertyValue())
+            .corecityCommission(c.getCorecityCommission())
+            .agentCommission(c.getAgentCommission())
+            .totalCommission(c.getTotalCommission())
+            .overallCost(c.getOverallCost())
+            .status(c.getStatus().name())
+            .createdAt(c.getCreatedAt())
+            .build();
     }
 
     private TransactionResponse toResponse(Transaction tx) {

@@ -50,6 +50,22 @@ public class User {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    /**
+     * Cumulative reputation score for agents.
+     * Exceeding 1,000 with no negative reviews qualifies the agent for Executive Agent status.
+     */
+    @Column(name = "reputation_score")
+    @Builder.Default
+    private Integer reputationScore = 0;
+
+    /**
+     * True when the agent's reputation score > 1,000 and they have no negative reviews.
+     * Grants access to Executive Plan features with flexible monthly contribution.
+     */
+    @Column(name = "is_executive_agent")
+    @Builder.Default
+    private boolean executiveAgent = false;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

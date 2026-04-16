@@ -74,8 +74,11 @@ public class PropertyController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<PropertyResponse> getOne(@PathVariable Long id) {
-        return ResponseEntity.ok(propertyService.getProperty(id));
+    public ResponseEntity<PropertyResponse> getOne(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        return ResponseEntity.ok(propertyService.getProperty(id, userId, userRole));
     }
 
     @GetMapping("/my-listings")

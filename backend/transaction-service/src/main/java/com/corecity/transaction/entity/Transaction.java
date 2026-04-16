@@ -62,7 +62,7 @@ public class Transaction {
     private LocalDateTime updatedAt;
 
     public enum TransactionType {
-        RENT, PURCHASE, INSPECTION_FEE, AGENT_FEE
+        RENT, PURCHASE, INSPECTION_FEE, AGENT_FEE, RESERVATION_FEE, SUBSCRIPTION, LOAN_REPAYMENT
     }
 
     public enum TransactionStatus {

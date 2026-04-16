@@ -110,6 +110,13 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.getTransaction(id, userId));
     }
 
+    /** GET /api/v1/commissions/my — agent's commission records */
+    @GetMapping("/commissions/my")
+    public ResponseEntity<List<CommissionResponse>> myCommissions(
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(transactionService.getMyCommissions(userId));
+    }
+
     // ─── Private helpers ────────────────────────────────────────────────────
 
     /**

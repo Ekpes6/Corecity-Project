@@ -111,6 +111,6 @@ public class Property {
     }
 
     public enum PropertyStatus {
-        PENDING, ACTIVE, SOLD, RENTED, INACTIVE, REJECTED
+        PENDING, ACTIVE, ON_NEGOTIATION, SOLD, RENTED, INACTIVE, REJECTED
     }
 }

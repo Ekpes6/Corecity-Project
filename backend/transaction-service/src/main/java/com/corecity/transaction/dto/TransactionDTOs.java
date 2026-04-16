@@ -43,4 +43,19 @@ public class TransactionDTOs {
         private String authorizationUrl;
         private LocalDateTime createdAt;
     }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class CommissionResponse {
+        private Long id;
+        private Long transactionId;
+        private Long propertyId;
+        private Long agentId;
+        private BigDecimal propertyValue;
+        private BigDecimal corecityCommission;
+        private BigDecimal agentCommission;
+        private BigDecimal totalCommission;
+        private BigDecimal overallCost;
+        private String status;
+        private LocalDateTime createdAt;
+    }
 }

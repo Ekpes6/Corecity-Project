@@ -13,13 +13,15 @@ CREATE TABLE IF NOT EXISTS users (
     password    VARCHAR(255) NOT NULL,
     first_name  VARCHAR(100) NOT NULL,
     last_name   VARCHAR(100) NOT NULL,
-    role        ENUM('BUYER','SELLER','AGENT','ADMIN') NOT NULL DEFAULT 'BUYER',
-    nin         VARCHAR(11),                   -- National Identification Number
-    bvn         VARCHAR(11),                   -- Bank Verification Number
-    is_verified BOOLEAN DEFAULT FALSE,
-    avatar_url  VARCHAR(500),
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    role                ENUM('BUYER','SELLER','AGENT','ADMIN') NOT NULL DEFAULT 'BUYER',
+    nin                 VARCHAR(11),                   -- National Identification Number
+    bvn                 VARCHAR(11),                   -- Bank Verification Number
+    is_verified         BOOLEAN DEFAULT FALSE,
+    avatar_url          VARCHAR(500),
+    reputation_score    INT NOT NULL DEFAULT 0,
+    is_executive_agent  BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- ─── States & LGAs (Nigerian) ────────────────────────────────────────────
@@ -55,7 +57,7 @@ CREATE TABLE IF NOT EXISTS properties (
     longitude        DECIMAL(11,8),
     owner_id         BIGINT NOT NULL,
     agent_id         BIGINT,
-    status           ENUM('PENDING','ACTIVE','SOLD','RENTED','INACTIVE','REJECTED') DEFAULT 'PENDING',
+    status           ENUM('PENDING','ACTIVE','ON_NEGOTIATION','SOLD','RENTED','INACTIVE','REJECTED') DEFAULT 'PENDING',
     is_negotiable    BOOLEAN DEFAULT TRUE,
     amenities        JSON,                          -- e.g. ["BOREHOLE","GENERATOR","CCTV","GYM"]
     views_count      INT DEFAULT 0,
@@ -86,7 +88,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     seller_id        BIGINT NOT NULL,
     amount           DECIMAL(15,2) NOT NULL,         -- in NGN
     service_fee      DECIMAL(15,2) NOT NULL DEFAULT 0,
-    type             ENUM('RENT','PURCHASE','INSPECTION_FEE','AGENT_FEE') NOT NULL,
+    type             ENUM('RENT','PURCHASE','INSPECTION_FEE','AGENT_FEE','RESERVATION_FEE','SUBSCRIPTION','LOAN_REPAYMENT') NOT NULL,
     status           ENUM('INITIATED','PENDING','SUCCESS','FAILED','REFUNDED') DEFAULT 'INITIATED',
     payment_channel  VARCHAR(50),                    -- card, bank_transfer, ussd
     authorization_url VARCHAR(500),                 -- Paystack checkout URL
@@ -131,6 +133,89 @@ CREATE TABLE IF NOT EXISTS saved_properties (
     saved_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (user_id, property_id),
     FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (property_id) REFERENCES properties(id)
+);
+
+-- ─── Reservations (Bid Placement Policy) ─────────────────────────────────
+-- A customer pays ₦1,000 to enter a 5-day exclusive negotiation window.
+CREATE TABLE IF NOT EXISTS reservations (
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    property_id       BIGINT NOT NULL,
+    customer_id       BIGINT NOT NULL,
+    payment_reference VARCHAR(100) NOT NULL UNIQUE,
+    authorization_url VARCHAR(500),
+    status            ENUM('PENDING_PAYMENT','ACTIVE','EXPIRED','COMPLETED') NOT NULL DEFAULT 'PENDING_PAYMENT',
+    paid_at           TIMESTAMP NULL,
+    expires_at        TIMESTAMP NULL,
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (property_id) REFERENCES properties(id),
+    FOREIGN KEY (customer_id) REFERENCES users(id)
+);
+
+-- ─── Agent Subscriptions ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS agent_subscriptions (
+    id                BIGINT AUTO_INCREMENT PRIMARY KEY,
+    agent_id          BIGINT NOT NULL,
+    plan              ENUM('BASIC','STANDARD','PREMIUM','EXECUTIVE') NOT NULL,
+    amount_paid       DECIMAL(15,2) NOT NULL,
+    payment_reference VARCHAR(100) UNIQUE,
+    authorization_url VARCHAR(500),
+    start_date        DATE,
+    end_date          DATE,
+    status            ENUM('PENDING_PAYMENT','ACTIVE','EXPIRED','CANCELLED') NOT NULL DEFAULT 'PENDING_PAYMENT',
+    is_loan           BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (agent_id) REFERENCES users(id)
+);
+
+-- ─── Agent Loans ─────────────────────────────────────────────────────────
+-- Interest-free loan covering a subscription fee; not available for EXECUTIVE plan.
+CREATE TABLE IF NOT EXISTS agent_loans (
+    id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+    agent_id        BIGINT NOT NULL,
+    subscription_id BIGINT,
+    plan            ENUM('BASIC','STANDARD','PREMIUM','EXECUTIVE') NOT NULL,
+    loan_amount     DECIMAL(15,2) NOT NULL,
+    amount_repaid   DECIMAL(15,2) NOT NULL DEFAULT 0.00,
+    due_date        DATE NOT NULL,
+    status          ENUM('ACTIVE','REPAID','DEFAULTED') NOT NULL DEFAULT 'ACTIVE',
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (agent_id) REFERENCES users(id),
+    FOREIGN KEY (subscription_id) REFERENCES agent_subscriptions(id)
+);
+
+-- ─── Reputation Events ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS reputation_events (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    agent_id       BIGINT NOT NULL,
+    source_user_id BIGINT,
+    source         ENUM('CUSTOMER_FEEDBACK','SYSTEM_VALIDATION') NOT NULL,
+    points         INT NOT NULL DEFAULT 0,
+    reference_id   BIGINT,
+    comment        VARCHAR(500),
+    negative       BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (agent_id) REFERENCES users(id)
+);
+
+-- ─── Commissions ─────────────────────────────────────────────────────────
+-- Auto-generated on every successful PURCHASE or RENT transaction.
+-- CoreCity takes 3% and the agent takes 7% of the property value.
+CREATE TABLE IF NOT EXISTS commissions (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    transaction_id      BIGINT NOT NULL UNIQUE,
+    property_id         BIGINT NOT NULL,
+    agent_id            BIGINT,
+    property_value      DECIMAL(15,2) NOT NULL,
+    corecity_commission DECIMAL(15,2) NOT NULL,
+    agent_commission    DECIMAL(15,2) NOT NULL,
+    total_commission    DECIMAL(15,2) NOT NULL,
+    overall_cost        DECIMAL(15,2) NOT NULL,
+    status              ENUM('PENDING','DISBURSED') NOT NULL DEFAULT 'PENDING',
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (transaction_id) REFERENCES transactions(id),
     FOREIGN KEY (property_id) REFERENCES properties(id)
 );
 

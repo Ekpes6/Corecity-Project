@@ -31,6 +31,10 @@ encryption:
   #   openssl rand -base64 32
   key: ${ENCRYPTION_KEY}
 
+paystack:
+  secret-key: ${PAYSTACK_SECRET_KEY}
+  callback-url: ${PAYSTACK_CALLBACK_URL:https://corecity.com.ng/payment/verify}
+
 management:
   server:
     port: 9091  # Not published in docker-compose — actuator unreachable from outside

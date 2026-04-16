@@ -52,6 +52,11 @@ public class PropertyDTOs {
         private Integer bathrooms;
         private Integer toilets;
         private BigDecimal sizeSqm;
+        /**
+         * Masked to null when the property is ON_NEGOTIATION and the requester is
+         * not the active reservation holder.  Populated in full for the owner,
+         * admin, or the customer who holds the active reservation.
+         */
         private String address;
         private Integer stateId;
         private String stateName;
@@ -60,6 +65,10 @@ public class PropertyDTOs {
         private BigDecimal latitude;
         private BigDecimal longitude;
         private Long ownerId;
+        /**
+         * Masked to null (same conditions as address above).
+         */
+        private Long agentId;
         private String status;
         private Boolean negotiable;
         private List<String> amenities;
@@ -105,5 +114,31 @@ public class PropertyDTOs {
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class RejectPropertyRequest {
         private String reason;
+    }
+
+    // ─── Reservation DTOs ────────────────────────────────────────────────────
+
+    /** Returned immediately after a customer calls POST /properties/{id}/reserve */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ReservationInitResponse {
+        private Long reservationId;
+        private Long propertyId;
+        private String paymentReference;
+        private String authorizationUrl;
+        /** Fixed ₦1,000 */
+        private BigDecimal reservationFee;
+        private String status;
+    }
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ReservationResponse {
+        private Long id;
+        private Long propertyId;
+        private Long customerId;
+        private String paymentReference;
+        private String status;
+        private java.time.LocalDateTime paidAt;
+        private java.time.LocalDateTime expiresAt;
+        private java.time.LocalDateTime createdAt;
     }
 }
