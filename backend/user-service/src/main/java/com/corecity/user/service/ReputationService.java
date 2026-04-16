@@ -63,7 +63,7 @@ public class ReputationService {
      */
     @Transactional
     public void awardSystemValidation(Long agentId, Long transactionId) {
-        userRepository.findById(agentId).ifPresent(agent -> {
+        userRepository.findById(Objects.requireNonNull(agentId, "agentId must not be null")).ifPresent(agent -> {
             if (agent.getRole() != User.Role.AGENT) return;
 
             ReputationEvent event = ReputationEvent.builder()
