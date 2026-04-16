@@ -160,7 +160,7 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public ReservationResponse getActiveReservation(Long propertyId, Long requesterId, String role) {
         boolean isAdmin = "ADMIN".equalsIgnoreCase(role);
-        Property property = propertyRepository.findById(propertyId)
+        Property property = propertyRepository.findById(Objects.requireNonNull(propertyId))
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
 
         if (!isAdmin && !property.getOwnerId().equals(requesterId)) {
