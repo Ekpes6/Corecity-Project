@@ -161,6 +161,8 @@
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_USERNAME=${RABBITMQ_USER}
       - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+      - PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL}
     depends_on:
       mysql:
         condition: service_healthy
