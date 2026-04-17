@@ -79,11 +79,13 @@ export const transactionAPI = {
 
 // ─── Subscriptions ───────────────────────────────────────────
 export const subscriptionAPI = {
-  listPlans:  ()             => api.get('/subscriptions/plans'),
-  subscribe:  (data)         => api.post('/subscriptions', data),
-  getMine:    ()             => api.get('/subscriptions/my'),
-  getMyLoans: ()             => api.get('/subscriptions/loans/my'),
-  repayLoan:  (loanId, data) => api.post(`/subscriptions/loans/${loanId}/repay`, data),
+  listPlans:      ()             => api.get('/subscriptions/plans'),
+  subscribe:      (data)         => api.post('/subscriptions', data),
+  getMine:        ()             => api.get('/subscriptions/my'),
+  getMyLoans:     ()             => api.get('/subscriptions/loans/my'),
+  repayLoan:      (loanId, data) => api.post(`/subscriptions/loans/${loanId}/repay`, data),
+  getLoanProgram: ()             => api.get('/subscriptions/loan-program/my'),
+  activeCheck:    ()             => api.get('/subscriptions/active-check'),
 };
 
 // ─── Reservations ────────────────────────────────────────────
