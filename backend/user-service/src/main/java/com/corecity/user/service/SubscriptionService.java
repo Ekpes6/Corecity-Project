@@ -269,7 +269,26 @@ public class SubscriptionService {
             .map(s -> s.getPlan().maxListings)
             .orElse(0);
     }
+    /**
+     * Returns whether the user has any active financial product (subscription OR loan).
+     * Used by property-service to gate property creation for AGENT/SELLER roles.
+     */
+    @Transactional(readOnly = true)
+    public ActiveProductResponse getActiveProduct(Long userId) {
+        boolean hasActiveSub  = subscriptionRepo.countByAgentIdAndStatus(userId, SubscriptionStatus.ACTIVE) > 0;
+        boolean hasActiveLoan = loanRepo.countByAgentIdAndStatus(userId, AgentLoan.LoanStatus.ACTIVE) > 0;
 
+        if (hasActiveSub) {
+            return ActiveProductResponse.builder()
+                .hasActiveProduct(true).productType("SUBSCRIPTION").build();
+        }
+        if (hasActiveLoan) {
+            return ActiveProductResponse.builder()
+                .hasActiveProduct(true).productType("LOAN").build();
+        }
+        return ActiveProductResponse.builder()
+            .hasActiveProduct(false).productType(null).build();
+    }
     // ── Loan ──────────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
@@ -278,7 +297,7 @@ public class SubscriptionService {
             .stream().map(this::toLoanResponse).collect(Collectors.toList());
     }
 
-    /** Record a loan repayment. */
+    /** Record a loan repayment and advance the 13-trial cycle on full repayment. */
     @Transactional
     public LoanResponse repayLoan(Long loanId, BigDecimal amount, Long agentId) {
         AgentLoan loan = loanRepo.findById(Objects.requireNonNull(loanId, "loanId must not be null"))
@@ -295,11 +314,28 @@ public class SubscriptionService {
         if (newRepaid.compareTo(loan.getLoanAmount()) >= 0) {
             loan.setAmountRepaid(loan.getLoanAmount());
             loan.setStatus(AgentLoan.LoanStatus.REPAID);
+            // Advance the 13-trial cycle on successful full repayment
+            if (loan.getLoanProgramId() != null) {
+                loanProgramRepo.findById(loan.getLoanProgramId()).ifPresent(program -> {
+                    boolean advanced = program.recordSuccessfulRepayment();
+                    loanProgramRepo.save(program);
+                    if (advanced) {
+                        log.info("Agent {} advanced to loan level {}", agentId, program.getCurrentLevel());
+                    }
+                });
+            }
         } else {
             loan.setAmountRepaid(newRepaid);
         }
         loanRepo.save(loan);
         return toLoanResponse(loan);
+    }
+
+    // ── Loan Program ──────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public Optional<LoanProgramResponse> getLoanProgram(Long agentId) {
+        return loanProgramRepo.findByAgentId(agentId).map(this::toLoanProgramResponse);
     }
 
     // ── Scheduler ─────────────────────────────────────────────────────────────
