@@ -527,17 +527,20 @@ function ModerationPage() {
 
 // ── Main dashboard shell ────────────────────────────────────────
 export default function DashboardPage() {
-  const { user, logout, isSeller, isAdmin } = useAuth();
+  const { user, logout, isSeller, isAdmin, isAgent } = useAuth();
   const navigate = useNavigate();
 
   const navItems = [
-    { to: '/dashboard',          label: 'Overview',       icon: LayoutDashboard, end: true },
-    { to: '/dashboard/listings', label: 'My Listings',    icon: Home },
-    { to: '/dashboard/list',     label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
-    { to: '/dashboard/moderation', label: 'Moderation',   icon: ShieldCheck, adminOnly: true },
-    { to: '/dashboard/payments', label: 'Payments',       icon: CreditCard },
-    { to: '/dashboard/messages', label: 'Messages',       icon: MessageSquare },
-    { to: '/dashboard/settings', label: 'Settings',       icon: Settings },
+    { to: '/dashboard',               label: 'Overview',       icon: LayoutDashboard, end: true },
+    { to: '/dashboard/listings',      label: 'My Listings',    icon: Home },
+    { to: '/dashboard/list',          label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
+    { to: '/dashboard/moderation',    label: 'Moderation',     icon: ShieldCheck, adminOnly: true },
+    { to: '/dashboard/payments',      label: 'Payments',       icon: CreditCard },
+    { to: '/dashboard/reservations',  label: 'Reservations',   icon: CalendarCheck },
+    { to: '/dashboard/subscription',  label: 'Subscription',   icon: Crown,       agentOnly: true },
+    { to: '/dashboard/reputation',    label: 'Reputation',     icon: BadgeCheck,  agentOnly: true },
+    { to: '/dashboard/messages',      label: 'Messages',       icon: MessageSquare },
+    { to: '/dashboard/settings',      label: 'Settings',       icon: Settings },
   ];
 
   return (
@@ -558,9 +561,10 @@ export default function DashboardPage() {
           </div>
 
           <nav className="card p-2 space-y-0.5">
-            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly }) => {
+            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly }) => {
               if (sellerOnly && !isSeller) return null;
               if (adminOnly && !isAdmin) return null;
+              if (agentOnly && !isAgent) return null;
               return (
                 <NavLink key={to} to={to} end={end}
                   className={({ isActive }) =>
@@ -587,6 +591,9 @@ export default function DashboardPage() {
             <Route path="list"         element={<ListPropertyPage />} />
             <Route path="moderation"   element={<ModerationPage />} />
             <Route path="payments"     element={<PaymentsPage />} />
+            <Route path="reservations" element={<ReservationsPage />} />
+            <Route path="subscription" element={<SubscriptionPage />} />
+            <Route path="reputation"   element={<ReputationPage />} />
             <Route path="messages"     element={<PlaceholderPage icon="💬" title="Messages" />} />
             <Route path="settings"     element={<PlaceholderPage icon="⚙️" title="Settings" />} />
           </Routes>
