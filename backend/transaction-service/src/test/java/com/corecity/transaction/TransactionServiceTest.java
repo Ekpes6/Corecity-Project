@@ -106,6 +106,7 @@ class TransactionServiceTest {
         when(paystackService.verifyTransaction("REF-001"))
             .thenReturn(new PaystackService.VerifyResult(true, "success", "card", null));
         doReturn(tx).when(transactionRepository).save(argThat(Objects::nonNull));
+        when(commissionRepository.findByTransactionId(anyLong())).thenReturn(Optional.empty());
 
         var response = transactionService.verifyTransaction("REF-001");
 
