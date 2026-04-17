@@ -36,6 +36,9 @@ paystack:
   secret-key: ${PAYSTACK_SECRET_KEY}
   callback-url: ${PAYSTACK_CALLBACK_URL:https://corecity.com.ng/payment/verify}
 
+services:
+  user-service-url: ${USER_SERVICE_URL:http://user-service:8081}
+
 reservation:
   fee: 1000
   negotiation-days: 5
