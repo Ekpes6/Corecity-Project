@@ -303,6 +303,18 @@ export default function PropertyDetailPage() {
             )}
 
             <div className="space-y-2 mt-4 pt-4 border-t border-gray-50">
+              {/* Agent reputation badge */}
+              {agentRep && (
+                <div className={`flex items-center gap-3 p-3 rounded-xl text-sm mb-1 ${agentRep.executiveAgent ? 'bg-yellow-50' : 'bg-gray-50'}`}>
+                  <Star size={15} className={agentRep.executiveAgent ? 'text-yellow-500' : 'text-gray-400'} />
+                  <div>
+                    <span className="font-medium text-gray-700">
+                      {agentRep.executiveAgent ? '⭐ Executive Agent' : 'Agent Reputation'}
+                    </span>
+                    <span className="ml-2 text-xs text-gray-400">Score: {agentRep.reputationScore ?? 0}</span>
+                  </div>
+                </div>
+              )}
               <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl text-sm text-gray-600 hover:bg-gray-100 cursor-pointer transition-colors">
                 <Phone size={16} className="text-forest-800" />
                 <span>Call Agent / Owner</span>
