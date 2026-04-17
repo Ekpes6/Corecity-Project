@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Bed, Bath, Maximize2, MapPin, Phone, Mail, Heart, Share2,
-  ChevronLeft, ChevronRight, Shield, Eye, Calendar, CheckCircle2
+  ChevronLeft, ChevronRight, Shield, Eye, Calendar, CheckCircle2,
+  BookMarked, Star
 } from 'lucide-react';
-import { propertyAPI, transactionAPI } from '../services/api';
+import { propertyAPI, transactionAPI, reservationAPI, reputationAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   formatPricePeriod, listingLabel, listingBadgeClass, propertyTypeLabel,
@@ -23,10 +24,20 @@ export default function PropertyDetailPage() {
   const [loading, setLoading]     = useState(true);
   const [imgIdx, setImgIdx]       = useState(0);
   const [initiatingPay, setInitiatingPay] = useState(false);
+  const [reserving, setReserving] = useState(false);
+  const [agentRep, setAgentRep]   = useState(null);
 
   useEffect(() => {
     propertyAPI.getOne(id)
-      .then((r) => setProperty(r.data))
+      .then((r) => {
+        setProperty(r.data);
+        // Load agent reputation if property has an owner
+        if (r.data?.ownerId) {
+          reputationAPI.getAgentReputation(r.data.ownerId)
+            .then((rep) => setAgentRep(rep.data))
+            .catch(() => {});
+        }
+      })
       .catch(() => {
         const demoProperty = getDemoProperty(id);
         if (demoProperty) {
