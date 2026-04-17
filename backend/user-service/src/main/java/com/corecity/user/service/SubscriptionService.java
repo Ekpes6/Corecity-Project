@@ -131,7 +131,7 @@ public class SubscriptionService {
                         "You must start the loan program from the BASIC plan");
                 }
                 loanProgram = LoanProgram.builder().agentId(agentId).build();
-                loanProgram = loanProgramRepo.save(loanProgram);
+                loanProgram = Objects.requireNonNull(loanProgramRepo.save(loanProgram));
             } else {
                 if (loanProgram.getProgramStatus() == LoanProgram.ProgramStatus.COMPLETED) {
                     throw new ResponseStatusException(CONFLICT,
