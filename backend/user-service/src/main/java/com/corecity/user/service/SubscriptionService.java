@@ -413,7 +413,22 @@ public class SubscriptionService {
             .plan(l.getPlan().name()).loanAmount(l.getLoanAmount())
             .amountRepaid(l.getAmountRepaid()).remainingBalance(l.getRemainingBalance())
             .dueDate(l.getDueDate()).status(l.getStatus().name())
+            .trialNumber(l.getTrialNumber())
             .createdAt(l.getCreatedAt())
+            .build();
+    }
+
+    private LoanProgramResponse toLoanProgramResponse(LoanProgram p) {
+        return LoanProgramResponse.builder()
+            .id(p.getId())
+            .currentLevel(p.getCurrentLevel().name())
+            .basicTrialsCompleted(p.getBasicTrialsCompleted())
+            .standardTrialsCompleted(p.getStandardTrialsCompleted())
+            .premiumTrialsCompleted(p.getPremiumTrialsCompleted())
+            .totalTrialsCompleted(p.getTotalTrialsCompleted())
+            .trialsRemainingInLevel(p.getTrialsRemainingInCurrentLevel())
+            .programStatus(p.getProgramStatus().name())
+            .eligiblePlan(p.eligiblePlan() != null ? p.eligiblePlan().name() : null)
             .build();
     }
 }
