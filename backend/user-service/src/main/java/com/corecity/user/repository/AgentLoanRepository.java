@@ -13,4 +13,6 @@ public interface AgentLoanRepository extends JpaRepository<AgentLoan, Long> {
     Optional<AgentLoan> findBySubscriptionId(Long subscriptionId);
 
     List<AgentLoan> findByAgentIdAndStatus(Long agentId, AgentLoan.LoanStatus status);
+
+    int countByAgentIdAndStatus(Long agentId, AgentLoan.LoanStatus status);
 }

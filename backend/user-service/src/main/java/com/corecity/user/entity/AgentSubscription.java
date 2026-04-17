@@ -80,6 +80,13 @@ public class AgentSubscription {
     }
 
     public enum SubscriptionStatus {
-        PENDING_PAYMENT, ACTIVE, EXPIRED, CANCELLED
+        /** Paystack link generated; awaiting payment. */
+        PENDING_PAYMENT,
+        /** Payment confirmed via webhook; access granted. */
+        ACTIVE,
+        EXPIRED,
+        CANCELLED,
+        /** Paystack payment failed or was abandoned. */
+        FAILED
     }
 }
