@@ -92,10 +92,18 @@ CREATE TABLE IF NOT EXISTS reputation_events (
     points         INT NOT NULL DEFAULT 0,
     reference_id   BIGINT,
     comment        VARCHAR(500),
-    negative       BOOLEAN NOT NULL DEFAULT FALSE,
+    is_negative    BOOLEAN NOT NULL DEFAULT FALSE,
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES users(id)
 );
+
+-- Rename column if table was created with old name 'negative' instead of 'is_negative'
+SET @has_negative = (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA='corecity_db' AND TABLE_NAME='reputation_events' AND COLUMN_NAME='negative');
+SET @fix_negative = IF(@has_negative=1,
+    'ALTER TABLE reputation_events CHANGE COLUMN `negative` is_negative BOOLEAN NOT NULL DEFAULT FALSE',
+    'SELECT 1');
+PREPARE s FROM @fix_negative; EXECUTE s; DEALLOCATE PREPARE s;
 
 -- ─── 8. Commissions ──────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS commissions (
