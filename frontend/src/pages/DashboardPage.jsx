@@ -918,6 +918,399 @@ function ReputationPage() {
   );
 }
 
+// ── Subscription Page ─────────────────────────────────────────
+const PLAN_META = {
+  BASIC:     { color: 'blue',   icon: '🟦', label: 'Basic',     desc: 'Perfect for new agents' },
+  STANDARD:  { color: 'green',  icon: '🟩', label: 'Standard',  desc: 'Growing your portfolio' },
+  PREMIUM:   { color: 'purple', icon: '🟪', label: 'Premium',   desc: 'High-volume agents' },
+  EXECUTIVE: { color: 'yellow', icon: '🌟', label: 'Executive', desc: 'Elite agents only' },
+};
+
+function SubscriptionPage() {
+  const { user } = useAuth();
+  const [plans, setPlans]         = useState([]);
+  const [mySubs, setMySubs]       = useState([]);
+  const [myLoans, setMyLoans]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [subscribing, setSubscribing] = useState(null);
+  const [repaying, setRepaying]   = useState(null);
+  const [customAmount, setCustomAmount] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const [p, s, l] = await Promise.all([
+        subscriptionAPI.listPlans().catch(() => ({ data: [] })),
+        subscriptionAPI.getMine().catch(() => ({ data: [] })),
+        subscriptionAPI.getMyLoans().catch(() => ({ data: [] })),
+      ]);
+      setPlans(p.data);
+      setMySubs(s.data);
+      setMyLoans(l.data);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const activeSub = mySubs.find((s) => s.status === 'ACTIVE');
+  const activeLoans = myLoans.filter((l) => l.status === 'ACTIVE');
+
+  const handleSubscribe = async (planName, useLoan = false) => {
+    setSubscribing(planName + (useLoan ? '_loan' : ''));
+    try {
+      const payload = { plan: planName, useLoan };
+      if (planName === 'EXECUTIVE' && user?.executiveAgent && customAmount) {
+        payload.customAmount = parseFloat(customAmount);
+      }
+      const { data } = await subscriptionAPI.subscribe(payload);
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        toast.success('Subscription activated!');
+        load();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Subscription failed');
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
+  const handleRepay = async (loanId) => {
+    setRepaying(loanId);
+    try {
+      const { data } = await subscriptionAPI.repayLoan(loanId, {});
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        toast.success('Loan repayment initiated');
+        load();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Repayment failed');
+    } finally {
+      setRepaying(null);
+    }
+  };
+
+  if (loading) return <div className="animate-pulse space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-gray-100 rounded-2xl" />)}</div>;
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-display text-2xl font-bold text-forest-900">Agent Subscription</h2>
+        <p className="text-gray-500 text-sm mt-1">Subscribe to a plan to list properties and grow your business</p>
+      </div>
+
+      {/* Active subscription banner */}
+      {activeSub && (
+        <div className="card p-5 bg-forest-50 border border-forest-200 flex items-center gap-4">
+          <div className="w-12 h-12 bg-forest-800 rounded-xl flex items-center justify-center text-white shrink-0">
+            <Crown size={22} />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-forest-900">Active: {activeSub.plan} Plan</p>
+            <p className="text-sm text-forest-700">
+              {activeSub.endDate ? `Renews ${new Date(activeSub.endDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : 'No expiry set'}
+              {activeSub.loan && <span className="ml-3 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Loan-funded</span>}
+            </p>
+          </div>
+          <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">ACTIVE</span>
+        </div>
+      )}
+
+      {/* Active loans */}
+      {activeLoans.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Landmark size={16} /> Outstanding Loans</h3>
+          <div className="space-y-3">
+            {activeLoans.map((loan) => (
+              <div key={loan.id} className="card p-4 flex items-center justify-between gap-4">
+                <div>
+                  <p className="font-medium text-gray-800">{loan.plan} Plan Loan</p>
+                  <p className="text-xs text-gray-400">
+                    Borrowed: <span className="naira">{formatNaira(loan.loanAmount)}</span>
+                    {' · '}Repaid: <span className="naira">{formatNaira(loan.amountRepaid)}</span>
+                    {' · '}Due: {new Date(loan.dueDate).toLocaleDateString('en-NG')}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleRepay(loan.id)}
+                  disabled={repaying === loan.id}
+                  className="btn-primary text-sm flex items-center gap-2 shrink-0"
+                >
+                  {repaying === loan.id ? <RefreshCw size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                  Repay Now
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {plans.map((plan) => {
+          const meta = PLAN_META[plan.name] || {};
+          const isCurrent = activeSub?.plan === plan.name && activeSub?.status === 'ACTIVE';
+          const isExec = plan.name === 'EXECUTIVE';
+          const busy = (key) => subscribing === key;
+
+          return (
+            <div key={plan.name} className={`card p-6 flex flex-col gap-5 ${isCurrent ? 'ring-2 ring-forest-800' : ''}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-2xl">{meta.icon}</span>
+                  <h3 className="font-display text-xl font-bold text-gray-800 mt-1">{meta.label}</h3>
+                  <p className="text-xs text-gray-400">{meta.desc}</p>
+                </div>
+                {isCurrent && <span className="text-xs bg-forest-100 text-forest-800 px-2 py-1 rounded-full font-bold">Current</span>}
+              </div>
+
+              <div>
+                <p className="naira text-2xl font-bold text-forest-900">
+                  {isExec && user?.executiveAgent ? 'Custom ≥ ₦10,000' : formatNaira(plan.monthlyFee)}
+                </p>
+                <p className="text-xs text-gray-400">per month</p>
+              </div>
+
+              <ul className="text-sm text-gray-600 space-y-1.5">
+                <li className="flex items-center gap-2"><CheckCircle size={13} className="text-green-500 shrink-0" /> Up to <strong>{plan.maxListings}</strong> active listings</li>
+                <li className="flex items-center gap-2">
+                  {plan.loanEligible
+                    ? <><Unlock size={13} className="text-blue-500 shrink-0" /> Interest-free loan available</>
+                    : <><Lock size={13} className="text-gray-300 shrink-0" /><span className="text-gray-300">No loan option</span></>
+                  }
+                </li>
+                {isExec && <li className="flex items-center gap-2"><Star size={13} className="text-yellow-500 shrink-0" /> Requires 1,000+ reputation &amp; no negative reviews</li>}
+              </ul>
+
+              {isExec && user?.executiveAgent && (
+                <input
+                  type="number"
+                  min="10000"
+                  step="1000"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  placeholder="Enter amount (min ₦10,000)"
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-forest-300"
+                />
+              )}
+
+              <div className="flex flex-col gap-2 mt-auto">
+                <button
+                  onClick={() => handleSubscribe(plan.name, false)}
+                  disabled={isCurrent || !!subscribing}
+                  className={`btn-primary text-sm flex items-center justify-center gap-2 ${isCurrent ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {busy(plan.name) ? <RefreshCw size={14} className="animate-spin" /> : <ArrowUpRight size={14} />}
+                  {isCurrent ? 'Current Plan' : 'Subscribe & Pay'}
+                </button>
+                {plan.loanEligible && !isCurrent && (
+                  <button
+                    onClick={() => handleSubscribe(plan.name, true)}
+                    disabled={!!subscribing}
+                    className="btn-secondary text-sm flex items-center justify-center gap-2"
+                  >
+                    {busy(plan.name + '_loan') ? <RefreshCw size={14} className="animate-spin" /> : <Landmark size={14} />}
+                    Get Interest-Free Loan
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* History */}
+      {mySubs.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-gray-800 mb-3">Subscription History</h3>
+          <div className="card divide-y divide-gray-50">
+            {mySubs.map((s) => (
+              <div key={s.id} className="flex items-center justify-between px-5 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{s.plan} Plan {s.loan && <span className="text-xs text-orange-500">(Loan)</span>}</p>
+                  <p className="text-xs text-gray-400">{timeAgo(s.createdAt)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="naira text-sm font-bold">{formatNaira(s.amountPaid)}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    s.status === 'ACTIVE'   ? 'bg-green-50 text-green-700' :
+                    s.status === 'EXPIRED'  ? 'bg-gray-100 text-gray-500'  :
+                    s.status === 'CANCELLED'? 'bg-red-50 text-red-600'     :
+                    'bg-yellow-50 text-yellow-700'
+                  }`}>{s.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Reservations Page ─────────────────────────────────────────
+function ReservationsPage() {
+  const [reservations, setReservations] = useState([]);
+  const [loading, setLoading]           = useState(true);
+
+  useEffect(() => {
+    reservationAPI.getMine()
+      .then((r) => setReservations(r.data))
+      .catch(() => toast.error('Failed to load reservations'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="animate-pulse space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-gray-100 rounded-2xl" />)}</div>;
+
+  return (
+    <div>
+      <h2 className="font-display text-2xl font-bold text-forest-900 mb-6">My Reservations</h2>
+      {reservations.length === 0 ? (
+        <div className="text-center py-16 card">
+          <CalendarCheck size={40} className="mx-auto mb-4 text-gray-300" />
+          <p className="text-gray-400 mb-3">No reservations yet</p>
+          <Link to="/properties" className="btn-primary">Browse Properties</Link>
+        </div>
+      ) : (
+        <div className="card divide-y divide-gray-50">
+          {reservations.map((r) => (
+            <div key={r.id} className="flex items-center justify-between px-5 py-4">
+              <div>
+                <p className="text-sm font-medium text-gray-800">Property #{r.propertyId}</p>
+                <p className="text-xs text-gray-400">
+                  Ref: {r.paymentReference} · {timeAgo(r.createdAt)}
+                  {r.expiresAt && ` · Expires ${new Date(r.expiresAt).toLocaleDateString('en-NG')}`}
+                </p>
+              </div>
+              <div className="text-right flex flex-col items-end gap-1">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  r.status === 'ACTIVE'          ? 'bg-green-50 text-green-700'   :
+                  r.status === 'PENDING_PAYMENT' ? 'bg-yellow-50 text-yellow-700' :
+                  r.status === 'COMPLETED'       ? 'bg-blue-50 text-blue-700'     :
+                  'bg-gray-100 text-gray-500'
+                }`}>{r.status.replace('_', ' ')}</span>
+                {r.status === 'PENDING_PAYMENT' && r.authorizationUrl && (
+                  <a href={r.authorizationUrl} className="text-xs text-forest-800 hover:underline flex items-center gap-1">
+                    Complete Payment <ArrowUpRight size={11} />
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Reputation Page ───────────────────────────────────────────
+function ReputationPage() {
+  const { user } = useAuth();
+  const [rep, setRep]       = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    reputationAPI.getAgentReputation(user.id)
+      .then((r) => setRep(r.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [user?.id]);
+
+  if (loading) return <div className="animate-pulse space-y-4"><div className="h-40 bg-gray-100 rounded-2xl" /><div className="h-60 bg-gray-100 rounded-2xl" /></div>;
+
+  const score = rep?.reputationScore ?? 0;
+  const isExec = rep?.executiveAgent;
+  const events = rep?.recentEvents ?? [];
+  const EXEC_THRESHOLD = 1000;
+  const progress = Math.min((score / EXEC_THRESHOLD) * 100, 100);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-2xl font-bold text-forest-900">My Reputation</h2>
+        <p className="text-gray-500 text-sm mt-1">Your reputation score is built from customer feedback and successful transactions</p>
+      </div>
+
+      {/* Score card */}
+      <div className={`card p-6 flex flex-col sm:flex-row items-center gap-6 ${isExec ? 'bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200' : ''}`}>
+        <div className="w-24 h-24 rounded-full flex items-center justify-center shrink-0 shadow-inner" style={{
+          background: isExec ? 'linear-gradient(135deg,#f59e0b,#ef4444)' : '#f0fdf4',
+        }}>
+          <span className="text-3xl font-bold text-white" style={{ color: isExec ? 'white' : '#166534' }}>{score}</span>
+        </div>
+        <div className="flex-1 text-center sm:text-left">
+          <h3 className="font-display text-xl font-bold text-gray-800 flex items-center gap-2 justify-center sm:justify-start">
+            {isExec && <Crown size={18} className="text-yellow-500" />}
+            {isExec ? 'Executive Agent' : 'Reputation Score'}
+          </h3>
+          <p className="text-gray-500 text-sm mt-1">
+            {isExec ? 'You have reached Executive Agent status. You can subscribe with a custom contribution.' :
+             `${EXEC_THRESHOLD - score} more points to Executive Agent status`}
+          </p>
+          {!isExec && (
+            <div className="mt-3">
+              <div className="flex justify-between text-xs text-gray-400 mb-1">
+                <span>Progress to Executive</span>
+                <span>{Math.round(progress)}%</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full bg-forest-800 rounded-full transition-all" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-3 shrink-0">
+          <div className="text-center">
+            <p className="text-xl font-bold text-gray-800">{rep?.positiveCount ?? 0}</p>
+            <p className="text-xs text-green-600 flex items-center justify-center gap-1"><CheckCircle size={10} /> Positive</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xl font-bold text-gray-800">{rep?.negativeCount ?? 0}</p>
+            <p className="text-xs text-red-500 flex items-center justify-center gap-1"><XCircle size={10} /> Negative</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent events */}
+      {events.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-gray-800 mb-3">Recent Reputation Events</h3>
+          <div className="card divide-y divide-gray-50">
+            {events.map((e, i) => (
+              <div key={i} className="flex items-start justify-between px-5 py-3 gap-4">
+                <div className="flex items-start gap-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${e.negative ? 'bg-red-50' : 'bg-green-50'}`}>
+                    {e.negative ? <XCircle size={14} className="text-red-500" /> : <CheckCircle size={14} className="text-green-500" />}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-700">{e.comment || (e.source === 'SYSTEM_VALIDATION' ? 'System validation event' : 'Customer feedback')}</p>
+                    <p className="text-xs text-gray-400">{e.source?.replace('_', ' ')} · {timeAgo(e.createdAt)}</p>
+                  </div>
+                </div>
+                <span className={`text-sm font-bold shrink-0 ${e.negative ? 'text-red-500' : 'text-green-600'}`}>
+                  {e.negative ? '-' : '+'}{e.points}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {events.length === 0 && (
+        <div className="text-center py-12 card">
+          <Star size={36} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-gray-400 text-sm">No reputation events yet. Complete transactions to build your score.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main dashboard shell ────────────────────────────────────────
 export default function DashboardPage() {
   const { user, logout, isSeller, isAdmin, isAgent } = useAuth();

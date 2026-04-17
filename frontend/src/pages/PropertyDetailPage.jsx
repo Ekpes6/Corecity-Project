@@ -79,6 +79,23 @@ export default function PropertyDetailPage() {
     }
   };
 
+  const handleReserve = async () => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    setReserving(true);
+    try {
+      const { data } = await reservationAPI.reserve(property.id);
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        toast.success('Property reserved!');
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Reservation failed');
+    } finally {
+      setReserving(false);
+    }
+  };
+
   if (loading) return (
     <div className="max-w-6xl mx-auto px-6 py-12">
       <div className="animate-pulse space-y-6">
@@ -268,12 +285,21 @@ export default function PropertyDetailPage() {
             </div>
 
             {user?.id !== property.ownerId && (
-              <button onClick={handlePay} disabled={initiatingPay}
-                className="btn-primary w-full mb-3">
-                {initiatingPay ? 'Redirecting to Paystack…' :
-                  property.listingType === 'FOR_SALE' ? 'Initiate Purchase' :
-                  property.listingType === 'SHORT_LET' ? 'Book Now' : 'Pay Rent Now'}
-              </button>
+              <>
+                <button onClick={handlePay} disabled={initiatingPay || reserving}
+                  className="btn-primary w-full mb-2">
+                  {initiatingPay ? 'Redirecting to Paystack…' :
+                    property.listingType === 'FOR_SALE' ? 'Initiate Purchase' :
+                    property.listingType === 'SHORT_LET' ? 'Book Now' : 'Pay Rent Now'}
+                </button>
+                {/* Reserve button – lock in the property for 24 h with a reservation fee */}
+                {(property.status === 'ACTIVE' || property.status === 'ON_NEGOTIATION') && (
+                  <button onClick={handleReserve} disabled={reserving || initiatingPay}
+                    className="btn-secondary w-full flex items-center justify-center gap-2 mb-3">
+                    {reserving ? 'Reserving…' : <><BookMarked size={15} /> Reserve Property</>}
+                  </button>
+                )}
+              </>
             )}
 
             <div className="space-y-2 mt-4 pt-4 border-t border-gray-50">
