@@ -535,9 +535,324 @@ const PLAN_META = {
 
 function SubscriptionPage() {
   const { user } = useAuth();
-  const [plans, setPlans]         = useState([]);
-  const [mySubs, setMySubs]       = useState([]);
-  const [myLoans, setMyLoans]     = useState([]);
+  const isAgent  = user?.role?.toUpperCase() === 'AGENT';
+  const isSeller = user?.role?.toUpperCase() === 'SELLER';
+
+  const [plans, setPlans]             = useState([]);
+  const [mySubs, setMySubs]           = useState([]);
+  const [myLoans, setMyLoans]         = useState([]);
+  const [loanProgram, setLoanProgram] = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [subscribing, setSubscribing] = useState(null);
+  const [repaying, setRepaying]       = useState(null);
+  const [customAmount, setCustomAmount] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      const calls = [
+        subscriptionAPI.listPlans().catch(() => ({ data: [] })),
+        subscriptionAPI.getMine().catch(() => ({ data: [] })),
+        subscriptionAPI.getMyLoans().catch(() => ({ data: [] })),
+      ];
+      if (isAgent) calls.push(subscriptionAPI.getLoanProgram().catch(() => ({ data: null })));
+      const [p, s, l, prog] = await Promise.all(calls);
+      setPlans(p.data);
+      setMySubs(s.data);
+      setMyLoans(l.data);
+      if (prog) setLoanProgram(prog.data);
+    } finally {
+      setLoading(false);
+    }
+  }, [isAgent]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const activeSub   = mySubs.find((s) => s.status === 'ACTIVE');
+  const activeLoan  = myLoans.find((l) => l.status === 'ACTIVE');
+  const pendingLoans = myLoans.filter((l) => l.status === 'PENDING');
+  // Locked when any active product exists
+  const hasActiveProduct = !!activeSub || !!activeLoan;
+
+  const handleSubscribe = async (planName, useLoan = false) => {
+    setSubscribing(planName + (useLoan ? '_loan' : ''));
+    try {
+      const payload = { plan: planName, useLoan };
+      if (planName === 'EXECUTIVE' && user?.executiveAgent && customAmount) {
+        payload.customAmount = parseFloat(customAmount);
+      }
+      const { data } = await subscriptionAPI.subscribe(payload);
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        toast.success('Subscription activated!');
+        load();
+      }
+    } catch (err) {
+      const status = err.response?.status;
+      const msg = status === 409 ? err.response.data?.message || 'You already have an active plan'
+                : status === 400 ? err.response.data?.message || 'Invalid request'
+                : err.response?.data?.message || 'Subscription failed';
+      toast.error(msg);
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
+  const handleRepay = async (loanId) => {
+    setRepaying(loanId);
+    try {
+      const { data } = await subscriptionAPI.repayLoan(loanId, {});
+      if (data.authorizationUrl) {
+        window.location.href = data.authorizationUrl;
+      } else {
+        toast.success('Loan repayment initiated');
+        load();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Repayment failed');
+    } finally {
+      setRepaying(null);
+    }
+  };
+
+  if (loading) return <div className="animate-pulse space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-gray-100 rounded-2xl" />)}</div>;
+
+  // Loan-cycle level order for display
+  const LOAN_LEVELS = ['BASIC', 'STANDARD', 'PREMIUM'];
+  const LOAN_REQUIRED = { BASIC: 3, STANDARD: 4, PREMIUM: 6 };
+  const LOAN_COMPLETED_KEY = { BASIC: 'basicTrialsCompleted', STANDARD: 'standardTrialsCompleted', PREMIUM: 'premiumTrialsCompleted' };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-display text-2xl font-bold text-forest-900">
+          {isSeller ? 'Seller Subscription' : 'Agent Subscription & Loans'}
+        </h2>
+        <p className="text-gray-500 text-sm mt-1">
+          {isSeller
+            ? 'Subscribe to a plan to list properties'
+            : 'Subscribe or use the interest-free loan program to list properties'}
+        </p>
+      </div>
+
+      {/* Active product lock banner */}
+      {hasActiveProduct && (
+        <div className="card p-4 bg-amber-50 border border-amber-200 flex items-center gap-3 text-sm text-amber-800">
+          <Lock size={16} className="shrink-0" />
+          <span>
+            You have an active {activeSub ? 'subscription' : 'loan'}. All other plans are locked until it expires or is repaid.
+          </span>
+        </div>
+      )}
+
+      {/* Active subscription banner */}
+      {activeSub && (
+        <div className="card p-5 bg-forest-50 border border-forest-200 flex items-center gap-4">
+          <div className="w-12 h-12 bg-forest-800 rounded-xl flex items-center justify-center text-white shrink-0">
+            <Crown size={22} />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-forest-900">Active: {activeSub.plan} Plan</p>
+            <p className="text-sm text-forest-700">
+              {activeSub.endDate
+                ? `Expires ${new Date(activeSub.endDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                : 'No expiry set'}
+              {activeSub.loan && <span className="ml-3 text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Loan-funded</span>}
+            </p>
+          </div>
+          <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">ACTIVE</span>
+        </div>
+      )}
+
+      {/* Active loan */}
+      {activeLoan && (
+        <div>
+          <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Landmark size={16} /> Active Loan</h3>
+          <div className="card p-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium text-gray-800">{activeLoan.plan} Plan Loan {activeLoan.trialNumber && <span className="text-xs text-gray-400">(Trial #{activeLoan.trialNumber})</span>}</p>
+              <p className="text-xs text-gray-400">
+                Borrowed: <span className="naira">{formatNaira(activeLoan.loanAmount)}</span>
+                {' · '}Repaid: <span className="naira">{formatNaira(activeLoan.amountRepaid)}</span>
+                {' · '}Due: {new Date(activeLoan.dueDate).toLocaleDateString('en-NG')}
+              </p>
+              {/* Repayment progress bar */}
+              <div className="mt-2 w-48 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-forest-600 rounded-full"
+                  style={{ width: `${Math.min(100, (activeLoan.amountRepaid / activeLoan.loanAmount) * 100)}%` }}
+                />
+              </div>
+            </div>
+            <button
+              onClick={() => handleRepay(activeLoan.id)}
+              disabled={repaying === activeLoan.id}
+              className="btn-primary text-sm flex items-center gap-2 shrink-0"
+            >
+              {repaying === activeLoan.id ? <RefreshCw size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+              Repay Now
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pending loans (awaiting payment) */}
+      {pendingLoans.length > 0 && (
+        <div className="card p-4 bg-yellow-50 border border-yellow-200 text-sm text-yellow-800 flex items-center gap-2">
+          <RefreshCw size={14} className="shrink-0" />
+          {pendingLoans.length} loan payment{pendingLoans.length > 1 ? 's' : ''} pending Paystack confirmation.
+        </div>
+      )}
+
+      {/* 13-Trial loan cycle progress (agents only) */}
+      {isAgent && loanProgram && (
+        <div className="card p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800 flex items-center gap-2"><Landmark size={16} /> Loan Program Progress</h3>
+            <span className={`text-xs px-2 py-1 rounded-full font-bold ${loanProgram.programStatus === 'COMPLETED' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
+              {loanProgram.totalTrialsCompleted}/13 Trials
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {LOAN_LEVELS.map((level) => {
+              const completed = loanProgram[LOAN_COMPLETED_KEY[level]] || 0;
+              const required  = LOAN_REQUIRED[level];
+              const isCurrent = loanProgram.currentLevel === level;
+              const isDone    = completed >= required;
+              return (
+                <div key={level} className={`rounded-xl p-3 text-center border ${isCurrent ? 'border-forest-400 bg-forest-50' : isDone ? 'border-green-200 bg-green-50' : 'border-gray-100 bg-gray-50'}`}>
+                  <p className={`text-xs font-bold uppercase ${isCurrent ? 'text-forest-800' : isDone ? 'text-green-700' : 'text-gray-400'}`}>{level}</p>
+                  <p className="text-2xl font-bold mt-1 text-gray-800">{completed}<span className="text-sm text-gray-400">/{required}</span></p>
+                  <p className="text-xs text-gray-400 mt-0.5">{isDone ? '✓ Complete' : isCurrent ? `${required - completed} left` : 'Locked'}</p>
+                </div>
+              );
+            })}
+          </div>
+          {loanProgram.programStatus === 'COMPLETED' && (
+            <p className="text-sm text-center text-green-700 font-medium">🎉 You have completed all 13 loan trials! Contact support to apply for a new cycle.</p>
+          )}
+          {loanProgram.currentLevel !== 'COMPLETED' && loanProgram.eligiblePlan && (
+            <p className="text-xs text-gray-500 text-center">Next eligible loan: <strong>{loanProgram.eligiblePlan}</strong> plan · {loanProgram.trialsRemainingInLevel} trial{loanProgram.trialsRemainingInLevel !== 1 ? 's' : ''} remaining in current level</p>
+          )}
+        </div>
+      )}
+
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {plans.map((plan) => {
+          const meta     = PLAN_META[plan.name] || {};
+          const isCurrent = activeSub?.plan === plan.name && activeSub?.status === 'ACTIVE';
+          const isExec   = plan.name === 'EXECUTIVE';
+          const locked   = hasActiveProduct && !isCurrent;
+          const busy     = (key) => subscribing === key;
+
+          // Loan eligibility: agent only, must be at the right loan level
+          const loanAllowed = isAgent && plan.loanEligible && !hasActiveProduct
+            && (!loanProgram || loanProgram.eligiblePlan === plan.name);
+
+          return (
+            <div key={plan.name} className={`card p-6 flex flex-col gap-5 ${isCurrent ? 'ring-2 ring-forest-800' : locked ? 'opacity-50' : ''}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <span className="text-2xl">{meta.icon}</span>
+                  <h3 className="font-display text-xl font-bold text-gray-800 mt-1">{meta.label}</h3>
+                  <p className="text-xs text-gray-400">{meta.desc}</p>
+                </div>
+                {isCurrent && <span className="text-xs bg-forest-100 text-forest-800 px-2 py-1 rounded-full font-bold">Current</span>}
+                {locked && !isCurrent && <span className="text-xs bg-gray-100 text-gray-400 px-2 py-1 rounded-full"><Lock size={10} className="inline" /> Locked</span>}
+              </div>
+
+              <div>
+                <p className="naira text-2xl font-bold text-forest-900">
+                  {isExec && user?.executiveAgent ? 'Custom ≥ ₦10,000' : formatNaira(plan.monthlyFee)}
+                </p>
+                <p className="text-xs text-gray-400">per month · {plan.maxListings} listings max</p>
+              </div>
+
+              <ul className="text-sm text-gray-600 space-y-1.5">
+                <li className="flex items-center gap-2"><CheckCircle size={13} className="text-green-500 shrink-0" /> Up to <strong>{plan.maxListings}</strong> active listings</li>
+                {isAgent && (
+                  <li className="flex items-center gap-2">
+                    {plan.loanEligible
+                      ? <><Unlock size={13} className="text-blue-500 shrink-0" /> Interest-free loan available</>
+                      : <><Lock size={13} className="text-gray-300 shrink-0" /><span className="text-gray-300">No loan option</span></>
+                    }
+                  </li>
+                )}
+                {isExec && <li className="flex items-center gap-2"><Star size={13} className="text-yellow-500 shrink-0" /> Requires 1,000+ reputation &amp; no negative reviews</li>}
+              </ul>
+
+              {isExec && user?.executiveAgent && (
+                <input
+                  type="number"
+                  min="10000"
+                  step="1000"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  placeholder="Enter amount (min ₦10,000)"
+                  className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-forest-300"
+                />
+              )}
+
+              <div className="flex flex-col gap-2 mt-auto">
+                <button
+                  onClick={() => handleSubscribe(plan.name, false)}
+                  disabled={isCurrent || locked || !!subscribing}
+                  className={`btn-primary text-sm flex items-center justify-center gap-2 ${(isCurrent || locked) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {busy(plan.name) ? <RefreshCw size={14} className="animate-spin" /> : <ArrowUpRight size={14} />}
+                  {isCurrent ? 'Current Plan' : locked ? 'Locked' : 'Subscribe & Pay'}
+                </button>
+                {loanAllowed && (
+                  <button
+                    onClick={() => handleSubscribe(plan.name, true)}
+                    disabled={!!subscribing}
+                    className="btn-secondary text-sm flex items-center justify-center gap-2"
+                  >
+                    {busy(plan.name + '_loan') ? <RefreshCw size={14} className="animate-spin" /> : <Landmark size={14} />}
+                    Get Interest-Free Loan
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* History */}
+      {mySubs.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-gray-800 mb-3">Subscription History</h3>
+          <div className="card divide-y divide-gray-50">
+            {mySubs.map((s) => (
+              <div key={s.id} className="flex items-center justify-between px-5 py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{s.plan} Plan {s.loan && <span className="text-xs text-orange-500">(Loan)</span>}</p>
+                  <p className="text-xs text-gray-400">{timeAgo(s.createdAt)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="naira text-sm font-bold">{formatNaira(s.amountPaid)}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    s.status === 'ACTIVE'          ? 'bg-green-50 text-green-700'   :
+                    s.status === 'EXPIRED'         ? 'bg-gray-100 text-gray-500'    :
+                    s.status === 'CANCELLED'       ? 'bg-red-50 text-red-600'       :
+                    s.status === 'FAILED'          ? 'bg-red-50 text-red-600'       :
+                    s.status === 'PENDING_PAYMENT' ? 'bg-yellow-50 text-yellow-700' :
+                    'bg-gray-50 text-gray-500'
+                  }`}>
+                    {s.status === 'PENDING_PAYMENT' ? 'Awaiting Payment'
+                      : s.status === 'FAILED' ? 'Transaction Cancelled'
+                      : s.status}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
   const [loading, setLoading]     = useState(true);
   const [subscribing, setSubscribing] = useState(null);
   const [repaying, setRepaying]   = useState(null);
