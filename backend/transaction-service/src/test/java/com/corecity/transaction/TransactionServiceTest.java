@@ -2,6 +2,7 @@ package com.corecity.transaction;
 
 import com.corecity.transaction.dto.TransactionDTOs.*;
 import com.corecity.transaction.entity.Transaction;
+import com.corecity.transaction.repository.CommissionRepository;
 import com.corecity.transaction.repository.TransactionRepository;
 import com.corecity.transaction.service.PaystackService;
 import com.corecity.transaction.service.TransactionService;
@@ -27,6 +28,7 @@ import static org.mockito.Mockito.*;
 class TransactionServiceTest {
 
     @Mock TransactionRepository transactionRepository;
+    @Mock CommissionRepository commissionRepository;
     @Mock PaystackService paystackService;
     @Mock RabbitTemplate rabbitTemplate;
 
