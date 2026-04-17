@@ -77,6 +77,13 @@ export const transactionAPI = {
   getOne:   (id)        => api.get(`/transactions/${id}`),
 };
 
+// ─── Subscriptions ───────────────────────────────────────────
+export const subscriptionAPI = {
+  listPlans:  ()       => api.get('/subscriptions/plans'),
+  subscribe:  (data)   => api.post('/subscriptions', data),
+  getMine:    ()       => api.get('/subscriptions/my'),
+};
+
 // ─── States / LGAs ───────────────────────────────────────────
 export const locationAPI = {
   getStates: ()          => api.get('/states'),
