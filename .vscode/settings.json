@@ -2,5 +2,5 @@
     "java.configuration.updateBuildConfiguration": "interactive",
     "java.compile.nullAnalysis.mode": "automatic",
     "chat.agent.maxRequests": 300,
-    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx1G -Xms100m -javaagent:${env:USERPROFILE}/.m2/repository/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar"
+    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx1G -Xms100m -javaagent:C:/Users/FELIX/.m2/repository/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar"
 }
