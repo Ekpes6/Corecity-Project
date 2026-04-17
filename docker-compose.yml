@@ -164,10 +164,28 @@
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL}
       - USER_SERVICE_URL=http://user-service:8081
-    build:
-      context: ./backend
-      dockerfile: file-service/Dockerfile
-    container_name: corecity-file-service
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "8082"]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 90s
+    networks:
+      - corecity-network
+
+  file-service:
     restart: on-failure
     ports:
       - "127.0.0.1:8083:8083"
