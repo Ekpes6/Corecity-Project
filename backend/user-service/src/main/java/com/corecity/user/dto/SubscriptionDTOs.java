@@ -81,7 +81,32 @@ public class SubscriptionDTOs {
         private BigDecimal remainingBalance;
         private LocalDate dueDate;
         private String status;
+        private Integer trialNumber;
         private LocalDateTime createdAt;
+    }
+
+    // ── Loan Program (13-cycle progression) ──────────────────────────────────
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class LoanProgramResponse {
+        private Long id;
+        private String currentLevel;           // BASIC | STANDARD | PREMIUM | COMPLETED
+        private int basicTrialsCompleted;
+        private int standardTrialsCompleted;
+        private int premiumTrialsCompleted;
+        private int totalTrialsCompleted;
+        private int trialsRemainingInLevel;
+        private String programStatus;          // ACTIVE | COMPLETED
+        private String eligiblePlan;           // plan name for next loan
+    }
+
+    // ── Active product check (used by property-service) ─────────────────────
+
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ActiveProductResponse {
+        private boolean hasActiveProduct;
+        /** "SUBSCRIPTION", "LOAN", or null */
+        private String productType;
     }
 
     // ── Reputation ───────────────────────────────────────────────────────────
