@@ -67,7 +67,11 @@ export const AuthProvider = ({ children }) => {
       setRoleVerified(true); // server just told us the role via the login response
       return { success: true, user: data.user };
     } catch (err) {
-      return { success: false, error: err.response?.data?.message || 'Login failed' };
+      const status = err.response?.status;
+      const msg = status === 429 ? 'Too many login attempts — wait a minute and try again'
+                : status === 401 ? 'Invalid email or password'
+                : err.response?.data?.message || 'Login failed';
+      return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
@@ -83,7 +87,10 @@ export const AuthProvider = ({ children }) => {
       setRoleVerified(true);
       return { success: true };
     } catch (err) {
-      return { success: false, error: err.response?.data?.message || 'Registration failed' };
+      const status = err.response?.status;
+      const msg = status === 429 ? 'Too many attempts — wait a minute and try again'
+                : err.response?.data?.message || 'Registration failed';
+      return { success: false, error: msg };
     } finally {
       setLoading(false);
     }
