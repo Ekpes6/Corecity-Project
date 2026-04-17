@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS agent_subscriptions (
     authorization_url VARCHAR(500),
     start_date        DATE,
     end_date          DATE,
-    status            ENUM('PENDING_PAYMENT','ACTIVE','EXPIRED','CANCELLED') NOT NULL DEFAULT 'PENDING_PAYMENT',
+    status            ENUM('PENDING_PAYMENT','ACTIVE','EXPIRED','CANCELLED','FAILED') NOT NULL DEFAULT 'PENDING_PAYMENT',
     is_loan           BOOLEAN NOT NULL DEFAULT FALSE,
     created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -179,11 +179,26 @@ CREATE TABLE IF NOT EXISTS agent_loans (
     loan_amount     DECIMAL(15,2) NOT NULL,
     amount_repaid   DECIMAL(15,2) NOT NULL DEFAULT 0.00,
     due_date        DATE NOT NULL,
-    status          ENUM('ACTIVE','REPAID','DEFAULTED') NOT NULL DEFAULT 'ACTIVE',
+    status          ENUM('PENDING','ACTIVE','REPAID','DEFAULTED') NOT NULL DEFAULT 'PENDING',
+    trial_number    INT NULL,
+    loan_program_id BIGINT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES users(id),
     FOREIGN KEY (subscription_id) REFERENCES agent_subscriptions(id)
+);
+
+-- ─── Loan Programs (13-trial progression tracker) ─────────────────────────
+CREATE TABLE IF NOT EXISTS loan_programs (
+    id                          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    agent_id                    BIGINT NOT NULL UNIQUE,
+    current_level               ENUM('BASIC','STANDARD','PREMIUM','COMPLETED') NOT NULL DEFAULT 'BASIC',
+    basic_trials_completed      INT NOT NULL DEFAULT 0,
+    standard_trials_completed   INT NOT NULL DEFAULT 0,
+    premium_trials_completed    INT NOT NULL DEFAULT 0,
+    program_status              ENUM('ACTIVE','COMPLETED') NOT NULL DEFAULT 'ACTIVE',
+    created_at                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (agent_id) REFERENCES users(id)
 );
 
 -- ─── Reputation Events ────────────────────────────────────────────────────
