@@ -5,8 +5,10 @@ import {
   TrendingUp, Eye, MessageSquare, Star, ChevronRight, LogOut,
   CheckCircle, XCircle, Clock, RefreshCw, Search, Filter,
   Bed, Bath, MapPin, Building2, AlertCircle, ShieldCheck,
+  Crown, BookMarked, BadgeCheck, Landmark, Zap, ArrowUpRight,
+  CalendarCheck, Lock, Unlock, RotateCcw,
 } from 'lucide-react';
-import { propertyAPI, transactionAPI } from '../services/api';
+import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import PropertyCard from '../components/property/PropertyCard';
 import ListPropertyPage from './ListPropertyPage';

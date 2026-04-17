@@ -79,9 +79,29 @@ export const transactionAPI = {
 
 // ─── Subscriptions ───────────────────────────────────────────
 export const subscriptionAPI = {
-  listPlans:  ()       => api.get('/subscriptions/plans'),
-  subscribe:  (data)   => api.post('/subscriptions', data),
-  getMine:    ()       => api.get('/subscriptions/my'),
+  listPlans:  ()             => api.get('/subscriptions/plans'),
+  subscribe:  (data)         => api.post('/subscriptions', data),
+  getMine:    ()             => api.get('/subscriptions/my'),
+  getMyLoans: ()             => api.get('/subscriptions/loans/my'),
+  repayLoan:  (loanId, data) => api.post(`/subscriptions/loans/${loanId}/repay`, data),
+};
+
+// ─── Reservations ────────────────────────────────────────────
+export const reservationAPI = {
+  reserve:          (propertyId) => api.post(`/properties/${propertyId}/reserve`),
+  getMine:          ()           => api.get('/reservations/my'),
+  getForProperty:   (propertyId) => api.get(`/properties/${propertyId}/reservation`),
+};
+
+// ─── Reputation ──────────────────────────────────────────────
+export const reputationAPI = {
+  getAgentReputation: (agentId)        => api.get(`/agents/${agentId}/reputation`),
+  submitFeedback:     (agentId, data)  => api.post(`/agents/${agentId}/feedback`, data),
+};
+
+// ─── Commissions ─────────────────────────────────────────────
+export const commissionAPI = {
+  getMine: () => api.get('/transactions/commissions/my'),
 };
 
 // ─── States / LGAs ───────────────────────────────────────────
