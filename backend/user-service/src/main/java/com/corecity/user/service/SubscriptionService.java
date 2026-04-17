@@ -130,8 +130,8 @@ public class SubscriptionService {
                     throw new ResponseStatusException(BAD_REQUEST,
                         "You must start the loan program from the BASIC plan");
                 }
-                loanProgram = LoanProgram.builder().agentId(agentId).build();
-                loanProgram = Objects.requireNonNull(loanProgramRepo.save(loanProgram));
+                LoanProgram newProgram = LoanProgram.builder().agentId(agentId).build();
+                loanProgram = Objects.requireNonNull(loanProgramRepo.save(newProgram), "saved LoanProgram must not be null");
             } else {
                 if (loanProgram.getProgramStatus() == LoanProgram.ProgramStatus.COMPLETED) {
                     throw new ResponseStatusException(CONFLICT,
