@@ -124,6 +124,8 @@
       - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
       - JWT_SECRET=${JWT_SECRET}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
+      - PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL}
     depends_on:
       mysql:
         condition: service_healthy
