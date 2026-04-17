@@ -49,7 +49,6 @@ public class SubscriptionService {
     private String paystackCallbackUrl;
 
     private static final String PAYSTACK_BASE = "https://api.paystack.co";
-    private static final int MAX_LOAN_MONTHS = 6;
     private static final BigDecimal EXECUTIVE_AGENT_MIN_AMOUNT = new BigDecimal("10000");
 
     // ── Catalogue ─────────────────────────────────────────────────────────────
