@@ -7,9 +7,20 @@
 USE corecity_db;
 
 -- ─── 1. Users: add reputation columns ────────────────────────────────────
-ALTER TABLE users
-    ADD COLUMN IF NOT EXISTS reputation_score   INT     NOT NULL DEFAULT 0,
-    ADD COLUMN IF NOT EXISTS is_executive_agent BOOLEAN NOT NULL DEFAULT FALSE;
+-- Using INFORMATION_SCHEMA check because MySQL does not support ADD COLUMN IF NOT EXISTS
+SET @col1 = (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA='corecity_db' AND TABLE_NAME='users' AND COLUMN_NAME='reputation_score');
+SET @sql1 = IF(@col1=0,
+    'ALTER TABLE users ADD COLUMN reputation_score INT NOT NULL DEFAULT 0',
+    'SELECT 1');
+PREPARE s FROM @sql1; EXECUTE s; DEALLOCATE PREPARE s;
+
+SET @col2 = (SELECT COUNT(*) FROM information_schema.COLUMNS
+    WHERE TABLE_SCHEMA='corecity_db' AND TABLE_NAME='users' AND COLUMN_NAME='is_executive_agent');
+SET @sql2 = IF(@col2=0,
+    'ALTER TABLE users ADD COLUMN is_executive_agent BOOLEAN NOT NULL DEFAULT FALSE',
+    'SELECT 1');
+PREPARE s FROM @sql2; EXECUTE s; DEALLOCATE PREPARE s;
 
 -- ─── 2. Properties: add ON_NEGOTIATION to status ENUM ────────────────────
 ALTER TABLE properties
