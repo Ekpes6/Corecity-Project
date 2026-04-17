@@ -32,11 +32,22 @@ public class PropertyService {
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
     private final ReservationRepository reservationRepository;
+    private final UserServiceClient userServiceClient;
 
     @Transactional
-    public PropertyResponse createProperty(CreatePropertyRequest req, Long ownerId) {
+    public PropertyResponse createProperty(CreatePropertyRequest req, Long ownerId, String userRole) {
         Long safeOwnerId = Objects.requireNonNull(ownerId, "owner id must not be null");
-        log.info("Creating property for owner {} with title '{}'", safeOwnerId, req.getTitle());
+        log.info("Creating property for owner {} (role: {}) with title '{}'", safeOwnerId, userRole, req.getTitle());
+
+        // ── Subscription/loan gate for AGENT and SELLER ───────────────────────
+        if ("AGENT".equalsIgnoreCase(userRole) || "SELLER".equalsIgnoreCase(userRole)) {
+            if (!userServiceClient.hasActiveProduct(safeOwnerId)) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "You must have an active subscription or loan to list a property");
+            }
+        }
+
         locationService.validateLocation(req.getStateId(), req.getLgaId());
         String amenitiesJson = null;
         if (req.getAmenities() != null) {

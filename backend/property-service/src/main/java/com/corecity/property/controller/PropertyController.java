@@ -36,10 +36,11 @@ public class PropertyController {
     @PostMapping
     public ResponseEntity<PropertyResponse> create(
             @Valid @RequestBody CreatePropertyRequest req,
-            @RequestHeader("X-User-Id") Long userId) {
-        log.info("Property create request received for user {} with title '{}'", userId, req.getTitle());
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader(value = "X-User-Role", required = false) String userRole) {
+        log.info("Property create request received for user {} (role: {}) with title '{}'", userId, userRole, req.getTitle());
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(propertyService.createProperty(req, userId));
+            .body(propertyService.createProperty(req, userId, userRole));
     }
 
     @GetMapping("/search")
