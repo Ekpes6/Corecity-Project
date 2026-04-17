@@ -186,6 +186,10 @@
       - corecity-network
 
   file-service:
+    build:
+      context: ./backend
+      dockerfile: file-service/Dockerfile
+    container_name: corecity-file-service
     restart: on-failure
     ports:
       - "127.0.0.1:8083:8083"
