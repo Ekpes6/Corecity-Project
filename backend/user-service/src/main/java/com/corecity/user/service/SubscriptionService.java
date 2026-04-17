@@ -69,32 +69,82 @@ public class SubscriptionService {
     // ── Subscribe ─────────────────────────────────────────────────────────────
 
     /**
-     * Initiates a subscription for an agent.
-     * If the agent is an Executive Agent, they may supply a customAmount ≥ ₦10,000.
-     * If useLoan = true and the plan is eligible, the subscription is loan-funded.
+     * Initiates a subscription for an AGENT or SELLER.
+     *
+     * Rules enforced:
+     *  - SELLER may subscribe but cannot use the loan feature.
+     *  - Only one active financial product at a time (subscription OR active loan).
+     *  - Loan subscriptions must follow the 13-trial BASIC→STANDARD→PREMIUM progression.
+     *  - Loan is created with PENDING status; activated only after Paystack confirmation.
+     *  - Loan duration is fixed at 1 month (30 days).
      */
     @Transactional
-    public SubscriptionInitResponse subscribe(SubscribeRequest req, Long agentId, String agentEmail) {
+    public SubscriptionInitResponse subscribe(SubscribeRequest req, Long agentId, String agentEmail,
+                                              String userRole) {
         Objects.requireNonNull(agentId, "agentId must not be null");
 
         User agent = userRepository.findById(agentId)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "User not found"));
 
-        if (agent.getRole() != User.Role.AGENT) {
-            throw new ResponseStatusException(FORBIDDEN, "Subscriptions are only available to agents");
+        boolean isAgent  = agent.getRole() == User.Role.AGENT;
+        boolean isSeller = agent.getRole() == User.Role.SELLER;
+
+        if (!isAgent && !isSeller) {
+            throw new ResponseStatusException(FORBIDDEN, "Subscriptions are only available to agents and sellers");
         }
 
+        // ── Exclusivity: one active product at a time ─────────────────────────
         if (subscriptionRepo.countByAgentIdAndStatus(agentId, SubscriptionStatus.ACTIVE) > 0) {
-            throw new ResponseStatusException(CONFLICT, "You already have an active subscription");
+            throw new ResponseStatusException(CONFLICT,
+                "You already have an active subscription. Wait for it to expire before subscribing again.");
+        }
+        if (loanRepo.countByAgentIdAndStatus(agentId, AgentLoan.LoanStatus.ACTIVE) > 0) {
+            throw new ResponseStatusException(CONFLICT,
+                "You already have an active loan. Repay it fully before subscribing to a new plan.");
+        }
+
+        boolean useLoan = req.isUseLoan();
+
+        // ── Loan access: agents only, not EXECUTIVE plan ──────────────────────
+        if (useLoan) {
+            if (!isAgent) {
+                throw new ResponseStatusException(FORBIDDEN, "The loan feature is only available to agents");
+            }
+            if (req.getPlan() == SubscriptionPlan.EXECUTIVE) {
+                throw new ResponseStatusException(BAD_REQUEST, "Loans are not available for the Executive plan");
+            }
         }
 
         SubscriptionPlan plan = req.getPlan();
         BigDecimal amount = resolveAmount(plan, req.getCustomAmount(), agent.isExecutiveAgent());
 
-        // Loan eligibility: BASIC, STANDARD, PREMIUM only
-        boolean useLoan = req.isUseLoan();
-        if (useLoan && plan == SubscriptionPlan.EXECUTIVE) {
-            throw new ResponseStatusException(BAD_REQUEST, "Loans are not available for the Executive Plan");
+        // ── 13-trial loan cycle validation ────────────────────────────────────
+        LoanProgram loanProgram = null;
+        int trialNumber = 0;
+        if (useLoan) {
+            loanProgram = loanProgramRepo.findByAgentId(agentId).orElse(null);
+
+            if (loanProgram == null) {
+                // First-ever loan: must start from BASIC
+                if (plan != SubscriptionPlan.BASIC) {
+                    throw new ResponseStatusException(BAD_REQUEST,
+                        "You must start the loan program from the BASIC plan");
+                }
+                loanProgram = LoanProgram.builder().agentId(agentId).build();
+                loanProgram = loanProgramRepo.save(loanProgram);
+            } else {
+                if (loanProgram.getProgramStatus() == LoanProgram.ProgramStatus.COMPLETED) {
+                    throw new ResponseStatusException(CONFLICT,
+                        "You have completed the 13-trial loan program. Contact support to apply for a reset.");
+                }
+                SubscriptionPlan eligible = loanProgram.eligiblePlan();
+                if (plan != eligible) {
+                    throw new ResponseStatusException(BAD_REQUEST,
+                        "At your current loan level (" + loanProgram.getCurrentLevel() + "), "
+                        + "you must subscribe to the " + eligible.name() + " plan");
+                }
+            }
+            trialNumber = loanProgram.getTotalTrialsCompleted() + 1;
         }
 
         String reference = "SUB-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
@@ -112,14 +162,10 @@ public class SubscriptionService {
             .build();
         subscriptionRepo.save(Objects.requireNonNull(subscription));
 
-        // For loan subscriptions the agent pays ₦0 upfront (loan covers it).
-        // We still create a ₦1 Paystack link so the system can confirm intent,
-        // but in practice the CoreCity admin approves the loan and activates manually.
-        // For simplicity here we initiate a full Paystack checkout for loan plans too —
-        // the agent repays via commission deductions.
         String authorizationUrl = initPaystackPayment(agentEmail, amount, reference,
             Map.of("subscriptionId", subscription.getId(), "plan", plan.name(), "agentId", agentId));
 
+        // ── Loan created as PENDING — only activated after payment confirmed ──
         if (useLoan) {
             AgentLoan loan = AgentLoan.builder()
                 .agentId(agentId)
@@ -127,8 +173,10 @@ public class SubscriptionService {
                 .plan(plan)
                 .loanAmount(amount)
                 .amountRepaid(BigDecimal.ZERO)
-                .dueDate(today.plusMonths(MAX_LOAN_MONTHS))
-                .status(AgentLoan.LoanStatus.ACTIVE)
+                .dueDate(today.plusDays(30))          // 1-month fixed duration
+                .trialNumber(trialNumber)
+                .loanProgramId(loanProgram.getId())
+                .status(AgentLoan.LoanStatus.PENDING) // activated on webhook
                 .build();
             loanRepo.save(Objects.requireNonNull(loan));
         }
@@ -144,13 +192,17 @@ public class SubscriptionService {
             .build();
     }
 
-    /** Activate a subscription after Paystack payment is confirmed. */
+    /**
+     * Activate a subscription after Paystack payment is confirmed.
+     * Also activates the associated PENDING loan if this was a loan-funded subscription.
+     */
     @Transactional
     public void activateSubscription(String reference) {
         AgentSubscription sub = subscriptionRepo.findAll().stream()
             .filter(s -> reference.equals(s.getPaymentReference()))
             .findFirst()
-            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Subscription not found for reference: " + reference));
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND,
+                "Subscription not found for reference: " + reference));
 
         if (sub.getStatus() != SubscriptionStatus.PENDING_PAYMENT) {
             log.warn("Subscription {} already in status {}; skipping", reference, sub.getStatus());
@@ -159,6 +211,42 @@ public class SubscriptionService {
         sub.setStatus(SubscriptionStatus.ACTIVE);
         subscriptionRepo.save(sub);
         log.info("Subscription {} activated for agent {} on plan {}", reference, sub.getAgentId(), sub.getPlan());
+
+        // Activate the associated PENDING loan now that payment is confirmed
+        if (sub.isLoan()) {
+            loanRepo.findBySubscriptionId(sub.getId()).ifPresent(loan -> {
+                if (loan.getStatus() == AgentLoan.LoanStatus.PENDING) {
+                    loan.setStatus(AgentLoan.LoanStatus.ACTIVE);
+                    loanRepo.save(loan);
+                    log.info("Loan {} activated for agent {} (trial {})",
+                        loan.getId(), sub.getAgentId(), loan.getTrialNumber());
+                }
+            });
+        }
+    }
+
+    /**
+     * Mark a subscription as FAILED (called when Paystack signals failure or abandonment).
+     * Also cancels the associated PENDING loan to keep state consistent.
+     */
+    @Transactional
+    public void failSubscription(String reference) {
+        subscriptionRepo.findAll().stream()
+            .filter(s -> reference.equals(s.getPaymentReference()))
+            .findFirst()
+            .ifPresent(sub -> {
+                if (sub.getStatus() == SubscriptionStatus.PENDING_PAYMENT) {
+                    sub.setStatus(SubscriptionStatus.FAILED);
+                    subscriptionRepo.save(sub);
+                    log.info("Subscription {} marked as FAILED", reference);
+                    loanRepo.findBySubscriptionId(sub.getId()).ifPresent(loan -> {
+                        if (loan.getStatus() == AgentLoan.LoanStatus.PENDING) {
+                            loan.setStatus(AgentLoan.LoanStatus.DEFAULTED);
+                            loanRepo.save(loan);
+                        }
+                    });
+                }
+            });
     }
 
     /** Returns all subscriptions for an agent. */
