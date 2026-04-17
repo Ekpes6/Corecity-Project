@@ -130,7 +130,7 @@ public class SubscriptionService {
                     throw new ResponseStatusException(BAD_REQUEST,
                         "You must start the loan program from the BASIC plan");
                 }
-                LoanProgram newProgram = LoanProgram.builder().agentId(agentId).build();
+                LoanProgram newProgram = Objects.requireNonNull(LoanProgram.builder().agentId(agentId).build());
                 loanProgram = Objects.requireNonNull(loanProgramRepo.save(newProgram), "saved LoanProgram must not be null");
             } else {
                 if (loanProgram.getProgramStatus() == LoanProgram.ProgramStatus.COMPLETED) {
@@ -167,6 +167,7 @@ public class SubscriptionService {
 
         // ── Loan created as PENDING — only activated after payment confirmed ──
         if (useLoan) {
+            Objects.requireNonNull(loanProgram, "loanProgram must be set when useLoan=true");
             AgentLoan loan = AgentLoan.builder()
                 .agentId(agentId)
                 .subscriptionId(subscription.getId())
@@ -316,7 +317,7 @@ public class SubscriptionService {
             loan.setStatus(AgentLoan.LoanStatus.REPAID);
             // Advance the 13-trial cycle on successful full repayment
             if (loan.getLoanProgramId() != null) {
-                loanProgramRepo.findById(loan.getLoanProgramId()).ifPresent(program -> {
+                loanProgramRepo.findById(Objects.requireNonNull(loan.getLoanProgramId())).ifPresent(program -> {
                     boolean advanced = program.recordSuccessfulRepayment();
                     loanProgramRepo.save(program);
                     if (advanced) {
