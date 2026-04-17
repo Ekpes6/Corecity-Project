@@ -37,6 +37,7 @@ public class SubscriptionService {
 
     private final AgentSubscriptionRepository subscriptionRepo;
     private final AgentLoanRepository loanRepo;
+    private final LoanProgramRepository loanProgramRepo;
     private final UserRepository userRepository;
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
