@@ -978,6 +978,24 @@ export default function DashboardPage() {
 
         {/* Content */}
         <main className="flex-1 min-w-0">
+          {/* Mobile nav tabs */}
+          <div className="lg:hidden flex gap-1 overflow-x-auto pb-2 mb-4 scrollbar-none">
+            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly }) => {
+              if (sellerOnly && !isSeller) return null;
+              if (adminOnly && !isAdmin) return null;
+              if (agentOnly && !isAgent) return null;
+              return (
+                <NavLink key={to} to={to} end={end}
+                  className={({ isActive }) =>
+                    `flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-medium shrink-0 transition-colors ${
+                      isActive ? 'bg-forest-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`
+                  }>
+                  <Icon size={14} /> {label}
+                </NavLink>
+              );
+            })}
+          </div>
           <Routes>
             <Route index               element={<DashboardHome />} />
             <Route path="listings"     element={<MyListings />} />
