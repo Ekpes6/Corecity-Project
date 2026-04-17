@@ -106,9 +106,10 @@ export const AuthProvider = ({ children }) => {
   // These are derived from state — which on every fresh page load is
   // re-verified against the server via the useEffect above.
   const isAuthenticated = !!user;
-  const isAgent   = user?.role === 'AGENT';
-  const isSeller  = user?.role === 'SELLER' || user?.role === 'AGENT';
-  const isAdmin   = user?.role === 'ADMIN';
+  const role      = user?.role?.toUpperCase();
+  const isAgent   = role === 'AGENT';
+  const isSeller  = role === 'SELLER' || role === 'AGENT';
+  const isAdmin   = role === 'ADMIN';
 
   return (
     <AuthContext.Provider value={{
