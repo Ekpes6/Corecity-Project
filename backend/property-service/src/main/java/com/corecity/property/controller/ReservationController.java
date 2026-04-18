@@ -108,6 +108,19 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getActiveReservation(id, userId, userRole));
     }
 
+    /**
+     * Look up a reservation by Paystack reference – used by the payment verify page
+     * to determine whether a reservation payment succeeded or failed.
+     *
+     * GET /api/v1/reservations/by-reference/{reference}
+     */
+    @GetMapping("/api/v1/reservations/by-reference/{reference}")
+    public ResponseEntity<ReservationResponse> getByReference(
+            @PathVariable String reference,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(reservationService.getByReference(reference, userId));
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────
 
     /**
