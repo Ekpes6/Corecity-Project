@@ -28,10 +28,11 @@ api.interceptors.response.use(
 
 // ─── Auth ────────────────────────────────────────────────────
 export const authAPI = {
-  register: (data) => api.post('/auth/register', data),
-  login:    (data) => api.post('/auth/login', data),
-  getMe:    ()     => api.get('/users/me'),
-  updateMe: (data) => api.put('/users/me', data),
+  register:   (data)  => api.post('/auth/register', data),
+  login:      (data)  => api.post('/auth/login', data),
+  getMe:      ()      => api.get('/users/me'),
+  updateMe:   (data)  => api.put('/users/me', data),
+  checkPhone: (phone) => api.get('/users/check-phone', { params: { phone } }),
 };
 
 // ─── Properties ──────────────────────────────────────────────
