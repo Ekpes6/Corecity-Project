@@ -194,6 +194,41 @@ public class SubscriptionService {
     }
 
     /**
+     * Verify a subscription payment by Paystack reference.
+     * If the subscription is still PENDING_PAYMENT, calls the Paystack API live to check
+     * and activates the subscription if the payment succeeded.
+     * Used by the payment verify page as a fallback when the webhook hasn't fired yet.
+     */
+    @Transactional
+    public SubscriptionResponse verifySubscriptionPayment(String reference) {
+        AgentSubscription sub = subscriptionRepo.findByPaymentReference(reference)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND,
+                "Subscription not found for reference: " + reference));
+
+        if (sub.getStatus() == SubscriptionStatus.PENDING_PAYMENT) {
+            try {
+                String response = webClientBuilder.build()
+                    .get()
+                    .uri(PAYSTACK_BASE + "/transaction/verify/" + reference)
+                    .header(org.springframework.http.HttpHeaders.AUTHORIZATION, "Bearer " + paystackSecretKey)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+                JsonNode data = objectMapper.readTree(response).path("data");
+                if ("success".equals(data.path("status").asText())) {
+                    activateSubscription(reference);
+                    // Reload after activation
+                    sub = subscriptionRepo.findByPaymentReference(reference).orElse(sub);
+                }
+            } catch (Exception e) {
+                log.warn("Paystack verify for SUB reference {} failed: {}", reference, e.getMessage());
+            }
+        }
+
+        return toSubscriptionResponse(sub);
+    }
+
+    /**
      * Activate a subscription after Paystack payment is confirmed.
      * Also activates the associated PENDING loan if this was a loan-funded subscription.
      */
