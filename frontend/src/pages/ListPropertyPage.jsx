@@ -105,10 +105,14 @@ export default function ListPropertyPage() {
 
       const { data: property } = await propertyAPI.create(payload);
 
-      // Upload images
+      // Upload images to file-service, then register the returned URLs with property-service
       if (images.length > 0) {
         try {
-          await fileAPI.uploadBatch(property.id, images);
+          const { data: uploadResult } = await fileAPI.uploadBatch(property.id, images);
+          const uploadedUrls = (uploadResult.uploaded || []).map((f) => f.fileUrl).filter(Boolean);
+          if (uploadedUrls.length > 0) {
+            await propertyAPI.registerFiles(property.id, uploadedUrls);
+          }
         } catch {
           toast.error('Property created but image upload failed. Edit to add images.');
         }
