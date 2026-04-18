@@ -37,6 +37,13 @@ public class AuthController {
         return ResponseEntity.ok(authService.refresh(token));
     }
 
+    @GetMapping("/users/check-phone")
+    public ResponseEntity<Map<String, Boolean>> checkPhone(
+            @RequestParam String phone) {
+        boolean available = authService.isPhoneAvailable(phone);
+        return ResponseEntity.ok(Map.of("available", available));
+    }
+
     @GetMapping("/users/me")
     public ResponseEntity<UserDTO> getProfile(@RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(authService.getProfile(userId));
