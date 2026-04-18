@@ -131,4 +131,12 @@ public class PropertyController {
         propertyService.deleteProperty(id, userId);
         return ResponseEntity.ok(Map.of("message", "Property removed successfully"));
     }
+
+    @PostMapping("/{id}/files")
+    public ResponseEntity<PropertyResponse> registerFiles(
+            @PathVariable Long id,
+            @RequestBody List<String> fileUrls,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(propertyService.registerFiles(id, fileUrls, userId));
+    }
 }
