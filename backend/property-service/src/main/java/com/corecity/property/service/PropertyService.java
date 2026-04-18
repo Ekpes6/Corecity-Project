@@ -346,11 +346,11 @@ public class PropertyService {
         Property property = propertyRepository.findById(safePropertyId)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
 
-        if (!property.getOwnerId().equals(requesterId)) {
+        if (!property.getOwnerId().equals(safeRequesterId)) {
             throw new ResponseStatusException(FORBIDDEN, "You do not own this property");
         }
 
-        boolean firstFile = propertyFileRepository.findByPropertyIdOrderByUploadedAtAsc(propertyId).isEmpty();
+        boolean firstFile = propertyFileRepository.findByPropertyIdOrderByUploadedAtAsc(safePropertyId).isEmpty();
 
         for (int i = 0; i < fileUrls.size(); i++) {
             boolean isPrimary = firstFile && i == 0;
