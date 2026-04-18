@@ -40,7 +40,7 @@ function DashboardHome() {
     .reduce((s, t) => s + Number(t.amount), 0);
 
   const stats = [
-    { icon: Home,       label: 'My Listings',   value: activeListings, color: 'forest' },
+    { icon: Home,       label: 'My Listings',   value: myProperties.length, color: 'forest' },
     { icon: Eye,        label: 'Total Views',    value: totalViews.toLocaleString(), color: 'blue' },
     { icon: TrendingUp, label: 'Active Listings',value: activeListings, color: 'green' },
     { icon: CreditCard, label: 'Total Earnings', value: formatNaira(totalEarnings, true), color: 'clay' },
