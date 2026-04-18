@@ -146,14 +146,16 @@ function MyListings() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-display text-2xl font-bold text-forest-900">My Listings</h2>
-        <Link to="/dashboard/list" className="btn-primary text-sm flex items-center gap-2">
-          <PlusSquare size={15} /> Add New
-        </Link>
+        {isSeller && (
+          <Link to="/dashboard/list" className="btn-primary text-sm flex items-center gap-2">
+            <PlusSquare size={15} /> Add New
+          </Link>
+        )}
       </div>
       {properties.length === 0 ? (
         <div className="text-center py-16 card">
           <p className="text-gray-400 mb-4">No listings yet</p>
-          <Link to="/dashboard/list" className="btn-primary">List Your First Property</Link>
+          {isSeller && <Link to="/dashboard/list" className="btn-primary">List Your First Property</Link>}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
