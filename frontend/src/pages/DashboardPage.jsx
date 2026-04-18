@@ -17,7 +17,7 @@ import toast from 'react-hot-toast';
 
 // ── Dashboard Overview ─────────────────────────────────────────
 function DashboardHome() {
-  const { user } = useAuth();
+  const { user, isSeller } = useAuth();
   const [myProperties, setMyProperties] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,7 +119,7 @@ function DashboardHome() {
           <p className="text-gray-400 mb-6">Start by browsing properties or listing your own</p>
           <div className="flex gap-3 justify-center">
             <Link to="/properties" className="btn-secondary">Browse Properties</Link>
-            <Link to="/dashboard/list" className="btn-primary">List a Property</Link>
+            {isSeller && <Link to="/dashboard/list" className="btn-primary">List a Property</Link>}
           </div>
         </div>
       )}
@@ -129,6 +129,7 @@ function DashboardHome() {
 
 // ── My Listings ───────────────────────────────────────────────
 function MyListings() {
+  const { isSeller } = useAuth();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
 
