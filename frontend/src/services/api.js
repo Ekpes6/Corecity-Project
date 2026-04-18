@@ -48,6 +48,7 @@ export const propertyAPI = {
   create:     (data)   => api.post('/properties', data),
   update:     (id, d)  => api.put(`/properties/${id}`, d),
   remove:     (id)     => api.delete(`/properties/${id}`),
+  registerFiles: (id, fileUrls) => api.post(`/properties/${id}/files`, fileUrls),
 };
 
 // ─── Files ───────────────────────────────────────────────────
