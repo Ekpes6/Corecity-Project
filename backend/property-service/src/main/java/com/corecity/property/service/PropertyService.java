@@ -360,11 +360,11 @@ public class PropertyService {
                 .fileType(PropertyFile.FileType.IMAGE)
                 .primary(isPrimary)
                 .build();
-            propertyFileRepository.save(pf);
+            propertyFileRepository.save(Objects.requireNonNull(pf, "property file must not be null"));
         }
 
         // Reload so toResponse reads the freshly saved files
-        Property refreshed = propertyRepository.findById(propertyId).orElseThrow();
+        Property refreshed = propertyRepository.findById(safePropertyId).orElseThrow();
         return toResponse(refreshed);
     }
 
