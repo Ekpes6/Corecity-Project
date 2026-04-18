@@ -70,6 +70,19 @@ public class SubscriptionController {
     }
 
     /**
+     * GET /api/v1/subscriptions/verify/{reference}
+     * Called by the payment verify page after Paystack redirects back.
+     * Checks the subscription status — and activates it via a live Paystack call
+     * if the webhook hasn't fired yet.
+     */
+    @GetMapping("/verify/{reference}")
+    public ResponseEntity<SubscriptionResponse> verifyPayment(
+            @PathVariable String reference,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(subscriptionService.verifySubscriptionPayment(reference));
+    }
+
+    /**
      * Paystack webhook — POST /api/v1/subscriptions/webhook/paystack.
      * Validates HMAC-SHA512 signature before processing. Handles:
      *   charge.success  → activate subscription (and loan if applicable)
