@@ -341,7 +341,9 @@ public class PropertyService {
 
     @Transactional
     public PropertyResponse registerFiles(Long propertyId, List<String> fileUrls, Long requesterId) {
-        Property property = propertyRepository.findById(propertyId)
+        Long safePropertyId = Objects.requireNonNull(propertyId, "property id must not be null");
+        Long safeRequesterId = Objects.requireNonNull(requesterId, "requester id must not be null");
+        Property property = propertyRepository.findById(safePropertyId)
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
 
         if (!property.getOwnerId().equals(requesterId)) {
