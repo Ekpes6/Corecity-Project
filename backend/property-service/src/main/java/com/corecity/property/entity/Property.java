@@ -87,7 +87,7 @@ public class Property {
     @Builder.Default
     private Integer viewsCount = 0;
 
-    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<PropertyFile> files;
 
     @CreationTimestamp

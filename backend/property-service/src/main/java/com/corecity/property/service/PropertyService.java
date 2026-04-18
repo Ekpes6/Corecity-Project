@@ -352,6 +352,7 @@ public class PropertyService {
 
         boolean firstFile = propertyFileRepository.findByPropertyIdOrderByUploadedAtAsc(safePropertyId).isEmpty();
 
+        List<PropertyFile> toSave = new ArrayList<>();
         for (int i = 0; i < fileUrls.size(); i++) {
             boolean isPrimary = firstFile && i == 0;
             PropertyFile pf = PropertyFile.builder()
@@ -360,12 +361,14 @@ public class PropertyService {
                 .fileType(PropertyFile.FileType.IMAGE)
                 .primary(isPrimary)
                 .build();
-            propertyFileRepository.save(Objects.requireNonNull(pf, "property file must not be null"));
+            toSave.add(Objects.requireNonNull(pf, "property file must not be null"));
         }
+        propertyFileRepository.saveAllAndFlush(toSave);
 
-        // Reload so toResponse reads the freshly saved files
-        Property refreshed = propertyRepository.findById(safePropertyId).orElseThrow();
-        return toResponse(refreshed);
+        // Re-query files directly — first-level cache would return stale property.files
+        List<PropertyFile> allFiles = propertyFileRepository.findByPropertyIdOrderByUploadedAtAsc(safePropertyId);
+        property.setFiles(allFiles);
+        return toResponse(property);
     }
 
     private void requireAdmin(String userRole) {
