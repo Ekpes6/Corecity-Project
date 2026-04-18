@@ -339,6 +339,33 @@ public class PropertyService {
         return PageRequest.of(req.getPage(), req.getSize(), Sort.by(direction, sortField));
     }
 
+    @Transactional
+    public PropertyResponse registerFiles(Long propertyId, List<String> fileUrls, Long requesterId) {
+        Property property = propertyRepository.findById(propertyId)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
+
+        if (!property.getOwnerId().equals(requesterId)) {
+            throw new ResponseStatusException(FORBIDDEN, "You do not own this property");
+        }
+
+        boolean firstFile = propertyFileRepository.findByPropertyIdOrderByUploadedAtAsc(propertyId).isEmpty();
+
+        for (int i = 0; i < fileUrls.size(); i++) {
+            boolean isPrimary = firstFile && i == 0;
+            PropertyFile pf = PropertyFile.builder()
+                .property(property)
+                .fileUrl(fileUrls.get(i))
+                .fileType(PropertyFile.FileType.IMAGE)
+                .primary(isPrimary)
+                .build();
+            propertyFileRepository.save(pf);
+        }
+
+        // Reload so toResponse reads the freshly saved files
+        Property refreshed = propertyRepository.findById(propertyId).orElseThrow();
+        return toResponse(refreshed);
+    }
+
     private void requireAdmin(String userRole) {
         if (!"ADMIN".equalsIgnoreCase(userRole)) {
             throw new ResponseStatusException(FORBIDDEN, "Admin access required");
