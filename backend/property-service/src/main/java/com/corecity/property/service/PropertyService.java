@@ -39,6 +39,13 @@ public class PropertyService {
         Long safeOwnerId = Objects.requireNonNull(ownerId, "owner id must not be null");
         log.info("Creating property for owner {} (role: {}) with title '{}'", safeOwnerId, userRole, req.getTitle());
 
+        // ── BUYER role is not allowed to list properties ──────────────────────
+        if ("BUYER".equalsIgnoreCase(userRole)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN,
+                "Buyers cannot list properties. Upgrade to SELLER or AGENT to list.");
+        }
+
         // ── Subscription/loan gate for AGENT and SELLER ───────────────────────
         if ("AGENT".equalsIgnoreCase(userRole) || "SELLER".equalsIgnoreCase(userRole)) {
             if (!userServiceClient.hasActiveProduct(safeOwnerId)) {
