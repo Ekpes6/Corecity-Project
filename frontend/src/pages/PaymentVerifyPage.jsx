@@ -49,8 +49,12 @@ export default function PaymentVerifyPage() {
           <>
             <CheckCircle2 size={56} className="text-green-500 mx-auto mb-5" />
             <h1 className="font-display text-2xl font-bold text-forest-900 mb-2">Payment Successful!</h1>
-            <p className="text-gray-500 mb-6">Your payment has been confirmed and the property owner has been notified.</p>
-            {transaction && (
+            <p className="text-gray-500 mb-6">
+              {isReservation
+                ? 'Your reservation is now active. The property owner has been notified.'
+                : 'Your payment has been confirmed and the property owner has been notified.'}
+            </p>
+            {!isReservation && transaction && (
               <div className="bg-forest-50 rounded-xl p-4 text-left text-sm space-y-2 mb-6">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Amount</span>
@@ -74,10 +78,22 @@ export default function PaymentVerifyPage() {
             <p className="text-gray-500 mb-6">
               Your payment could not be completed. No money has been charged.
             </p>
+            {isReservation && (
+              <p className="text-gray-400 text-sm -mt-3 mb-6">
+                You can try reserving the property again from the property page.
+              </p>
+            )}
           </>
         )}
         <div className="flex flex-col gap-3">
-          <Link to="/dashboard" className="btn-primary">Go to Dashboard</Link>
+          {isReservation && status === 'failed' && reservation?.propertyId && (
+            <Link to={`/properties/${reservation.propertyId}`} className="btn-primary">
+              Try Again
+            </Link>
+          )}
+          <Link to="/dashboard" className={isReservation && status === 'failed' && reservation?.propertyId ? 'btn-secondary' : 'btn-primary'}>
+            Go to Dashboard
+          </Link>
           <Link to="/properties" className="btn-secondary">Browse Properties</Link>
         </div>
       </div>
