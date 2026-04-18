@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { transactionAPI, reservationAPI } from '../services/api';
+import { transactionAPI, reservationAPI, subscriptionAPI } from '../services/api';
 import { formatNaira } from '../utils/nigeria';
 
 export default function PaymentVerifyPage() {
@@ -10,8 +10,10 @@ export default function PaymentVerifyPage() {
   const [status, setStatus]         = useState('loading'); // loading | success | failed
   const [transaction, setTransaction] = useState(null);
   const [reservation, setReservation] = useState(null);
+  const [subscription, setSubscription] = useState(null);
 
-  const isReservation = reference?.startsWith('RSV-');
+  const isReservation  = reference?.startsWith('RSV-');
+  const isSubscription = reference?.startsWith('SUB-');
 
   useEffect(() => {
     if (!reference) { setStatus('failed'); return; }
@@ -23,6 +25,13 @@ export default function PaymentVerifyPage() {
           setStatus(data.status === 'ACTIVE' ? 'success' : 'failed');
         })
         .catch(() => setStatus('failed'));
+    } else if (isSubscription) {
+      subscriptionAPI.verify(reference)
+        .then(({ data }) => {
+          setSubscription(data);
+          setStatus(data.status === 'ACTIVE' ? 'success' : 'failed');
+        })
+        .catch(() => setStatus('failed'));
     } else {
       transactionAPI.verify(reference)
         .then(({ data }) => {
@@ -31,7 +40,7 @@ export default function PaymentVerifyPage() {
         })
         .catch(() => setStatus('failed'));
     }
-  }, [reference, isReservation]);
+  }, [reference, isReservation, isSubscription]);
 
   if (status === 'loading') return (
     <div className="min-h-screen flex items-center justify-center">
@@ -52,9 +61,11 @@ export default function PaymentVerifyPage() {
             <p className="text-gray-500 mb-6">
               {isReservation
                 ? 'Your reservation is now active. The property owner has been notified.'
-                : 'Your payment has been confirmed and the property owner has been notified.'}
+                : isSubscription
+                  ? `Your ${subscription?.plan || ''} subscription is now active.`
+                  : 'Your payment has been confirmed and the property owner has been notified.'}
             </p>
-            {!isReservation && transaction && (
+            {!isReservation && !isSubscription && transaction && (
               <div className="bg-forest-50 rounded-xl p-4 text-left text-sm space-y-2 mb-6">
                 <div className="flex justify-between">
                   <span className="text-gray-500">Amount</span>
