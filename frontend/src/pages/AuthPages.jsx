@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, Home } from 'lucide-react';
+import { Eye, EyeOff, Home, CheckCircle, XCircle, Loader } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { authAPI } from '../services/api';
 import { normalizePhone } from '../utils/nigeria';
 import toast from 'react-hot-toast';
 
@@ -85,14 +86,41 @@ export function RegisterPage() {
   const navigate    = useNavigate();
   const [searchParams] = useSearchParams();
   const [showPw, setShowPw] = useState(false);
+  const [phoneStatus, setPhoneStatus] = useState(null); // null | 'checking' | 'available' | 'taken'
+  const phoneDebounceRef = useRef(null);
   const defaultRole = searchParams.get('role') || 'BUYER';
 
   const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm({
     defaultValues: { role: defaultRole }
   });
 
+  const watchedPhone = watch('phone');
+
+  useEffect(() => {
+    const raw = watchedPhone || '';
+    const normalized = normalizePhone(raw);
+    if (!normalized || normalized.length < 14) {
+      setPhoneStatus(null);
+      return;
+    }
+    setPhoneStatus('checking');
+    clearTimeout(phoneDebounceRef.current);
+    phoneDebounceRef.current = setTimeout(async () => {
+      try {
+        const { data } = await authAPI.checkPhone(normalized);
+        setPhoneStatus(data.available ? 'available' : 'taken');
+      } catch {
+        setPhoneStatus(null);
+      }
+    }, 350);
+  }, [watchedPhone]);
+
   const onSubmit = async (data) => {
     const payload = { ...data, phone: normalizePhone(data.phone) };
+    if (phoneStatus === 'taken') {
+      toast.error('That phone number is already registered. Please use a different one.');
+      return;
+    }
     const result = await authRegister(payload);
     if (result.success) {
       toast.success('Account created! Welcome to Corecity 🏠');
@@ -174,9 +202,24 @@ export function RegisterPage() {
             {/* Phone */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Phone Number</label>
-              <input type="tel" {...register('phone', { required: 'Required' })}
-                placeholder="08012345678 or +2348012345678" className="input-field" />
+              <div className="relative">
+                <input
+                  type="tel"
+                  {...register('phone', { required: 'Required' })}
+                  placeholder="08012345678 or +2348012345678"
+                  className={`input-field pr-9 ${
+                    phoneStatus === 'taken' ? 'border-red-400 focus:ring-red-300' :
+                    phoneStatus === 'available' ? 'border-green-400 focus:ring-green-300' : ''
+                  }`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {phoneStatus === 'checking' && <Loader size={15} className="text-gray-400 animate-spin" />}
+                  {phoneStatus === 'available' && <CheckCircle size={15} className="text-green-500" />}
+                  {phoneStatus === 'taken' && <XCircle size={15} className="text-red-500" />}
+                </span>
+              </div>
               <p className="text-xs text-gray-400 mt-1">Nigerian numbers: 080, 081, 090, 070, etc.</p>
+              {phoneStatus === 'taken' && <p className="text-red-500 text-xs mt-1">Phone number already registered</p>}
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
             </div>
 
