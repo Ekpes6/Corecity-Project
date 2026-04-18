@@ -4,9 +4,13 @@ import com.corecity.property.dto.PropertyDTOs.*;
 import com.corecity.property.service.ReservationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +20,9 @@ import java.util.Map;
 public class ReservationController {
 
     private final ReservationService reservationService;
+
+    @Value("${paystack.secret-key}")
+    private String paystackSecretKey;
 
     /**
      * Initiate a ₦1,000 reservation on an ACTIVE property.
@@ -35,30 +42,45 @@ public class ReservationController {
 
     /**
      * Paystack webhook callback for reservation payments.
-     * Called by Paystack when a reservation fee payment is confirmed.
+     * Validates HMAC-SHA512 signature before processing.
      *
      * POST /api/v1/reservations/webhook/paystack
      */
     @PostMapping("/api/v1/reservations/webhook/paystack")
     public ResponseEntity<Void> webhook(
-            @RequestBody Map<String, Object> payload,
+            @RequestBody String rawBody,
             @RequestHeader(value = "x-paystack-signature", required = false) String signature) {
-        // In production, validate HMAC-SHA512 signature before processing.
-        String event = (String) payload.getOrDefault("event", "");
-        if ("charge.success".equals(event)) {
+
+        // Verify HMAC-SHA512 signature to prevent spoofed events
+        if (!isValidPaystackSignature(rawBody, signature)) {
+            log.warn("Reservation webhook: invalid or missing signature — rejected");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper =
+                new com.fasterxml.jackson.databind.ObjectMapper();
             @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) payload.get("data");
-            if (data != null) {
-                String reference = (String) data.get("reference");
-                if (reference != null && reference.startsWith("RSV-")) {
-                    try {
-                        reservationService.activateReservation(reference);
-                    } catch (Exception e) {
-                        log.warn("Could not activate reservation for ref {}: {}", reference, e.getMessage());
+            Map<String, Object> payload = mapper.readValue(rawBody, Map.class);
+            String event = (String) payload.getOrDefault("event", "");
+            if ("charge.success".equals(event)) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> data = (Map<String, Object>) payload.get("data");
+                if (data != null) {
+                    String reference = (String) data.get("reference");
+                    if (reference != null && reference.startsWith("RSV-")) {
+                        try {
+                            reservationService.activateReservation(reference);
+                        } catch (Exception e) {
+                            log.warn("Could not activate reservation for ref {}: {}", reference, e.getMessage());
+                        }
                     }
                 }
             }
+        } catch (Exception e) {
+            log.error("Failed to process reservation webhook body", e);
         }
+
         return ResponseEntity.ok().build();
     }
 
@@ -84,5 +106,34 @@ public class ReservationController {
             @RequestHeader("X-User-Id") Long userId,
             @RequestHeader("X-User-Role") String userRole) {
         return ResponseEntity.ok(reservationService.getActiveReservation(id, userId, userRole));
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────────
+
+    /**
+     * Verifies the Paystack webhook HMAC-SHA512 signature.
+     * Uses constant-time comparison to prevent timing attacks.
+     */
+    private boolean isValidPaystackSignature(String rawBody, String receivedSignature) {
+        if (receivedSignature == null || receivedSignature.isBlank()) return false;
+        try {
+            Mac mac = Mac.getInstance("HmacSHA512");
+            mac.init(new SecretKeySpec(
+                paystackSecretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA512"));
+            byte[] digest = mac.doFinal(rawBody.getBytes(StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) sb.append(String.format("%02x", b));
+            String expected = sb.toString();
+            if (expected.length() != receivedSignature.length()) return false;
+            // Constant-time comparison
+            int diff = 0;
+            for (int i = 0; i < expected.length(); i++) {
+                diff |= expected.charAt(i) ^ receivedSignature.charAt(i);
+            }
+            return diff == 0;
+        } catch (Exception e) {
+            log.error("Reservation webhook signature verification error", e);
+            return false;
+        }
     }
 }
