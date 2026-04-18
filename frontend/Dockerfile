@@ -1,8 +1,8 @@
 FROM node:20-alpine AS build
 WORKDIR /app
-COPY package.json ./
+COPY package.json package-lock.json* ./
 COPY .npmrc ./
-RUN npm install
+RUN npm ci --prefer-offline
 COPY . .
 ENV CI=true
 ENV GENERATE_SOURCEMAP=false
