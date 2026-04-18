@@ -22,4 +22,6 @@ public interface AgentSubscriptionRepository extends JpaRepository<AgentSubscrip
 
     /** Count how many active subscriptions an agent has (should be 0 or 1). */
     int countByAgentIdAndStatus(Long agentId, AgentSubscription.SubscriptionStatus status);
+
+    Optional<AgentSubscription> findByPaymentReference(String paymentReference);
 }
