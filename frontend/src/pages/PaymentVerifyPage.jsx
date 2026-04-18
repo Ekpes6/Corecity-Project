@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { transactionAPI } from '../services/api';
+import { transactionAPI, reservationAPI } from '../services/api';
 import { formatNaira } from '../utils/nigeria';
 
 export default function PaymentVerifyPage() {
@@ -9,16 +9,29 @@ export default function PaymentVerifyPage() {
   const reference = searchParams.get('reference') || searchParams.get('trxref');
   const [status, setStatus]         = useState('loading'); // loading | success | failed
   const [transaction, setTransaction] = useState(null);
+  const [reservation, setReservation] = useState(null);
+
+  const isReservation = reference?.startsWith('RSV-');
 
   useEffect(() => {
     if (!reference) { setStatus('failed'); return; }
-    transactionAPI.verify(reference)
-      .then(({ data }) => {
-        setTransaction(data);
-        setStatus(data.status === 'SUCCESS' ? 'success' : 'failed');
-      })
-      .catch(() => setStatus('failed'));
-  }, [reference]);
+
+    if (isReservation) {
+      reservationAPI.getByReference(reference)
+        .then(({ data }) => {
+          setReservation(data);
+          setStatus(data.status === 'ACTIVE' ? 'success' : 'failed');
+        })
+        .catch(() => setStatus('failed'));
+    } else {
+      transactionAPI.verify(reference)
+        .then(({ data }) => {
+          setTransaction(data);
+          setStatus(data.status === 'SUCCESS' ? 'success' : 'failed');
+        })
+        .catch(() => setStatus('failed'));
+    }
+  }, [reference, isReservation]);
 
   if (status === 'loading') return (
     <div className="min-h-screen flex items-center justify-center">
