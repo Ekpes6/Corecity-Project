@@ -56,14 +56,23 @@ public class ReservationService {
                 "Property is not available for reservation (status: " + property.getStatus() + ")");
         }
 
-        // Prevent duplicate active/pending-payment reservations by the same customer
-        boolean alreadyReserved = reservationRepository.existsByPropertyIdAndCustomerIdAndStatusIn(
-            propertyId, customerId,
-            List.of(Reservation.ReservationStatus.PENDING_PAYMENT, Reservation.ReservationStatus.ACTIVE)
+        // Block if this customer already has a confirmed (ACTIVE) reservation on this property
+        boolean alreadyActive = reservationRepository.existsByPropertyIdAndCustomerIdAndStatusIn(
+            propertyId, customerId, List.of(Reservation.ReservationStatus.ACTIVE)
         );
-        if (alreadyReserved) {
+        if (alreadyActive) {
             throw new ResponseStatusException(CONFLICT, "You already have an active reservation on this property");
         }
+
+        // If a previous PENDING_PAYMENT exists (i.e. a failed/abandoned attempt), cancel it so the
+        // user can retry without being permanently blocked.
+        reservationRepository.findByPropertyIdAndCustomerIdAndStatus(
+                propertyId, customerId, Reservation.ReservationStatus.PENDING_PAYMENT)
+            .ifPresent(old -> {
+                old.setStatus(Reservation.ReservationStatus.EXPIRED);
+                reservationRepository.save(old);
+                log.info("Cancelled stale PENDING_PAYMENT reservation {} to allow retry", old.getId());
+            });
 
         // Only one customer can hold an ACTIVE reservation at a time
         boolean propertyAlreadyOnNegotiation = reservationRepository
@@ -180,6 +189,37 @@ public class ReservationService {
         if (userId == null) return false;
         return reservationRepository.existsByPropertyIdAndCustomerIdAndStatusIn(
             propertyId, userId, List.of(Reservation.ReservationStatus.ACTIVE));
+    }
+
+    /**
+     * Retrieve a reservation by its Paystack reference.  Only the owner of the reservation
+     * may call this — used by the payment verification page to determine the outcome.
+     */
+    @Transactional(readOnly = true)
+    public ReservationResponse getByReference(String reference, Long requesterId) {
+        Reservation r = reservationRepository.findByPaymentReference(reference)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Reservation not found"));
+        if (!r.getCustomerId().equals(requesterId)) {
+            throw new ResponseStatusException(FORBIDDEN, "Access denied");
+        }
+        return toResponse(r);
+    }
+
+    /**
+     * Scheduled task: expire PENDING_PAYMENT reservations older than 1 hour (abandoned payments).
+     * Runs every hour so they never permanently block a property for other users.
+     */
+    @Scheduled(fixedDelay = 3_600_000)
+    @Transactional
+    public void expireStalePendingPayments() {
+        LocalDateTime cutoff = LocalDateTime.now().minusHours(1);
+        List<Reservation> stale = reservationRepository.findStalePendingPayment(cutoff);
+        if (stale.isEmpty()) return;
+        log.info("Expiring {} stale PENDING_PAYMENT reservation(s)", stale.size());
+        for (Reservation r : stale) {
+            r.setStatus(Reservation.ReservationStatus.EXPIRED);
+            reservationRepository.save(r);
+        }
     }
 
     /**
