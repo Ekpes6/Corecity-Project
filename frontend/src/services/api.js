@@ -94,6 +94,7 @@ export const reservationAPI = {
   reserve:          (propertyId) => api.post(`/properties/${propertyId}/reserve`),
   getMine:          ()           => api.get('/reservations/my'),
   getForProperty:   (propertyId) => api.get(`/properties/${propertyId}/reservation`),
+  getByReference:   (reference)  => api.get(`/reservations/by-reference/${reference}`),
 };
 
 // ─── Reputation ──────────────────────────────────────────────
