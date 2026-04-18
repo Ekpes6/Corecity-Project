@@ -9,8 +9,11 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Map;
 import java.util.Objects;
@@ -24,11 +27,12 @@ public class AuthService {
     private final JwtUtil jwtUtil;
     private final RabbitTemplate rabbitTemplate;
 
+    @Transactional
     public AuthResponse register(RegisterRequest req) {
         if (userRepository.existsByEmail(req.getEmail()))
-            throw new RuntimeException("Email already registered");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         if (userRepository.existsByPhone(req.getPhone()))
-            throw new RuntimeException("Phone number already registered");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already registered");
 
         var builtUser = User.builder()
             .email(req.getEmail())
@@ -95,6 +99,11 @@ public class AuthService {
         User user = userRepository.findById(safeUserId)
             .orElseThrow(() -> new RuntimeException("User not found"));
         return toDTO(user);
+    }
+
+    /** Returns whether a phone number is available for registration. */
+    public boolean isPhoneAvailable(String phone) {
+        return !userRepository.existsByPhone(phone);
     }
 
     public UserDTO updateProfile(Long userId, UpdateProfileRequest req) {
