@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.corecity.property.dto.PropertyDTOs.*;
 import com.corecity.property.entity.Property;
+import com.corecity.property.entity.PropertyFile;
+import com.corecity.property.repository.PropertyFileRepository;
 import com.corecity.property.repository.PropertyRepository;
 import com.corecity.property.repository.ReservationRepository;
 import com.corecity.property.entity.Reservation;
@@ -28,6 +30,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class PropertyService {
 
     private final PropertyRepository propertyRepository;
+    private final PropertyFileRepository propertyFileRepository;
     private final LocationService locationService;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
