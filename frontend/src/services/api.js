@@ -87,6 +87,7 @@ export const subscriptionAPI = {
   repayLoan:      (loanId, data) => api.post(`/subscriptions/loans/${loanId}/repay`, data),
   getLoanProgram: ()             => api.get('/subscriptions/loan-program/my'),
   activeCheck:    ()             => api.get('/subscriptions/active-check'),
+  verify:         (reference)    => api.get(`/subscriptions/verify/${reference}`),
 };
 
 // ─── Reservations ────────────────────────────────────────────
