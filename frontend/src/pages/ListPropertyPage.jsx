@@ -110,11 +110,21 @@ export default function ListPropertyPage() {
         try {
           const { data: uploadResult } = await fileAPI.uploadBatch(property.id, images);
           const uploadedUrls = (uploadResult.uploaded || []).map((f) => f.fileUrl).filter(Boolean);
-          if (uploadedUrls.length > 0) {
+          const uploadErrors = uploadResult.errors || [];
+
+          if (uploadedUrls.length === 0 && uploadErrors.length > 0) {
+            // All files failed to upload (R2/storage error)
+            console.error('Image upload errors:', uploadErrors);
+            toast.error(`Images failed to upload: ${uploadErrors[0]}. Edit the listing to retry.`);
+          } else if (uploadedUrls.length > 0) {
             await propertyAPI.registerFiles(property.id, uploadedUrls);
+            if (uploadErrors.length > 0) {
+              toast(`${uploadedUrls.length} image(s) uploaded; ${uploadErrors.length} failed.`, { icon: '⚠️' });
+            }
           }
-        } catch {
-          toast.error('Property created but image upload failed. Edit to add images.');
+        } catch (uploadErr) {
+          console.error('Upload/register error:', uploadErr);
+          toast.error(uploadErr.response?.data?.message || 'Property created but image upload failed. Edit to add images.');
         }
       }
 
