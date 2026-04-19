@@ -51,6 +51,8 @@ public class SubscriptionDTOs {
         private boolean isLoan;
         private int maxListings;
         private LocalDateTime createdAt;
+        /** Only populated for PENDING_PAYMENT status — lets the frontend resume payment. */
+        private String authorizationUrl;
     }
 
     // ── Plan info (public catalogue) ─────────────────────────────────────────

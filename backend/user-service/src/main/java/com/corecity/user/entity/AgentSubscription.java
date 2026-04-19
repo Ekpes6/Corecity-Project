@@ -58,6 +58,14 @@ public class AgentSubscription {
     @Column(name = "payment_reference")
     private String paymentReference;
 
+    /**
+     * The Paystack authorization URL for this subscription.
+     * Stored so that if the gateway times out returning the response, the
+     * user can still be redirected to complete payment on a retry.
+     */
+    @Column(name = "authorization_url", length = 512)
+    private String authorizationUrl;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;

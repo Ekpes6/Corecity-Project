@@ -24,4 +24,14 @@ public interface AgentSubscriptionRepository extends JpaRepository<AgentSubscrip
     int countByAgentIdAndStatus(Long agentId, AgentSubscription.SubscriptionStatus status);
 
     Optional<AgentSubscription> findByPaymentReference(String paymentReference);
+
+    /**
+     * Idempotency check: find an existing PENDING_PAYMENT subscription for the
+     * same agent/plan/loan combination so retries don't create duplicates.
+     */
+    Optional<AgentSubscription> findFirstByAgentIdAndPlanAndStatusAndLoan(
+            Long agentId,
+            AgentSubscription.SubscriptionPlan plan,
+            AgentSubscription.SubscriptionStatus status,
+            boolean loan);
 }
