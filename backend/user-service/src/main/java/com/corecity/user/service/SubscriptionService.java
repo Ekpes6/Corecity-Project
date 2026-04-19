@@ -147,6 +147,31 @@ public class SubscriptionService {
             trialNumber = loanProgram.getTotalTrialsCompleted() + 1;
         }
 
+        // ── Idempotency: return existing PENDING_PAYMENT sub rather than creating a duplicate ─
+        // This handles the case where the gateway timed out returning the first response.
+        Optional<AgentSubscription> existingPending = subscriptionRepo
+            .findFirstByAgentIdAndPlanAndStatusAndLoan(agentId, plan, SubscriptionStatus.PENDING_PAYMENT, useLoan);
+        if (existingPending.isPresent()) {
+            AgentSubscription ex = existingPending.get();
+            String url = ex.getAuthorizationUrl();
+            if (url == null || url.isBlank()) {
+                // URL was never stored (old row) — re-initialize Paystack
+                url = initPaystackPayment(agentEmail, ex.getAmountPaid(), ex.getPaymentReference(),
+                    Map.of("subscriptionId", ex.getId(), "plan", plan.name(), "agentId", agentId));
+                ex.setAuthorizationUrl(url);
+                subscriptionRepo.save(ex);
+            }
+            return SubscriptionInitResponse.builder()
+                .subscriptionId(ex.getId())
+                .plan(plan.name())
+                .amountDue(ex.getAmountPaid())
+                .paymentReference(ex.getPaymentReference())
+                .authorizationUrl(url)
+                .isLoan(useLoan)
+                .status(ex.getStatus().name())
+                .build();
+        }
+
         String reference = "SUB-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         LocalDate today = LocalDate.now();
 
@@ -164,6 +189,10 @@ public class SubscriptionService {
 
         String authorizationUrl = initPaystackPayment(agentEmail, amount, reference,
             Map.of("subscriptionId", subscription.getId(), "plan", plan.name(), "agentId", agentId));
+
+        // Store the URL so retries can recover it without calling Paystack again
+        subscription.setAuthorizationUrl(authorizationUrl);
+        subscriptionRepo.save(subscription);
 
         // ── Loan created as PENDING — only activated after payment confirmed ──
         if (useLoan) {
@@ -440,6 +469,7 @@ public class SubscriptionService {
             .status(s.getStatus().name()).isLoan(s.isLoan())
             .maxListings(s.getPlan().maxListings)
             .createdAt(s.getCreatedAt())
+            .authorizationUrl(s.getStatus() == SubscriptionStatus.PENDING_PAYMENT ? s.getAuthorizationUrl() : null)
             .build();
     }
 

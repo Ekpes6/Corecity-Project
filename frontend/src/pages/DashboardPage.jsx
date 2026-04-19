@@ -633,9 +633,10 @@ function SubscriptionPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const activeSub   = mySubs.find((s) => s.status === 'ACTIVE');
-  const activeLoan  = myLoans.find((l) => l.status === 'ACTIVE');
+  const activeSub    = mySubs.find((s) => s.status === 'ACTIVE');
+  const activeLoan   = myLoans.find((l) => l.status === 'ACTIVE');
   const pendingLoans = myLoans.filter((l) => l.status === 'PENDING');
+  const pendingSubs  = mySubs.filter((s) => s.status === 'PENDING_PAYMENT' && s.authorizationUrl);
   // Locked when any active product exists
   const hasActiveProduct = !!activeSub || !!activeLoan;
 
@@ -655,6 +656,23 @@ function SubscriptionPage() {
       }
     } catch (err) {
       const status = err.response?.status;
+      // 503/502: gateway timed out but backend may have saved the sub and
+      // initialized Paystack already — recover by finding the pending sub.
+      if (status === 503 || status === 502) {
+        try {
+          const { data: subs } = await subscriptionAPI.getMine();
+          const pending = subs.find((s) =>
+            s.status === 'PENDING_PAYMENT' &&
+            s.plan === planName &&
+            s.isLoan === useLoan &&
+            s.authorizationUrl
+          );
+          if (pending) {
+            window.location.href = pending.authorizationUrl;
+            return;
+          }
+        } catch { /* ignore — fall through to toast */ }
+      }
       const msg = status === 409 ? err.response.data?.message || 'You already have an active plan'
                 : status === 400 ? err.response.data?.message || 'Invalid request'
                 : err.response?.data?.message || 'Subscription failed';
@@ -758,6 +776,24 @@ function SubscriptionPage() {
               {repaying === activeLoan.id ? <RefreshCw size={14} className="animate-spin" /> : <RotateCcw size={14} />}
               Repay Now
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pending subscriptions (incomplete payment — Paystack never launched) */}
+      {pendingSubs.length > 0 && (
+        <div className="card p-4 bg-yellow-50 border border-yellow-200 text-sm text-yellow-800 flex items-start gap-2">
+          <RefreshCw size={14} className="shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium">{pendingSubs.length} subscription payment{pendingSubs.length > 1 ? 's' : ''} incomplete — Paystack may not have launched.</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {pendingSubs.map((s) => (
+                <a key={s.id} href={s.authorizationUrl}
+                  className="inline-flex items-center gap-1 text-xs font-semibold bg-yellow-800 text-yellow-50 px-3 py-1.5 rounded-full hover:bg-yellow-900">
+                  Resume {s.plan}{s.isLoan ? ' (Loan)' : ''} →
+                </a>
+              ))}
+            </div>
           </div>
         </div>
       )}
