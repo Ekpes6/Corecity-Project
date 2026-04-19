@@ -149,6 +149,13 @@ export function RegisterPage() {
           return;
         } catch {
           // Account wasn't created — show the original error
+          localStorage.setItem('hl_token', data.accessToken);
+          localStorage.setItem('hl_user', JSON.stringify(data.user));
+          toast.success('Account created! Welcome to Corecity \uD83C\uDFE0');
+          navigate('/dashboard');
+          return;
+        } catch {
+          // Account wasn't created — show the original error
         }
       }
       toast.error(result.error);
