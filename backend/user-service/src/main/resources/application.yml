@@ -19,6 +19,22 @@ spring:
     port: ${SPRING_RABBITMQ_PORT:5672}
     username: ${SPRING_RABBITMQ_USERNAME}
     password: ${SPRING_RABBITMQ_PASSWORD}
+    connection-timeout: 10000
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 5000
+          max-attempts: 10
+          multiplier: 2.0
+          max-interval: 60000
+        default-requeue-rejected: false
+    template:
+      retry:
+        enabled: true
+        initial-interval: 2000
+        max-attempts: 5
+        multiplier: 2.0
 
 jwt:
   # No default — the application will refuse to start if JWT_SECRET is absent.

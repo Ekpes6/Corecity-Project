@@ -94,10 +94,14 @@ resilience4j:
     configs:
       default:
         slidingWindowSize: 10
-        failureRateThreshold: 50
-        waitDurationInOpenState: 15s
-        permittedNumberOfCallsInHalfOpenState: 5
+        failureRateThreshold: 60
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
         automaticTransitionFromOpenToHalfOpenEnabled: true
+        recordExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+          - org.springframework.cloud.gateway.support.NotFoundException
     instances:
       user-service-cb:
         baseConfig: default
