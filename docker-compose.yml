@@ -2,6 +2,7 @@
   # â”€â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   mysql:
     image: mysql:8.0
+    command: --max_allowed_packet=256M --net_read_timeout=600 --net_write_timeout=600
     container_name: corecity-mysql
     restart: unless-stopped
     environment:

@@ -134,6 +134,16 @@ export function RegisterPage() {
       toast.success('Account created! Welcome to Corecity 🏠');
       navigate('/dashboard');
     } else {
+      // If the server returned 503/502 but the account may have been created,
+      // try logging in with the same credentials before showing a hard error.
+      if (result.statusCode === 503 || result.statusCode === 502) {
+        const loginResult = await authRegister({ ...payload, _loginFallback: true });
+        if (loginResult.success) {
+          toast.success('Account created! Welcome to Corecity 🏠');
+          navigate('/dashboard');
+          return;
+        }
+      }
       toast.error(result.error);
     }
   };
