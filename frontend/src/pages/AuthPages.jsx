@@ -101,18 +101,26 @@ export function RegisterPage() {
     const normalized = normalizePhone(raw);
     if (!normalized || normalized.length < 14) {
       setPhoneStatus(null);
+      clearTimeout(phoneDebounceRef.current);
       return;
     }
-    setPhoneStatus('checking');
     clearTimeout(phoneDebounceRef.current);
+    setPhoneStatus('checking');
+    let cancelled = false;
     phoneDebounceRef.current = setTimeout(async () => {
       try {
         const { data } = await authAPI.checkPhone(normalized);
-        setPhoneStatus(data.available ? 'available' : 'taken');
+        if (!cancelled) {
+          setPhoneStatus(data.available === true ? 'available' : 'taken');
+        }
       } catch {
-        setPhoneStatus(null);
+        if (!cancelled) {
+          // API failure — do NOT assume number exists; stay neutral
+          setPhoneStatus(null);
+        }
       }
     }, 350);
+    return () => { cancelled = true; };
   }, [watchedPhone]);
 
   const onSubmit = async (data) => {

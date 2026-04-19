@@ -18,9 +18,15 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
+      const hadToken = localStorage.getItem('hl_token');
       localStorage.removeItem('hl_token');
       localStorage.removeItem('hl_user');
-      window.location.href = '/login';
+      // Only redirect to login when the user was actually authenticated
+      // (token existed). Avoids redirecting unauthenticated users who call
+      // public endpoints that are misconfigured or temporarily unavailable.
+      if (hadToken) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }
