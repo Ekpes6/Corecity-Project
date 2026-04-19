@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }) => {
       const status = err.response?.status;
       const msg = status === 429 ? 'Too many attempts — wait a minute and try again'
                 : err.response?.data?.message || 'Registration failed';
-      return { success: false, error: msg };
+      return { success: false, error: msg, statusCode: status };
     } finally {
       setLoading(false);
     }

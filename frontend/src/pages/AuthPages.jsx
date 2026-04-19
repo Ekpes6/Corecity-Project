@@ -131,17 +131,24 @@ export function RegisterPage() {
     }
     const result = await authRegister(payload);
     if (result.success) {
-      toast.success('Account created! Welcome to Corecity 🏠');
+      toast.success('Account created! Welcome to Corecity \uD83C\uDFE0');
       navigate('/dashboard');
     } else {
-      // If the server returned 503/502 but the account may have been created,
-      // try logging in with the same credentials before showing a hard error.
+      // 503/502 means the gateway timed out but the account may have been
+      // saved. Try logging in — if it works, the account exists.
       if (result.statusCode === 503 || result.statusCode === 502) {
-        const loginResult = await authRegister({ ...payload, _loginFallback: true });
-        if (loginResult.success) {
-          toast.success('Account created! Welcome to Corecity 🏠');
+        try {
+          const { data } = await authAPI.login({
+            emailOrPhone: payload.email,
+            password: payload.password,
+          });
+          localStorage.setItem('hl_token', data.accessToken);
+          localStorage.setItem('hl_user', JSON.stringify(data.user));
+          toast.success('Account created! Welcome to Corecity \uD83C\uDFE0');
           navigate('/dashboard');
           return;
+        } catch {
+          // Account wasn't created — show the original error
         }
       }
       toast.error(result.error);
