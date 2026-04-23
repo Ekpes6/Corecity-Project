@@ -649,9 +649,15 @@ function SubscriptionPage() {
       }
       const { data } = await subscriptionAPI.subscribe(payload);
       if (data.authorizationUrl) {
+        // Standard subscription — redirect to Paystack
         window.location.href = data.authorizationUrl;
       } else {
-        toast.success('Subscription activated!');
+        // Loan subscription — activated immediately, no payment step now
+        toast.success(
+          useLoan
+            ? `${planName} loan subscription activated! Repay within 30 days to maintain full access.`
+            : 'Subscription activated!'
+        );
         load();
       }
     } catch (err) {
@@ -685,12 +691,11 @@ function SubscriptionPage() {
   const handleRepay = async (loanId) => {
     setRepaying(loanId);
     try {
-      const { data } = await subscriptionAPI.repayLoan(loanId, {});
+      const { data } = await subscriptionAPI.repayLoan(loanId);
       if (data.authorizationUrl) {
         window.location.href = data.authorizationUrl;
       } else {
-        toast.success('Loan repayment initiated');
-        load();
+        toast.error('Payment gateway did not return a URL — please try again');
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Repayment failed');
