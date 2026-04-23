@@ -51,10 +51,16 @@ public class PropertyService {
 
         // ── Subscription/loan gate for AGENT and SELLER ───────────────────────
         if ("AGENT".equalsIgnoreCase(userRole) || "SELLER".equalsIgnoreCase(userRole)) {
-            if (!userServiceClient.hasActiveProduct(safeOwnerId)) {
+            String accessLevel = userServiceClient.getAccessLevel(safeOwnerId);
+            if ("NONE".equals(accessLevel)) {
                 throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.FORBIDDEN,
                     "You must have an active subscription or loan to list a property");
+            }
+            if ("RESTRICTED".equals(accessLevel)) {
+                throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "Your loan is overdue. Please repay your outstanding loan before listing new properties.");
             }
         }
 
