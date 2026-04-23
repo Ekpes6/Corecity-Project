@@ -530,7 +530,7 @@ public class SubscriptionService {
                 loanRepo.save(loan);
                 // Also expire the associated loan-based subscription
                 if (loan.getSubscriptionId() != null) {
-                    subscriptionRepo.findById(loan.getSubscriptionId()).ifPresent(sub -> {
+                    subscriptionRepo.findById(Objects.requireNonNull(loan.getSubscriptionId())).ifPresent(sub -> {
                         if (sub.getStatus() == SubscriptionStatus.ACTIVE) {
                             sub.setStatus(SubscriptionStatus.EXPIRED);
                             subscriptionRepo.save(sub);
