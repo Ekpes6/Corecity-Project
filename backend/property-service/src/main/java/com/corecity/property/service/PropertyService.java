@@ -146,7 +146,7 @@ public class PropertyService {
         List<PropertyResponse> filtered = properties.getContent().stream()
             .filter(p -> !restrictedOwners.contains(p.getOwnerId()))
             .map(this::toResponse)
-            .collect(Collectors.toList());
+            .toList();
 
         return new org.springframework.data.domain.PageImpl<>(
             filtered,
