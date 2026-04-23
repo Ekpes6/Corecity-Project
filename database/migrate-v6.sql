@@ -61,7 +61,7 @@ PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 UPDATE agent_subscriptions
 SET status = 'CANCELLED'
 WHERE status = 'PENDING_PAYMENT'
-  AND loan = 1
+  AND is_loan = 1
   AND (authorization_url IS NULL OR authorization_url = '');
 
 -- Mark legacy PENDING loans as DEFAULTED (loan program not started)
