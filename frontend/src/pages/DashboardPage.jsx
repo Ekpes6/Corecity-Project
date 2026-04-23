@@ -662,15 +662,23 @@ function SubscriptionPage() {
       }
     } catch (err) {
       const status = err.response?.status;
-      // 503/502: gateway timed out but backend may have saved the sub and
-      // initialized Paystack already — recover by finding the pending sub.
+      // 503/502: gateway timed out. For loan path, backend may have activated already — just reload.
+      // For standard path, recover by finding the pending sub with the Paystack URL.
       if (status === 503 || status === 502) {
+        if (useLoan) {
+          // Check if subscription was actually activated despite the timeout
+          try {
+            await load();
+          } catch { /* ignore */ }
+          toast('Network issue — please check your subscription status below', { icon: '⚠️' });
+          return;
+        }
         try {
           const { data: subs } = await subscriptionAPI.getMine();
           const pending = subs.find((s) =>
             s.status === 'PENDING_PAYMENT' &&
             s.plan === planName &&
-            s.isLoan === useLoan &&
+            s.isLoan === false &&
             s.authorizationUrl
           );
           if (pending) {
