@@ -85,8 +85,10 @@ public class SubscriptionController {
     /**
      * Paystack webhook — POST /api/v1/subscriptions/webhook/paystack.
      * Validates HMAC-SHA512 signature before processing. Handles:
-     *   charge.success  → activate subscription (and loan if applicable)
-     *   charge.failed   → mark subscription as FAILED
+     *   charge.success on SUB-* → activate subscription (standard subscriptions only)
+     *   charge.failed  on SUB-* → mark subscription as FAILED
+     *   charge.success on REP-* → confirm loan repayment, advance trial cycle
+     *   charge.failed  on REP-* → mark repayment as FAILED so agent can retry
      */
     @PostMapping("/webhook/paystack")
     public ResponseEntity<Void> webhook(
@@ -109,11 +111,19 @@ public class SubscriptionController {
 
             if (data != null) {
                 String reference = (String) data.get("reference");
-                if (reference != null && reference.startsWith("SUB-")) {
-                    if ("charge.success".equals(event)) {
-                        subscriptionService.activateSubscription(reference);
-                    } else if ("charge.failed".equals(event)) {
-                        subscriptionService.failSubscription(reference);
+                if (reference != null) {
+                    if (reference.startsWith("SUB-")) {
+                        if ("charge.success".equals(event)) {
+                            subscriptionService.activateSubscription(reference);
+                        } else if ("charge.failed".equals(event)) {
+                            subscriptionService.failSubscription(reference);
+                        }
+                    } else if (reference.startsWith("REP-")) {
+                        if ("charge.success".equals(event)) {
+                            subscriptionService.confirmLoanRepayment(reference);
+                        } else if ("charge.failed".equals(event)) {
+                            subscriptionService.failLoanRepayment(reference);
+                        }
                     }
                 }
             }
@@ -133,13 +143,17 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.getMyLoans(userId));
     }
 
-    /** POST /api/v1/subscriptions/loans/{loanId}/repay — record a repayment */
+    /**
+     * POST /api/v1/subscriptions/loans/{loanId}/repay — initiate Paystack repayment.
+     * Returns an authorization URL for the agent to complete payment via Paystack.
+     * On charge.success webhook (REP- reference), the loan is marked REPAID automatically.
+     */
     @PostMapping("/loans/{loanId}/repay")
-    public ResponseEntity<LoanResponse> repay(
+    public ResponseEntity<LoanRepayInitResponse> repay(
             @PathVariable Long loanId,
-            @RequestParam BigDecimal amount,
-            @RequestHeader("X-User-Id") Long userId) {
-        return ResponseEntity.ok(subscriptionService.repayLoan(loanId, amount, userId));
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Email") String userEmail) {
+        return ResponseEntity.ok(subscriptionService.initiateLoanRepayment(loanId, userId, userEmail));
     }
 
     // ── Loan Program ──────────────────────────────────────────────────────────
