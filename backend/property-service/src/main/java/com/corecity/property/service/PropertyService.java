@@ -168,6 +168,18 @@ public class PropertyService {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
+
+        // Hide properties from public view when owner's loan is OVERDUE (RESTRICTED)
+        // Allow the owner themselves and admins to still see it
+        boolean isOwner = requesterId != null && requesterId.equals(property.getOwnerId());
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(requesterRole);
+        if (!isOwner && !isAdmin) {
+            String ownerAccessLevel = userServiceClient.getAccessLevel(property.getOwnerId());
+            if ("RESTRICTED".equals(ownerAccessLevel)) {
+                throw new ResponseStatusException(NOT_FOUND, "Property not found");
+            }
+        }
+
         propertyRepository.incrementViews(safeId);
         property.setViewsCount(property.getViewsCount() + 1);
         return toResponse(property, requesterId, requesterRole);
