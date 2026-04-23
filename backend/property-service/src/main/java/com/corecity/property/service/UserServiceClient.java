@@ -30,20 +30,38 @@ public class UserServiceClient {
      * to prevent listing without a verified active product.
      */
     public boolean hasActiveProduct(Long userId) {
+        ActiveProductResponse response = getActiveProductResponse(userId);
+        return response != null && response.isHasActiveProduct();
+    }
+
+    /**
+     * Returns the access level for a user:
+     *   FULL        — active subscription or repaid loan
+     *   LIMITED     — loan ACTIVE (unpaid)
+     *   RESTRICTED  — loan OVERDUE
+     *   NONE        — no active product
+     * Defaults to NONE on any error.
+     */
+    public String getAccessLevel(Long userId) {
+        ActiveProductResponse response = getActiveProductResponse(userId);
+        if (response == null || response.getAccessLevel() == null) return "NONE";
+        return response.getAccessLevel();
+    }
+
+    private ActiveProductResponse getActiveProductResponse(Long userId) {
         try {
-            ActiveProductResponse response = webClient.get()
+            return webClient.get()
                 .uri("/api/v1/subscriptions/active-check")
                 .header("X-User-Id", userId.toString())
                 .retrieve()
                 .bodyToMono(ActiveProductResponse.class)
                 .block();
-            return response != null && response.isHasActiveProduct();
         } catch (WebClientResponseException e) {
             log.warn("user-service active-check returned {}: {}", e.getStatusCode(), e.getMessage());
-            return false;
+            return null;
         } catch (Exception e) {
             log.error("user-service active-check failed: {}", e.getMessage());
-            return false;
+            return null;
         }
     }
 
@@ -51,10 +69,13 @@ public class UserServiceClient {
     public static class ActiveProductResponse {
         private boolean hasActiveProduct;
         private String productType;
+        private String accessLevel;
 
         public boolean isHasActiveProduct() { return hasActiveProduct; }
         public void setHasActiveProduct(boolean v) { hasActiveProduct = v; }
         public String getProductType() { return productType; }
         public void setProductType(String v) { productType = v; }
+        public String getAccessLevel() { return accessLevel; }
+        public void setAccessLevel(String v) { accessLevel = v; }
     }
 }
