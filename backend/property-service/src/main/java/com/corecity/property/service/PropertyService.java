@@ -149,8 +149,8 @@ public class PropertyService {
             .toList();
 
         return new org.springframework.data.domain.PageImpl<>(
-            filtered,
-            pageable,
+            Objects.requireNonNull(filtered),
+            Objects.requireNonNull(pageable),
             properties.getTotalElements() - restrictedOwners.stream()
                 .mapToLong(ownerId -> properties.getContent().stream()
                     .filter(p -> p.getOwnerId().equals(ownerId)).count())
