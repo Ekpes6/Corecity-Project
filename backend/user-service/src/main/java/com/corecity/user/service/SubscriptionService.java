@@ -405,36 +405,96 @@ public class SubscriptionService {
 
     /** Record a loan repayment and advance the 13-trial cycle on full repayment. */
     @Transactional
-    public LoanResponse repayLoan(Long loanId, BigDecimal amount, Long agentId) {
+    public LoanRepayInitResponse initiateLoanRepayment(Long loanId, Long agentId, String agentEmail) {
         AgentLoan loan = loanRepo.findById(Objects.requireNonNull(loanId, "loanId must not be null"))
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
 
         if (!loan.getAgentId().equals(agentId))
             throw new ResponseStatusException(FORBIDDEN, "Access denied");
-        if (loan.getStatus() != AgentLoan.LoanStatus.ACTIVE)
-            throw new ResponseStatusException(BAD_REQUEST, "Loan is not in ACTIVE state");
-        if (amount.compareTo(BigDecimal.ZERO) <= 0)
-            throw new ResponseStatusException(BAD_REQUEST, "Repayment amount must be positive");
+        if (loan.getStatus() != AgentLoan.LoanStatus.ACTIVE && loan.getStatus() != AgentLoan.LoanStatus.OVERDUE)
+            throw new ResponseStatusException(BAD_REQUEST, "Loan is not repayable (status: " + loan.getStatus() + ")");
 
-        BigDecimal newRepaid = loan.getAmountRepaid().add(amount);
-        if (newRepaid.compareTo(loan.getLoanAmount()) >= 0) {
-            loan.setAmountRepaid(loan.getLoanAmount());
-            loan.setStatus(AgentLoan.LoanStatus.REPAID);
-            // Advance the 13-trial cycle on successful full repayment
-            if (loan.getLoanProgramId() != null) {
-                loanProgramRepo.findById(Objects.requireNonNull(loan.getLoanProgramId())).ifPresent(program -> {
-                    boolean advanced = program.recordSuccessfulRepayment();
-                    loanProgramRepo.save(program);
-                    if (advanced) {
-                        log.info("Agent {} advanced to loan level {}", agentId, program.getCurrentLevel());
-                    }
-                });
-            }
-        } else {
-            loan.setAmountRepaid(newRepaid);
+        // Idempotency: return existing Paystack URL if already initiated and not yet confirmed
+        if (loan.getRepaymentReference() != null && !loan.getRepaymentReference().isBlank()
+                && loan.getRepaymentStatus() == AgentLoan.RepaymentStatus.PENDING) {
+            return LoanRepayInitResponse.builder()
+                .loanId(loan.getId())
+                .repaymentReference(loan.getRepaymentReference())
+                .authorizationUrl(loan.getRepaymentAuthorizationUrl())
+                .amount(loan.getLoanAmount())
+                .build();
         }
+
+        String reference = "REP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
+        String authorizationUrl = initPaystackPayment(agentEmail, loan.getLoanAmount(), reference,
+            Map.of("loanId", loan.getId(), "agentId", agentId, "type", "LOAN_REPAYMENT"));
+
+        loan.setRepaymentReference(reference);
+        loan.setRepaymentAuthorizationUrl(authorizationUrl);
+        loan.setRepaymentStatus(AgentLoan.RepaymentStatus.PENDING);
         loanRepo.save(loan);
-        return toLoanResponse(loan);
+
+        log.info("Loan repayment {} initiated for loan {} (agent {})", reference, loanId, agentId);
+        return LoanRepayInitResponse.builder()
+            .loanId(loan.getId())
+            .repaymentReference(reference)
+            .authorizationUrl(authorizationUrl)
+            .amount(loan.getLoanAmount())
+            .build();
+    }
+
+    /**
+     * Confirm a loan repayment after Paystack webhook fires with charge.success on a REP- reference.
+     * Marks loan REPAID, subscription remains ACTIVE, advances the 13-trial cycle.
+     */
+    @Transactional
+    public void confirmLoanRepayment(String reference) {
+        AgentLoan loan = loanRepo.findByRepaymentReference(reference)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND,
+                "Loan not found for repayment reference: " + reference));
+
+        if (loan.getStatus() == AgentLoan.LoanStatus.REPAID) {
+            log.warn("Loan {} already REPAID; skipping duplicate webhook", loan.getId());
+            return;
+        }
+
+        loan.setAmountRepaid(loan.getLoanAmount());
+        loan.setStatus(AgentLoan.LoanStatus.REPAID);
+        loan.setRepaymentStatus(AgentLoan.RepaymentStatus.SUCCESS);
+        loanRepo.save(loan);
+        log.info("Loan {} fully repaid via reference {}", loan.getId(), reference);
+
+        // Advance the 13-trial cycle on successful repayment
+        if (loan.getLoanProgramId() != null) {
+            loanProgramRepo.findById(Objects.requireNonNull(loan.getLoanProgramId())).ifPresent(program -> {
+                boolean advanced = program.recordSuccessfulRepayment();
+                loanProgramRepo.save(program);
+                if (advanced) {
+                    log.info("Agent {} advanced to loan level {}", loan.getAgentId(), program.getCurrentLevel());
+                }
+            });
+        }
+
+        // Subscription remains ACTIVE — no change needed here
+        // Access level will automatically become FULL (no ACTIVE loan anymore)
+    }
+
+    /**
+     * Mark a loan repayment attempt as FAILED (Paystack charge.failed on a REP- reference).
+     * Clears the repayment reference so the agent can retry.
+     */
+    @Transactional
+    public void failLoanRepayment(String reference) {
+        loanRepo.findByRepaymentReference(reference).ifPresent(loan -> {
+            if (loan.getRepaymentStatus() == AgentLoan.RepaymentStatus.PENDING) {
+                loan.setRepaymentStatus(AgentLoan.RepaymentStatus.FAILED);
+                // Clear the reference so the agent can initiate a new payment
+                loan.setRepaymentReference(null);
+                loan.setRepaymentAuthorizationUrl(null);
+                loanRepo.save(loan);
+                log.info("Loan repayment {} failed for loan {}", reference, loan.getId());
+            }
+        });
     }
 
     // ── Loan Program ──────────────────────────────────────────────────────────
@@ -446,17 +506,43 @@ public class SubscriptionService {
 
     // ── Scheduler ─────────────────────────────────────────────────────────────
 
-    /** Expire subscriptions past their end date. Runs every 6 hours. */
+    /** Expire subscriptions past their end date, and mark loans past their due date as OVERDUE. Runs every 6 hours. */
     @Scheduled(fixedDelay = 21_600_000)
     @Transactional
     public void expireStaleSubscriptions() {
-        List<AgentSubscription> expired = subscriptionRepo.findExpiredActive(LocalDate.now());
-        if (expired.isEmpty()) return;
-        log.info("Expiring {} subscription(s)", expired.size());
-        expired.forEach(s -> {
-            s.setStatus(SubscriptionStatus.EXPIRED);
-            subscriptionRepo.save(s);
-        });
+        LocalDate today = LocalDate.now();
+
+        List<AgentSubscription> expired = subscriptionRepo.findExpiredActive(today);
+        if (!expired.isEmpty()) {
+            log.info("Expiring {} subscription(s)", expired.size());
+            expired.forEach(s -> {
+                s.setStatus(SubscriptionStatus.EXPIRED);
+                subscriptionRepo.save(s);
+            });
+        }
+
+        // Mark ACTIVE loans past their dueDate as OVERDUE
+        List<AgentLoan> overdueLoans = loanRepo.findOverdueActiveLoans(today);
+        if (!overdueLoans.isEmpty()) {
+            log.info("Marking {} loan(s) as OVERDUE", overdueLoans.size());
+            overdueLoans.forEach(loan -> {
+                loan.setStatus(AgentLoan.LoanStatus.OVERDUE);
+                loanRepo.save(loan);
+                // Also expire the associated loan-based subscription
+                if (loan.getSubscriptionId() != null) {
+                    subscriptionRepo.findById(loan.getSubscriptionId()).ifPresent(sub -> {
+                        if (sub.getStatus() == SubscriptionStatus.ACTIVE) {
+                            sub.setStatus(SubscriptionStatus.EXPIRED);
+                            subscriptionRepo.save(sub);
+                            log.info("Expired loan subscription {} for agent {} (loan overdue)",
+                                sub.getId(), sub.getAgentId());
+                        }
+                    });
+                }
+                log.info("Loan {} marked OVERDUE for agent {} (due: {})",
+                    loan.getId(), loan.getAgentId(), loan.getDueDate());
+            });
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
