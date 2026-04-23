@@ -59,19 +59,44 @@ public class AgentLoan {
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private LoanStatus status = LoanStatus.PENDING;
+    private LoanStatus status = LoanStatus.ACTIVE;
+
+    /**
+     * Tracks the repayment payment status independently of the loan lifecycle.
+     * PENDING = not yet repaid, SUCCESS = fully repaid via Paystack, FAILED = payment attempt failed.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "repayment_status")
+    @Builder.Default
+    private RepaymentStatus repaymentStatus = RepaymentStatus.PENDING;
+
+    /** Paystack reference for the repayment transaction (populated when repay is initiated). */
+    @Column(name = "repayment_reference")
+    private String repaymentReference;
+
+    /** Paystack authorization URL for the repayment (stored so retries can recover it). */
+    @Column(name = "repayment_authorization_url", length = 512)
+    private String repaymentAuthorizationUrl;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     public enum LoanStatus {
-        /** Created; waiting for Paystack payment confirmation. */
-        PENDING,
-        /** Payment confirmed; loan is active and repayment is due. */
+        /** Loan is active; repayment is due before or on dueDate. */
         ACTIVE,
+        /** Loan fully repaid. */
         REPAID,
+        /** Loan passed dueDate without full repayment. */
+        OVERDUE,
+        /** Legacy value — treated as OVERDUE. */
         DEFAULTED
+    }
+
+    public enum RepaymentStatus {
+        PENDING,
+        SUCCESS,
+        FAILED
     }
 
     /** Remaining balance the agent still owes. */

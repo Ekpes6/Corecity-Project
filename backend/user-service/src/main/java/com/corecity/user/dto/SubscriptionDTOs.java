@@ -83,8 +83,20 @@ public class SubscriptionDTOs {
         private BigDecimal remainingBalance;
         private LocalDate dueDate;
         private String status;
+        private String repaymentStatus;
+        /** Populated when a repay Paystack transaction has been initialized. */
+        private String repaymentAuthorizationUrl;
         private Integer trialNumber;
         private LocalDateTime createdAt;
+    }
+
+    /** Returned by POST /subscriptions/loans/{id}/repay — contains the Paystack URL. */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class LoanRepayInitResponse {
+        private Long loanId;
+        private String repaymentReference;
+        private String authorizationUrl;
+        private BigDecimal amount;
     }
 
     // ── Loan Program (13-cycle progression) ──────────────────────────────────
@@ -109,6 +121,14 @@ public class SubscriptionDTOs {
         private boolean hasActiveProduct;
         /** "SUBSCRIPTION", "LOAN", or null */
         private String productType;
+        /**
+         * Access level for the current user:
+         * FULL     — active subscription, loan fully repaid
+         * LIMITED  — loan is ACTIVE (not yet repaid); properties hidden from public
+         * RESTRICTED — loan OVERDUE; properties hidden, further access blocked
+         * NONE     — no active product
+         */
+        private String accessLevel;
     }
 
     // ── Reputation ───────────────────────────────────────────────────────────
