@@ -147,10 +147,75 @@ public class SubscriptionService {
             trialNumber = loanProgram.getTotalTrialsCompleted() + 1;
         }
 
-        // ── Idempotency: return existing PENDING_PAYMENT sub rather than creating a duplicate ─
+        // ── LOAN PATH: activate immediately, no Paystack ──────────────────────
+        if (useLoan) {
+            Objects.requireNonNull(loanProgram, "loanProgram must be set when useLoan=true");
+
+            // Idempotency: return existing ACTIVE loan subscription for same plan
+            Optional<AgentSubscription> existingActive = subscriptionRepo
+                .findFirstByAgentIdAndPlanAndStatusAndLoan(agentId, plan, SubscriptionStatus.ACTIVE, true);
+            if (existingActive.isPresent()) {
+                AgentSubscription ex = existingActive.get();
+                return SubscriptionInitResponse.builder()
+                    .subscriptionId(ex.getId())
+                    .plan(plan.name())
+                    .amountDue(ex.getAmountPaid())
+                    .paymentReference(ex.getPaymentReference())
+                    .isLoan(true)
+                    .status(ex.getStatus().name())
+                    .build();
+            }
+
+            String reference = "LOAN-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
+            LocalDate today = LocalDate.now();
+
+            // Create ACTIVE subscription immediately (no payment step)
+            AgentSubscription subscription = AgentSubscription.builder()
+                .agentId(agentId)
+                .plan(plan)
+                .amountPaid(amount)
+                .startDate(today)
+                .endDate(today.plusMonths(1))
+                .status(SubscriptionStatus.ACTIVE)
+                .loan(true)
+                .paymentReference(reference)
+                .build();
+            subscriptionRepo.save(Objects.requireNonNull(subscription));
+
+            // Create ACTIVE loan immediately; repayment is due in 30 days
+            AgentLoan loan = AgentLoan.builder()
+                .agentId(agentId)
+                .subscriptionId(subscription.getId())
+                .plan(plan)
+                .loanAmount(amount)
+                .amountRepaid(BigDecimal.ZERO)
+                .dueDate(today.plusDays(30))
+                .trialNumber(trialNumber)
+                .loanProgramId(loanProgram.getId())
+                .status(AgentLoan.LoanStatus.ACTIVE)
+                .repaymentStatus(AgentLoan.RepaymentStatus.PENDING)
+                .build();
+            loanRepo.save(Objects.requireNonNull(loan));
+
+            log.info("Loan subscription {} created for agent {} on plan {} (trial {})",
+                reference, agentId, plan, trialNumber);
+
+            return SubscriptionInitResponse.builder()
+                .subscriptionId(subscription.getId())
+                .plan(plan.name())
+                .amountDue(amount)
+                .paymentReference(reference)
+                .isLoan(true)
+                .status(subscription.getStatus().name())
+                .build();
+        }
+
+        // ── STANDARD PATH: Paystack payment required ──────────────────────────
+
+        // Idempotency: return existing PENDING_PAYMENT sub rather than creating a duplicate.
         // This handles the case where the gateway timed out returning the first response.
         Optional<AgentSubscription> existingPending = subscriptionRepo
-            .findFirstByAgentIdAndPlanAndStatusAndLoan(agentId, plan, SubscriptionStatus.PENDING_PAYMENT, useLoan);
+            .findFirstByAgentIdAndPlanAndStatusAndLoan(agentId, plan, SubscriptionStatus.PENDING_PAYMENT, false);
         if (existingPending.isPresent()) {
             AgentSubscription ex = existingPending.get();
             String url = ex.getAuthorizationUrl();
@@ -167,7 +232,7 @@ public class SubscriptionService {
                 .amountDue(ex.getAmountPaid())
                 .paymentReference(ex.getPaymentReference())
                 .authorizationUrl(url)
-                .isLoan(useLoan)
+                .isLoan(false)
                 .status(ex.getStatus().name())
                 .build();
         }
@@ -182,7 +247,7 @@ public class SubscriptionService {
             .startDate(today)
             .endDate(today.plusMonths(1))
             .status(SubscriptionStatus.PENDING_PAYMENT)
-            .loan(useLoan)
+            .loan(false)
             .paymentReference(reference)
             .build();
         subscriptionRepo.save(Objects.requireNonNull(subscription));
@@ -194,30 +259,13 @@ public class SubscriptionService {
         subscription.setAuthorizationUrl(authorizationUrl);
         subscriptionRepo.save(subscription);
 
-        // ── Loan created as PENDING — only activated after payment confirmed ──
-        if (useLoan) {
-            Objects.requireNonNull(loanProgram, "loanProgram must be set when useLoan=true");
-            AgentLoan loan = AgentLoan.builder()
-                .agentId(agentId)
-                .subscriptionId(subscription.getId())
-                .plan(plan)
-                .loanAmount(amount)
-                .amountRepaid(BigDecimal.ZERO)
-                .dueDate(today.plusDays(30))          // 1-month fixed duration
-                .trialNumber(trialNumber)
-                .loanProgramId(loanProgram.getId())
-                .status(AgentLoan.LoanStatus.PENDING) // activated on webhook
-                .build();
-            loanRepo.save(Objects.requireNonNull(loan));
-        }
-
         return SubscriptionInitResponse.builder()
             .subscriptionId(subscription.getId())
             .plan(plan.name())
             .amountDue(amount)
             .paymentReference(reference)
             .authorizationUrl(authorizationUrl)
-            .isLoan(useLoan)
+            .isLoan(false)
             .status(subscription.getStatus().name())
             .build();
     }
@@ -259,7 +307,8 @@ public class SubscriptionService {
 
     /**
      * Activate a subscription after Paystack payment is confirmed.
-     * Also activates the associated PENDING loan if this was a loan-funded subscription.
+     * Only used for standard (non-loan) subscriptions — loan subscriptions are
+     * created ACTIVE immediately without Paystack.
      */
     @Transactional
     public void activateSubscription(String reference) {
@@ -276,23 +325,11 @@ public class SubscriptionService {
         sub.setStatus(SubscriptionStatus.ACTIVE);
         subscriptionRepo.save(sub);
         log.info("Subscription {} activated for agent {} on plan {}", reference, sub.getAgentId(), sub.getPlan());
-
-        // Activate the associated PENDING loan now that payment is confirmed
-        if (sub.isLoan()) {
-            loanRepo.findBySubscriptionId(sub.getId()).ifPresent(loan -> {
-                if (loan.getStatus() == AgentLoan.LoanStatus.PENDING) {
-                    loan.setStatus(AgentLoan.LoanStatus.ACTIVE);
-                    loanRepo.save(loan);
-                    log.info("Loan {} activated for agent {} (trial {})",
-                        loan.getId(), sub.getAgentId(), loan.getTrialNumber());
-                }
-            });
-        }
     }
 
     /**
      * Mark a subscription as FAILED (called when Paystack signals failure or abandonment).
-     * Also cancels the associated PENDING loan to keep state consistent.
+     * Only applies to standard (non-loan) subscriptions.
      */
     @Transactional
     public void failSubscription(String reference) {
@@ -304,12 +341,6 @@ public class SubscriptionService {
                     sub.setStatus(SubscriptionStatus.FAILED);
                     subscriptionRepo.save(sub);
                     log.info("Subscription {} marked as FAILED", reference);
-                    loanRepo.findBySubscriptionId(sub.getId()).ifPresent(loan -> {
-                        if (loan.getStatus() == AgentLoan.LoanStatus.PENDING) {
-                            loan.setStatus(AgentLoan.LoanStatus.DEFAULTED);
-                            loanRepo.save(loan);
-                        }
-                    });
                 }
             });
     }
