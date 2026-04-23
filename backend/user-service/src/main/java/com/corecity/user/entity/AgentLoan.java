@@ -59,7 +59,7 @@ public class AgentLoan {
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private LoanStatus status = LoanStatus.ACTIVE;
+    private LoanStatus status = LoanStatus.PENDING;
 
     /**
      * Tracks the repayment payment status independently of the loan lifecycle.
@@ -83,6 +83,11 @@ public class AgentLoan {
     private LocalDateTime createdAt;
 
     public enum LoanStatus {
+        /**
+         * Legacy — loans previously started PENDING waiting for Paystack.
+         * New loans are created directly as ACTIVE.
+         */
+        PENDING,
         /** Loan is active; repayment is due before or on dueDate. */
         ACTIVE,
         /** Loan fully repaid. */
