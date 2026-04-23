@@ -366,24 +366,34 @@ public class SubscriptionService {
             .orElse(0);
     }
     /**
-     * Returns whether the user has any active financial product (subscription OR loan).
-     * Used by property-service to gate property creation for AGENT/SELLER roles.
+     * Returns whether the user has any active financial product (subscription OR loan),
+     * along with their access level. Used by property-service to gate property creation.
+     *
+     * Access level semantics:
+     *  RESTRICTED — loan is OVERDUE (past due date, unpaid)
+     *  LIMITED    — loan is ACTIVE but not yet repaid
+     *  FULL       — active subscription (non-loan) or loan is REPAID
+     *  NONE       — no active product
      */
     @Transactional(readOnly = true)
     public ActiveProductResponse getActiveProduct(Long userId) {
-        boolean hasActiveSub  = subscriptionRepo.countByAgentIdAndStatus(userId, SubscriptionStatus.ACTIVE) > 0;
-        boolean hasActiveLoan = loanRepo.countByAgentIdAndStatus(userId, AgentLoan.LoanStatus.ACTIVE) > 0;
-
-        if (hasActiveSub) {
+        // OVERDUE takes priority — must be checked first
+        if (loanRepo.countByAgentIdAndStatus(userId, AgentLoan.LoanStatus.OVERDUE) > 0) {
             return ActiveProductResponse.builder()
-                .hasActiveProduct(true).productType("SUBSCRIPTION").build();
+                .hasActiveProduct(true).productType("LOAN").accessLevel("RESTRICTED").build();
         }
-        if (hasActiveLoan) {
+        // Active unpaid loan → LIMITED
+        if (loanRepo.countByAgentIdAndStatus(userId, AgentLoan.LoanStatus.ACTIVE) > 0) {
             return ActiveProductResponse.builder()
-                .hasActiveProduct(true).productType("LOAN").build();
+                .hasActiveProduct(true).productType("LOAN").accessLevel("LIMITED").build();
+        }
+        // Active subscription (repaid loan sub or standard sub) → FULL
+        if (subscriptionRepo.countByAgentIdAndStatus(userId, SubscriptionStatus.ACTIVE) > 0) {
+            return ActiveProductResponse.builder()
+                .hasActiveProduct(true).productType("SUBSCRIPTION").accessLevel("FULL").build();
         }
         return ActiveProductResponse.builder()
-            .hasActiveProduct(false).productType(null).build();
+            .hasActiveProduct(false).productType(null).accessLevel("NONE").build();
     }
     // ── Loan ──────────────────────────────────────────────────────────────────
 
