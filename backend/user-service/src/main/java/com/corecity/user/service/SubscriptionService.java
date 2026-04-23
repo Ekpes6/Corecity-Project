@@ -606,6 +606,10 @@ public class SubscriptionService {
             .plan(l.getPlan().name()).loanAmount(l.getLoanAmount())
             .amountRepaid(l.getAmountRepaid()).remainingBalance(l.getRemainingBalance())
             .dueDate(l.getDueDate()).status(l.getStatus().name())
+            .repaymentStatus(l.getRepaymentStatus() != null ? l.getRepaymentStatus().name() : null)
+            .repaymentAuthorizationUrl(
+                l.getRepaymentStatus() == AgentLoan.RepaymentStatus.PENDING
+                    ? l.getRepaymentAuthorizationUrl() : null)
             .trialNumber(l.getTrialNumber())
             .createdAt(l.getCreatedAt())
             .build();
