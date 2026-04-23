@@ -128,7 +128,34 @@ public class PropertyService {
             pageable
         );
 
-        return properties.map(this::toResponse);
+        // Collect unique owner IDs to batch-check access levels efficiently
+        Set<Long> ownerIds = properties.getContent().stream()
+            .map(Property::getOwnerId)
+            .collect(Collectors.toSet());
+
+        // Find owners with RESTRICTED access (overdue loan) — hide their properties from public search
+        Set<Long> restrictedOwners = ownerIds.stream()
+            .filter(ownerId -> "RESTRICTED".equals(userServiceClient.getAccessLevel(ownerId)))
+            .collect(Collectors.toSet());
+
+        if (restrictedOwners.isEmpty()) {
+            return properties.map(this::toResponse);
+        }
+
+        // Filter out restricted owners and build a filtered page
+        List<PropertyResponse> filtered = properties.getContent().stream()
+            .filter(p -> !restrictedOwners.contains(p.getOwnerId()))
+            .map(this::toResponse)
+            .collect(Collectors.toList());
+
+        return new org.springframework.data.domain.PageImpl<>(
+            filtered,
+            pageable,
+            properties.getTotalElements() - restrictedOwners.stream()
+                .mapToLong(ownerId -> properties.getContent().stream()
+                    .filter(p -> p.getOwnerId().equals(ownerId)).count())
+                .sum()
+        );
     }
 
     @Transactional
