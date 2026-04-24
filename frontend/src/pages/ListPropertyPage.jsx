@@ -88,6 +88,7 @@ export default function ListPropertyPage() {
   // ── Submit ─────────────────────────────────────────────────
   const onSubmit = async (data) => {
     setSubmitting(true);
+    let createdPropertyId = null;
     try {
       const payload = {
         ...data,
@@ -104,34 +105,39 @@ export default function ListPropertyPage() {
       };
 
       const { data: property } = await propertyAPI.create(payload);
+      createdPropertyId = property.id;
 
-      // Upload images to file-service, then register the returned URLs with property-service
+      // Upload images — if they all fail, delete the property and stop
       if (images.length > 0) {
-        try {
-          const { data: uploadResult } = await fileAPI.uploadBatch(property.id, images);
-          const uploadedUrls = (uploadResult.uploaded || []).map((f) => f.fileUrl).filter(Boolean);
-          const uploadErrors = uploadResult.errors || [];
+        const { data: uploadResult } = await fileAPI.uploadBatch(property.id, images);
+        const uploadedUrls = (uploadResult.uploaded || []).map((f) => f.fileUrl).filter(Boolean);
+        const uploadErrors = uploadResult.errors || [];
 
-          if (uploadedUrls.length === 0 && uploadErrors.length > 0) {
-            // All files failed to upload (R2/storage error)
-            console.error('Image upload errors:', uploadErrors);
-            toast.error(`Images failed to upload: ${uploadErrors[0]}. Edit the listing to retry.`);
-          } else if (uploadedUrls.length > 0) {
-            await propertyAPI.registerFiles(property.id, uploadedUrls);
-            if (uploadErrors.length > 0) {
-              toast(`${uploadedUrls.length} image(s) uploaded; ${uploadErrors.length} failed.`, { icon: '⚠️' });
-            }
-          }
-        } catch (uploadErr) {
-          console.error('Upload/register error:', uploadErr);
-          toast.error(uploadErr.response?.data?.message || 'Property created but image upload failed. Edit to add images.');
+        if (uploadedUrls.length === 0) {
+          // All uploads failed — roll back by deleting the property
+          await propertyAPI.remove(property.id).catch(() => {});
+          toast.error(uploadErrors.length > 0
+            ? `Image upload failed: ${uploadErrors[0]}. Please try again.`
+            : 'Image upload failed. Please check your files and try again.');
+          return;
+        }
+
+        // At least some images uploaded — register them
+        await propertyAPI.registerFiles(property.id, uploadedUrls);
+
+        if (uploadErrors.length > 0) {
+          toast(`${uploadedUrls.length} image(s) uploaded; ${uploadErrors.length} failed.`, { icon: '⚠️' });
         }
       }
 
       toast.success('Property listed successfully! Pending review.');
       navigate(`/properties/${property.id}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create listing');
+      // If the property was already created before the error, roll it back
+      if (createdPropertyId) {
+        await propertyAPI.remove(createdPropertyId).catch(() => {});
+      }
+      toast.error(err.response?.data?.message || 'Failed to create listing. Please try again.');
     } finally {
       setSubmitting(false);
     }
