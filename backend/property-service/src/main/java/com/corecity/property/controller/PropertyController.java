@@ -133,10 +133,11 @@ public class PropertyController {
     }
 
     @PostMapping("/{id}/files")
-    public ResponseEntity<PropertyResponse> registerFiles(
+    public ResponseEntity<Void> registerFiles(
             @PathVariable Long id,
             @RequestBody List<String> fileUrls,
             @RequestHeader("X-User-Id") Long userId) {
-        return ResponseEntity.ok(propertyService.registerFiles(id, fileUrls, userId));
+        propertyService.registerFiles(id, fileUrls, userId);
+        return ResponseEntity.noContent().build();
     }
 }

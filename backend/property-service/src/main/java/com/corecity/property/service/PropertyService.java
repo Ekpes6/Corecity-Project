@@ -385,7 +385,7 @@ public class PropertyService {
     }
 
     @Transactional
-    public PropertyResponse registerFiles(Long propertyId, List<String> fileUrls, Long requesterId) {
+    public void registerFiles(Long propertyId, List<String> fileUrls, Long requesterId) {
         Long safePropertyId = Objects.requireNonNull(propertyId, "property id must not be null");
         Long safeRequesterId = Objects.requireNonNull(requesterId, "requester id must not be null");
         Property property = propertyRepository.findById(safePropertyId)
@@ -395,25 +395,31 @@ public class PropertyService {
             throw new ResponseStatusException(FORBIDDEN, "You do not own this property");
         }
 
+        if (fileUrls == null || fileUrls.isEmpty()) {
+            log.warn("registerFiles called with empty fileUrls for property {}", safePropertyId);
+            return;
+        }
+
         boolean firstFile = propertyFileRepository.findByPropertyIdOrderByUploadedAtAsc(safePropertyId).isEmpty();
 
         List<PropertyFile> toSave = new ArrayList<>();
         for (int i = 0; i < fileUrls.size(); i++) {
+            String url = fileUrls.get(i);
+            if (url == null || url.isBlank()) continue;
             boolean isPrimary = firstFile && i == 0;
             PropertyFile pf = PropertyFile.builder()
                 .property(property)
-                .fileUrl(fileUrls.get(i))
+                .fileUrl(url)
                 .fileType(PropertyFile.FileType.IMAGE)
                 .primary(isPrimary)
                 .build();
-            toSave.add(Objects.requireNonNull(pf, "property file must not be null"));
+            toSave.add(pf);
         }
-        propertyFileRepository.saveAllAndFlush(toSave);
 
-        // Re-query files directly — first-level cache would return stale property.files
-        List<PropertyFile> allFiles = propertyFileRepository.findByPropertyIdOrderByUploadedAtAsc(safePropertyId);
-        property.setFiles(allFiles);
-        return toResponse(property);
+        if (!toSave.isEmpty()) {
+            propertyFileRepository.saveAll(toSave);
+            log.info("Saved {} property_files record(s) for property {}", toSave.size(), safePropertyId);
+        }
     }
 
     private void requireAdmin(String userRole) {
