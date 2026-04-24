@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Upload, X, CheckCircle2, ArrowRight, MapPin, Loader2 } from 'lucide-react';
 import { propertyAPI, fileAPI, locationAPI } from '../services/api';
 import { PROPERTY_TYPES, LISTING_TYPES, PRICE_PERIODS, ALL_AMENITIES, AMENITY_LABELS } from '../utils/nigeria';
 import toast from 'react-hot-toast';
@@ -16,6 +16,9 @@ export default function ListPropertyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [states, setStates] = useState([]);
   const [lgas, setLgas] = useState([]);
+  const [geocoding, setGeocoding] = useState(false);
+  const [coordsAutoFilled, setCoordsAutoFilled] = useState(false);
+  const geocodeTimer = useRef(null);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: { listingType: 'FOR_RENT', propertyType: 'APARTMENT', pricePeriod: 'PER_YEAR', negotiable: true }
@@ -23,6 +26,8 @@ export default function ListPropertyPage() {
 
   const listingType = watch('listingType');
   const selectedStateId = watch('stateId');
+  const watchedAddress = watch('address');
+  const watchedLgaId = watch('lgaId');
 
   useEffect(() => {
     const loadStates = async () => {
@@ -37,10 +42,47 @@ export default function ListPropertyPage() {
     loadStates();
   }, []);
 
+  // ── Auto-geocode when address + state + LGA are filled ──────────────────
+  useEffect(() => {
+    if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
+
+    const address = watchedAddress?.trim();
+    const lgaName = lgas.find((l) => String(l.id) === String(watchedLgaId))?.name;
+    const stateName = states.find((s) => String(s.id) === String(selectedStateId))?.name;
+
+    if (!address || !stateName) return;
+
+    // Debounce 800ms so we don't fire on every keystroke
+    geocodeTimer.current = setTimeout(async () => {
+      const query = [address, lgaName, stateName, 'Nigeria'].filter(Boolean).join(', ');
+      setGeocoding(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
+          { headers: { 'Accept-Language': 'en' } }
+        );
+        const results = await res.json();
+        if (results.length > 0) {
+          const { lat, lon } = results[0];
+          setValue('latitude', parseFloat(lat).toFixed(6));
+          setValue('longitude', parseFloat(lon).toFixed(6));
+          setCoordsAutoFilled(true);
+        }
+      } catch {
+        // Silently ignore geocoding errors — user can still enter manually
+      } finally {
+        setGeocoding(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(geocodeTimer.current);
+  }, [watchedAddress, watchedLgaId, selectedStateId, lgas, states, setValue]);
+
   useEffect(() => {
     const stateId = selectedStateId ? parseInt(selectedStateId, 10) : null;
     setValue('lgaId', '');
     setLgas([]);
+    setCoordsAutoFilled(false);
 
     if (!stateId) {
       return;
@@ -299,14 +341,33 @@ export default function ListPropertyPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Latitude</label>
-                <input type="number" step="any" {...register('latitude')} placeholder="e.g. 6.4281" className="input-field" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
+                  Latitude
+                  {geocoding && <Loader2 size={12} className="animate-spin text-forest-600" />}
+                  {coordsAutoFilled && !geocoding && <MapPin size={12} className="text-forest-600" />}
+                </label>
+                <input
+                  type="number" step="any"
+                  {...register('latitude')}
+                  placeholder={geocoding ? 'Detecting…' : 'e.g. 6.4281'}
+                  className={`input-field ${coordsAutoFilled ? 'bg-forest-50 text-forest-900' : ''}`}
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Longitude</label>
-                <input type="number" step="any" {...register('longitude')} placeholder="e.g. 3.4219" className="input-field" />
+                <input
+                  type="number" step="any"
+                  {...register('longitude')}
+                  placeholder={geocoding ? 'Detecting…' : 'e.g. 3.4219'}
+                  className={`input-field ${coordsAutoFilled ? 'bg-forest-50 text-forest-900' : ''}`}
+                />
               </div>
             </div>
+            {coordsAutoFilled && (
+              <p className="text-xs text-forest-600 flex items-center gap-1 -mt-2">
+                <MapPin size={11} /> Coordinates auto-detected from address. You can edit them if needed.
+              </p>
+            )}
 
             <div className="flex gap-3">
               <button type="button" onClick={() => setStep(1)} className="btn-secondary flex-1">Back</button>
