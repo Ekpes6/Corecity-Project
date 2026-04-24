@@ -132,6 +132,13 @@ public class PropertyController {
         return ResponseEntity.ok(Map.of("message", "Property removed successfully"));
     }
 
+    @PostMapping("/{id}/publish")
+    public ResponseEntity<PropertyResponse> publish(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(propertyService.publishProperty(id, userId));
+    }
+
     @PostMapping("/{id}/files")
     public ResponseEntity<Void> registerFiles(
             @PathVariable Long id,

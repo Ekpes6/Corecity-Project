@@ -73,7 +73,7 @@ public class Property {
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private PropertyStatus status = PropertyStatus.PENDING;
+    private PropertyStatus status = PropertyStatus.DRAFT;
 
     @Column(name = "is_negotiable")
     @Builder.Default
@@ -111,6 +111,6 @@ public class Property {
     }
 
     public enum PropertyStatus {
-        PENDING, ACTIVE, ON_NEGOTIATION, SOLD, RENTED, INACTIVE, REJECTED
+        DRAFT, PENDING, ACTIVE, ON_NEGOTIATION, SOLD, RENTED, INACTIVE, REJECTED
     }
 }

@@ -90,23 +90,12 @@ public class PropertyService {
             .ownerId(safeOwnerId)
             .negotiable(req.getNegotiable())
             .amenities(amenitiesJson)
-            .status(Property.PropertyStatus.PENDING)
+            .status(Property.PropertyStatus.DRAFT)
             .build();
 
         var savedProperty = propertyRepository.save(
             Objects.requireNonNull(property, "property must not be null"));
-        log.info("Property {} saved with status {}", savedProperty.getId(), savedProperty.getStatus());
-
-        // Keep listing creation responsive even if RabbitMQ is slow or temporarily unavailable.
-        CompletableFuture.runAsync(() -> {
-            try {
-                rabbitTemplate.convertAndSend("corecity.exchange", "notification.new_listing",
-                    Map.of("propertyId", savedProperty.getId(), "ownerId", safeOwnerId, "title", savedProperty.getTitle()));
-                log.info("Published new listing notification for property {}", savedProperty.getId());
-            } catch (Exception exception) {
-                log.warn("Could not publish new listing notification for property {}", savedProperty.getId(), exception);
-            }
-        });
+        log.info("Property {} saved with status DRAFT (owner: {})", savedProperty.getId(), safeOwnerId);
 
         var response = toResponse(savedProperty);
         log.info("Returning property create response for property {}", savedProperty.getId());
@@ -173,6 +162,12 @@ public class PropertyService {
         // Allow the owner themselves and admins to still see it
         boolean isOwner = requesterId != null && requesterId.equals(property.getOwnerId());
         boolean isAdmin = "ADMIN".equalsIgnoreCase(requesterRole);
+
+        // DRAFT properties are only visible to their owner and admins
+        if (property.getStatus() == Property.PropertyStatus.DRAFT && !isOwner && !isAdmin) {
+            throw new ResponseStatusException(NOT_FOUND, "Property not found");
+        }
+
         if (!isOwner && !isAdmin) {
             String ownerAccessLevel = userServiceClient.getAccessLevel(property.getOwnerId());
             if ("RESTRICTED".equals(ownerAccessLevel)) {
@@ -295,8 +290,47 @@ public class PropertyService {
             .orElseThrow(() -> new RuntimeException("Property not found"));
         if (!property.getOwnerId().equals(safeUserId))
             throw new RuntimeException("Unauthorized");
-        property.setStatus(Property.PropertyStatus.INACTIVE);
-        propertyRepository.save(Objects.requireNonNull(property, "property must not be null"));
+        if (property.getStatus() == Property.PropertyStatus.DRAFT) {
+            // Hard-delete unpublished drafts — they were never publicly visible
+            propertyRepository.delete(property);
+            log.info("Hard-deleted DRAFT property {}", safeId);
+        } else {
+            property.setStatus(Property.PropertyStatus.INACTIVE);
+            propertyRepository.save(Objects.requireNonNull(property, "property must not be null"));
+        }
+    }
+
+    @Transactional
+    public PropertyResponse publishProperty(Long propertyId, Long ownerId) {
+        Long safePropertyId = Objects.requireNonNull(propertyId, "property id must not be null");
+        Long safeOwnerId = Objects.requireNonNull(ownerId, "owner id must not be null");
+        Property property = propertyRepository.findById(safePropertyId)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
+        if (!property.getOwnerId().equals(safeOwnerId)) {
+            throw new ResponseStatusException(FORBIDDEN, "You do not own this property");
+        }
+        if (property.getStatus() != Property.PropertyStatus.DRAFT) {
+            throw new ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "Property is not in DRAFT status and cannot be published");
+        }
+        property.setStatus(Property.PropertyStatus.PENDING);
+        propertyRepository.save(property);
+        log.info("Property {} published (DRAFT → PENDING) by owner {}", safePropertyId, safeOwnerId);
+
+        // Notify via RabbitMQ — non-blocking, fires only after all steps succeed
+        final String title = property.getTitle();
+        CompletableFuture.runAsync(() -> {
+            try {
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.new_listing",
+                    Map.of("propertyId", safePropertyId, "ownerId", safeOwnerId, "title", title));
+                log.info("Published new listing notification for property {}", safePropertyId);
+            } catch (Exception e) {
+                log.warn("Could not publish new listing notification for property {}", safePropertyId, e);
+            }
+        });
+
+        return toResponse(property);
     }
 
     @Transactional(readOnly = true)
