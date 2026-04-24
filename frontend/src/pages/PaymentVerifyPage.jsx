@@ -12,8 +12,9 @@ export default function PaymentVerifyPage() {
   const [reservation, setReservation] = useState(null);
   const [subscription, setSubscription] = useState(null);
 
-  const isReservation  = reference?.startsWith('RSV-');
-  const isSubscription = reference?.startsWith('SUB-');
+  const isReservation    = reference?.startsWith('RSV-');
+  const isSubscription   = reference?.startsWith('SUB-');
+  const isLoanRepayment  = reference?.startsWith('REP-');
 
   useEffect(() => {
     if (!reference) { setStatus('failed'); return; }
@@ -32,6 +33,12 @@ export default function PaymentVerifyPage() {
           setStatus(data.status === 'ACTIVE' ? 'success' : 'failed');
         })
         .catch(() => setStatus('failed'));
+    } else if (isLoanRepayment) {
+      subscriptionAPI.verifyRepayment(reference)
+        .then(({ data }) => {
+          setStatus(data.repaymentStatus === 'SUCCESS' ? 'success' : 'failed');
+        })
+        .catch(() => setStatus('failed'));
     } else {
       transactionAPI.verify(reference)
         .then(({ data }) => {
@@ -40,7 +47,7 @@ export default function PaymentVerifyPage() {
         })
         .catch(() => setStatus('failed'));
     }
-  }, [reference, isReservation, isSubscription]);
+  }, [reference, isReservation, isSubscription, isLoanRepayment]);
 
   if (status === 'loading') return (
     <div className="min-h-screen flex items-center justify-center">
@@ -61,9 +68,11 @@ export default function PaymentVerifyPage() {
             <p className="text-gray-500 mb-6">
               {isReservation
                 ? 'Your reservation is now active. The property owner has been notified.'
-                : isSubscription
-                  ? `Your ${subscription?.plan || ''} subscription is now active.`
-                  : 'Your payment has been confirmed and the property owner has been notified.'}
+                : isLoanRepayment
+                  ? 'Your loan repayment has been confirmed. Your account access has been restored.'
+                  : isSubscription
+                    ? `Your ${subscription?.plan || ''} subscription is now active.`
+                    : 'Your payment has been confirmed and the property owner has been notified.'}
             </p>
             {!isReservation && !isSubscription && transaction && (
               <div className="bg-forest-50 rounded-xl p-4 text-left text-sm space-y-2 mb-6">

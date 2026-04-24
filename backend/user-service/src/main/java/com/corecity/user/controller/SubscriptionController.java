@@ -143,6 +143,18 @@ public class SubscriptionController {
     }
 
     /**
+     * GET /api/v1/subscriptions/loans/verify-repayment/{reference}
+     * Called by the payment verify page after Paystack redirects back for REP- references.
+     * Falls back to a live Paystack call if the webhook hasn't fired yet.
+     */
+    @GetMapping("/loans/verify-repayment/{reference}")
+    public ResponseEntity<LoanResponse> verifyRepayment(
+            @PathVariable String reference,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(subscriptionService.verifyLoanRepayment(reference));
+    }
+
+    /**
      * POST /api/v1/subscriptions/loans/{loanId}/repay — initiate Paystack repayment.
      * Returns an authorization URL for the agent to complete payment via Paystack.
      * On charge.success webhook (REP- reference), the loan is marked REPAID automatically.

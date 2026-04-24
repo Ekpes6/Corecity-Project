@@ -95,6 +95,7 @@ export const subscriptionAPI = {
   getLoanProgram: ()             => api.get('/subscriptions/loan-program/my'),
   activeCheck:    ()             => api.get('/subscriptions/active-check'),
   verify:         (reference)    => api.get(`/subscriptions/verify/${reference}`),
+  verifyRepayment: (reference)   => api.get(`/subscriptions/loans/verify-repayment/${reference}`),
 };
 
 // ─── Reservations ────────────────────────────────────────────

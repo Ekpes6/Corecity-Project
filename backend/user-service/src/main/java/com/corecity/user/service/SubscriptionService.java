@@ -403,6 +403,39 @@ public class SubscriptionService {
             .stream().map(this::toLoanResponse).collect(Collectors.toList());
     }
 
+    /**
+     * Verify a loan repayment by REP- reference.
+     * If the repayment is still PENDING, calls Paystack live and confirms if successful.
+     * Used by the payment verify page as a fallback when the webhook hasn't fired yet.
+     */
+    @Transactional
+    public LoanResponse verifyLoanRepayment(String reference) {
+        AgentLoan loan = loanRepo.findByRepaymentReference(reference)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND,
+                "Loan not found for repayment reference: " + reference));
+
+        if (loan.getRepaymentStatus() == AgentLoan.RepaymentStatus.PENDING) {
+            try {
+                String response = webClientBuilder.build()
+                    .get()
+                    .uri(PAYSTACK_BASE + "/transaction/verify/" + reference)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + paystackSecretKey)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+                JsonNode data = objectMapper.readTree(response).path("data");
+                if ("success".equals(data.path("status").asText())) {
+                    confirmLoanRepayment(reference);
+                    loan = loanRepo.findById(loan.getId()).orElse(loan);
+                }
+            } catch (Exception e) {
+                log.warn("Paystack verify for REP reference {} failed: {}", reference, e.getMessage());
+            }
+        }
+
+        return toLoanResponse(loan);
+    }
+
     /** Record a loan repayment and advance the 13-trial cycle on full repayment. */
     @Transactional
     public LoanRepayInitResponse initiateLoanRepayment(Long loanId, Long agentId, String agentEmail) {
@@ -579,6 +612,7 @@ public class SubscriptionService {
                 .bodyValue(Objects.requireNonNull(body))
                 .retrieve()
                 .bodyToMono(String.class)
+                .retry(2)
                 .block();
             JsonNode root = objectMapper.readTree(response);
             return root.path("data").path("authorization_url").asText();
