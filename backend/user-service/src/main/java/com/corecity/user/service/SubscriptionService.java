@@ -426,7 +426,7 @@ public class SubscriptionService {
                 JsonNode data = objectMapper.readTree(response).path("data");
                 if ("success".equals(data.path("status").asText())) {
                     confirmLoanRepayment(reference);
-                    loan = loanRepo.findById(loan.getId()).orElse(loan);
+                    loan = loanRepo.findById(Objects.requireNonNull(loan.getId())).orElse(loan);
                 }
             } catch (Exception e) {
                 log.warn("Paystack verify for REP reference {} failed: {}", reference, e.getMessage());
