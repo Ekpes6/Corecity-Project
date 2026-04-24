@@ -55,6 +55,7 @@ export const propertyAPI = {
   update:     (id, d)  => api.put(`/properties/${id}`, d),
   remove:     (id)     => api.delete(`/properties/${id}`),
   registerFiles: (id, fileUrls) => api.post(`/properties/${id}/files`, fileUrls),
+  publish:       (id)          => api.post(`/properties/${id}/publish`),
 };
 
 // ─── Files ───────────────────────────────────────────────────

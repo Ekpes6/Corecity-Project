@@ -172,6 +172,11 @@ export default function ListPropertyPage() {
         }
       }
 
+      // Transition DRAFT → PENDING so the property is visible to admins for review.
+      // This only fires if all prior steps succeeded; on any failure the property
+      // stays DRAFT (invisible to admin) until cleaned up by the rollback below.
+      await propertyAPI.publish(property.id);
+
       toast.success('Property listed successfully! Pending review.');
       navigate(`/properties/${property.id}`);
     } catch (err) {
