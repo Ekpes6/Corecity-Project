@@ -82,15 +82,42 @@ export default function PropertyDetailPage() {
   const handleReserve = async () => {
     if (!isAuthenticated) { navigate('/login'); return; }
     setReserving(true);
-    try {
+
+    const doReserve = async () => {
       const { data } = await reservationAPI.reserve(property.id);
       if (data.authorizationUrl) {
         window.location.href = data.authorizationUrl;
       } else {
         toast.success('Property reserved!');
       }
+    };
+
+    try {
+      await doReserve();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Reservation failed');
+      const httpStatus = err.response?.status;
+      const msg        = err.response?.data?.message;
+
+      // On a transient 503/502 (circuit breaker or gateway timeout) the reservation
+      // may have been created server-side even though the gateway timed out before
+      // forwarding the response.  Wait briefly and retry once — the second attempt
+      // will cancel the stale PENDING_PAYMENT reservation and issue a fresh Paystack URL.
+      if (httpStatus === 503 || httpStatus === 502) {
+        toast('Service is busy — retrying…', { icon: '⏳', duration: 2500 });
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        try {
+          await doReserve();
+          return; // success on retry — finally will clear reserving state
+        } catch (retryErr) {
+          toast.error(
+            retryErr.response?.data?.message ||
+            'Reservation temporarily unavailable. Please try again in a moment.'
+          );
+          return;
+        }
+      }
+
+      toast.error(msg || 'Reservation failed. Please try again.');
     } finally {
       setReserving(false);
     }
