@@ -101,10 +101,13 @@ export const subscriptionAPI = {
 
 // ─── Reservations ────────────────────────────────────────────
 export const reservationAPI = {
-  reserve:          (propertyId) => api.post(`/properties/${propertyId}/reserve`),
-  getMine:          ()           => api.get('/reservations/my'),
-  getForProperty:   (propertyId) => api.get(`/properties/${propertyId}/reservation`),
-  getByReference:   (reference)  => api.get(`/reservations/by-reference/${reference}`),
+  reserve:           (propertyId) => api.post(`/properties/${propertyId}/reserve`),
+  getMine:           ()           => api.get('/reservations/my'),
+  getForProperty:    (propertyId) => api.get(`/properties/${propertyId}/reservation`),
+  getByReference:    (reference)  => api.get(`/reservations/by-reference/${reference}`),
+  // Actively verifies with Paystack and activates the reservation if payment confirmed.
+  // Eliminates the webhook-vs-redirect race condition on the payment verify page.
+  verifyAndActivate: (reference)  => api.get(`/reservations/verify/${reference}`),
 };
 
 // ─── Reputation ──────────────────────────────────────────────

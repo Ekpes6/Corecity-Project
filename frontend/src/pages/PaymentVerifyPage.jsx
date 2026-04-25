@@ -20,12 +20,45 @@ export default function PaymentVerifyPage() {
     if (!reference) { setStatus('failed'); return; }
 
     if (isReservation) {
-      reservationAPI.getByReference(reference)
-        .then(({ data }) => {
-          setReservation(data);
-          setStatus(data.status === 'ACTIVE' ? 'success' : 'failed');
-        })
-        .catch(() => setStatus('failed'));
+      // Use verifyAndActivate (not getByReference) so we actively confirm with Paystack
+      // and activate the reservation if it succeeded.  This resolves the race condition
+      // where Paystack's webhook hasn't fired yet when the browser lands here.
+      let cancelled = false;
+      let attempts   = 0;
+      const MAX_ATTEMPTS = 4;
+      const RETRY_MS     = 2500;
+      let timerId = null;
+
+      const attemptVerify = () => {
+        attempts++;
+        reservationAPI.verifyAndActivate(reference)
+          .then(({ data }) => {
+            if (cancelled) return;
+            setReservation(data);
+            if (data.status === 'ACTIVE') {
+              setStatus('success');
+            } else if (data.status === 'PENDING_PAYMENT' && attempts < MAX_ATTEMPTS) {
+              // Paystack hasn't confirmed yet — give it a moment and retry
+              timerId = setTimeout(attemptVerify, RETRY_MS);
+            } else {
+              setStatus('failed');
+            }
+          })
+          .catch(() => {
+            if (cancelled) return;
+            if (attempts < MAX_ATTEMPTS) {
+              timerId = setTimeout(attemptVerify, RETRY_MS);
+            } else {
+              setStatus('failed');
+            }
+          });
+      };
+
+      attemptVerify();
+      return () => {
+        cancelled = true;
+        if (timerId) clearTimeout(timerId);
+      };
     } else if (isSubscription) {
       subscriptionAPI.verify(reference)
         .then(({ data }) => {
@@ -96,7 +129,9 @@ export default function PaymentVerifyPage() {
             <XCircle size={56} className="text-red-400 mx-auto mb-5" />
             <h1 className="font-display text-2xl font-bold text-gray-800 mb-2">Payment Failed</h1>
             <p className="text-gray-500 mb-6">
-              Your payment could not be completed. No money has been charged.
+              {isReservation
+                ? 'Your reservation payment could not be confirmed. No funds have been deducted.'
+                : 'Your payment could not be completed. No money has been charged.'}
             </p>
             {isReservation && (
               <p className="text-gray-400 text-sm -mt-3 mb-6">
