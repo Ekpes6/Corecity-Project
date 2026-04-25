@@ -170,7 +170,7 @@ export default function PaymentVerifyPage() {
             <p className="text-gray-500 mb-6">
               {isReservation
                 ? 'Your reservation payment could not be confirmed. No funds have been deducted.'
-                : 'Your payment could not be completed. No money has been charged.'}
+                : 'We could not confirm your payment. If you were charged, the transaction will appear in your dashboard within a few minutes once our system syncs with Paystack.'}
             </p>
             {isReservation && (
               <p className="text-gray-400 text-sm -mt-3 mb-6">
