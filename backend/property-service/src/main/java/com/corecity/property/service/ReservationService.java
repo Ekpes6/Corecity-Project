@@ -353,7 +353,7 @@ public class ReservationService {
             .expiresAt(r.getExpiresAt())
             .createdAt(r.getCreatedAt());
 
-        propertyRepository.findById(r.getPropertyId()).ifPresent(p -> {
+        propertyRepository.findById(Objects.requireNonNull(r.getPropertyId())).ifPresent(p -> {
             builder.propertyTitle(p.getTitle());
             builder.propertyPrice(p.getPrice());
             builder.propertyListingType(p.getListingType().name());
