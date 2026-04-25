@@ -6,7 +6,7 @@ import {
   CheckCircle, XCircle, Clock, RefreshCw, Search, Filter,
   Bed, Bath, MapPin, Building2, AlertCircle, ShieldCheck,
   Crown, BookMarked, BadgeCheck, Landmark, Zap, ArrowUpRight,
-  CalendarCheck, Lock, Unlock, RotateCcw,
+  CalendarCheck, Lock, Unlock, RotateCcw, Phone,
 } from 'lucide-react';
 import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
