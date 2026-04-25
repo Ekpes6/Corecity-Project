@@ -970,6 +970,107 @@ function SubscriptionPage() {
 }
 
 // ── Reservations Page ─────────────────────────────────────────
+function ReservationCard({ r }) {
+  const daysRemaining = r.expiresAt
+    ? Math.max(0, Math.ceil((new Date(r.expiresAt) - Date.now()) / 86_400_000))
+    : null;
+
+  const statusStyle = {
+    ACTIVE:          'bg-green-50 text-green-700',
+    PENDING_PAYMENT: 'bg-yellow-50 text-yellow-700',
+    COMPLETED:       'bg-blue-50 text-blue-700',
+    EXPIRED:         'bg-gray-100 text-gray-500',
+  }[r.status] ?? 'bg-gray-100 text-gray-500';
+
+  return (
+    <div className="card overflow-hidden">
+      <div className="flex flex-col sm:flex-row">
+        {r.primaryImageUrl ? (
+          <img
+            src={r.primaryImageUrl}
+            alt={r.propertyTitle || 'Property'}
+            className="w-full sm:w-40 h-36 sm:h-auto object-cover shrink-0"
+          />
+        ) : (
+          <div className="w-full sm:w-40 h-36 sm:h-auto bg-gray-100 flex items-center justify-center shrink-0">
+            <Building2 size={32} className="text-gray-300" />
+          </div>
+        )}
+
+        <div className="flex-1 p-4 flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-2 flex-wrap">
+            <div>
+              <h3 className="font-display font-semibold text-gray-900 text-sm leading-tight">
+                {r.propertyTitle || `Property #${r.propertyId}`}
+              </h3>
+              {r.propertyAddress && (
+                <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                  <MapPin size={11} /> {r.propertyAddress}
+                </p>
+              )}
+            </div>
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${statusStyle}`}>
+              {r.status.replace('_', ' ')}
+            </span>
+          </div>
+
+          {r.propertyPrice != null && (
+            <p className="naira text-sm font-bold text-forest-900">
+              {formatNaira(r.propertyPrice)}
+              {r.propertyListingType === 'RENT' && (
+                <span className="text-xs font-normal text-gray-400"> /yr</span>
+              )}
+            </p>
+          )}
+
+          {r.status === 'ACTIVE' && daysRemaining !== null && (
+            <div className={`flex items-center gap-1 text-xs font-medium ${daysRemaining <= 1 ? 'text-red-600' : 'text-amber-600'}`}>
+              <Clock size={12} />
+              {daysRemaining === 0 ? 'Expires today!' : `${daysRemaining} day${daysRemaining !== 1 ? 's' : ''} remaining`}
+            </div>
+          )}
+
+          {r.status === 'ACTIVE' && r.ownerName && (
+            <div className="flex items-center gap-3 mt-1 flex-wrap">
+              <p className="text-xs text-gray-600">
+                <span className="font-medium">Contact: </span>{r.ownerName}
+              </p>
+              {r.ownerPhone && (
+                <a
+                  href={`tel:${r.ownerPhone}`}
+                  className="flex items-center gap-1 text-xs bg-forest-50 text-forest-800 hover:bg-forest-100 px-2 py-1 rounded-lg font-medium transition-colors"
+                >
+                  <Phone size={11} /> Call
+                </a>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 mt-auto pt-1 flex-wrap">
+            <Link
+              to={`/properties/${r.propertyId}`}
+              className="text-xs text-forest-800 hover:underline flex items-center gap-1"
+            >
+              View Property <ArrowUpRight size={11} />
+            </Link>
+            {r.status === 'PENDING_PAYMENT' && r.authorizationUrl && (
+              <a
+                href={r.authorizationUrl}
+                className="text-xs text-amber-700 hover:underline flex items-center gap-1"
+              >
+                Complete Payment <ArrowUpRight size={11} />
+              </a>
+            )}
+            <span className="text-xs text-gray-300 ml-auto">
+              {r.paymentReference?.slice(0, 20)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ReservationsPage() {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -981,7 +1082,11 @@ function ReservationsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="animate-pulse space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-gray-100 rounded-2xl" />)}</div>;
+  if (loading) return (
+    <div className="space-y-4">
+      {[...Array(3)].map((_, i) => <div key={i} className="h-36 bg-gray-100 rounded-2xl animate-pulse" />)}
+    </div>
+  );
 
   return (
     <div>
@@ -993,31 +1098,8 @@ function ReservationsPage() {
           <Link to="/properties" className="btn-primary">Browse Properties</Link>
         </div>
       ) : (
-        <div className="card divide-y divide-gray-50">
-          {reservations.map((r) => (
-            <div key={r.id} className="flex items-center justify-between px-5 py-4">
-              <div>
-                <p className="text-sm font-medium text-gray-800">Property #{r.propertyId}</p>
-                <p className="text-xs text-gray-400">
-                  Ref: {r.paymentReference} · {timeAgo(r.createdAt)}
-                  {r.expiresAt && ` · Expires ${new Date(r.expiresAt).toLocaleDateString('en-NG')}`}
-                </p>
-              </div>
-              <div className="text-right flex flex-col items-end gap-1">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  r.status === 'ACTIVE'          ? 'bg-green-50 text-green-700'   :
-                  r.status === 'PENDING_PAYMENT' ? 'bg-yellow-50 text-yellow-700' :
-                  r.status === 'COMPLETED'       ? 'bg-blue-50 text-blue-700'     :
-                  'bg-gray-100 text-gray-500'
-                }`}>{r.status.replace('_', ' ')}</span>
-                {r.status === 'PENDING_PAYMENT' && r.authorizationUrl && (
-                  <a href={r.authorizationUrl} className="text-xs text-forest-800 hover:underline flex items-center gap-1">
-                    Complete Payment <ArrowUpRight size={11} />
-                  </a>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="space-y-4">
+          {reservations.map((r) => <ReservationCard key={r.id} r={r} />)}
         </div>
       )}
     </div>
