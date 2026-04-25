@@ -76,7 +76,8 @@ export default function PropertyDetailPage() {
   const handlePay = async () => {
     if (!isAuthenticated) { navigate('/login'); return; }
     setInitiatingPay(true);
-    try {
+
+    const doPay = async () => {
       const { data } = await transactionAPI.initiate({
         propertyId: property.id,
         sellerId:   property.ownerId,
@@ -86,7 +87,31 @@ export default function PropertyDetailPage() {
       });
       // Redirect to Paystack checkout
       window.location.href = data.authorizationUrl;
+    };
+
+    try {
+      await doPay();
     } catch (err) {
+      const httpStatus = err.response?.status;
+
+      // On a transient 503/502 the transaction may have been created server-side
+      // and the authorizationUrl stored — retry once to get the idempotent response
+      // (same reference + URL) without creating a duplicate.
+      if (httpStatus === 503 || httpStatus === 502) {
+        toast('Service is busy — retrying…', { icon: '⏳', duration: 2500 });
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        try {
+          await doPay();
+          return;
+        } catch (retryErr) {
+          toast.error(
+            retryErr.response?.data?.message ||
+            'Payment temporarily unavailable. Please try again in a moment.'
+          );
+          return;
+        }
+      }
+
       toast.error(err.response?.data?.message || 'Payment initiation failed');
     } finally {
       setInitiatingPay(false);
