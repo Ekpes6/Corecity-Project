@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.Optional;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -29,6 +30,7 @@ public class ReservationService {
     private final PropertyRepository propertyRepository;
     private final ReservationPaystackClient paystackClient;
     private final RabbitTemplate rabbitTemplate;
+    private final UserServiceClient userServiceClient;
 
     @Value("${reservation.fee:1000}")
     private BigDecimal reservationFee;
@@ -158,11 +160,11 @@ public class ReservationService {
             reference, reservation.getPropertyId(), reservation.getExpiresAt());
     }
 
-    /** Get all reservations made by the currently authenticated customer. */
+    /** Get all reservations made by the currently authenticated customer, enriched with property snapshot + owner contact. */
     @Transactional(readOnly = true)
     public List<ReservationResponse> getMyReservations(Long customerId) {
         return reservationRepository.findByCustomerIdOrderByCreatedAtDesc(customerId)
-            .stream().map(this::toResponse).toList();
+            .stream().map(this::toEnrichedResponse).toList();
     }
 
     /** Get the active reservation for a property (for admin / owner to view). */
@@ -333,5 +335,53 @@ public class ReservationService {
             .expiresAt(r.getExpiresAt())
             .createdAt(r.getCreatedAt())
             .build();
+    }
+
+    /**
+     * Builds a ReservationResponse enriched with property snapshot + owner contact.
+     * Used only by getMyReservations (dashboard view). Gracefully degrades if
+     * the property or user-service lookup fails.
+     */
+    private ReservationResponse toEnrichedResponse(Reservation r) {
+        ReservationResponse.ReservationResponseBuilder builder = ReservationResponse.builder()
+            .id(r.getId())
+            .propertyId(r.getPropertyId())
+            .customerId(r.getCustomerId())
+            .paymentReference(r.getPaymentReference())
+            .status(r.getStatus().name())
+            .paidAt(r.getPaidAt())
+            .expiresAt(r.getExpiresAt())
+            .createdAt(r.getCreatedAt());
+
+        propertyRepository.findById(r.getPropertyId()).ifPresent(p -> {
+            builder.propertyTitle(p.getTitle());
+            builder.propertyPrice(p.getPrice());
+            builder.propertyListingType(p.getListingType().name());
+            builder.propertyStatus(p.getStatus().name());
+            // Reservation holder always gets the full address
+            builder.propertyAddress(p.getAddress());
+
+            // Derive primary image URL from the property's file collection
+            List<com.corecity.property.entity.PropertyFile> files =
+                Optional.ofNullable(p.getFiles()).orElseGet(List::of);
+            String primaryImg = files.stream()
+                .filter(f -> Boolean.TRUE.equals(f.getPrimary()))
+                .map(f -> f.getFileUrl())
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(files.isEmpty() ? null : files.get(0).getFileUrl());
+            builder.primaryImageUrl(primaryImg);
+
+            // Owner contact — only expose for confirmed (ACTIVE) reservations
+            if (r.getStatus() == Reservation.ReservationStatus.ACTIVE) {
+                UserServiceClient.UserProfile profile = userServiceClient.getUserProfile(p.getOwnerId());
+                if (profile != null) {
+                    builder.ownerName(profile.fullName());
+                    builder.ownerPhone(profile.getPhone());
+                }
+            }
+        });
+
+        return builder.build();
     }
 }
