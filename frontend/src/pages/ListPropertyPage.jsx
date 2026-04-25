@@ -54,22 +54,49 @@ export default function ListPropertyPage() {
 
     // Debounce 800ms so we don't fire on every keystroke
     geocodeTimer.current = setTimeout(async () => {
-      const query = [address, lgaName, stateName, 'Nigeria'].filter(Boolean).join(', ');
       setGeocoding(true);
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
-          { headers: { 'Accept-Language': 'en' } }
-        );
-        const results = await res.json();
+        const headers = {
+          'Accept-Language': 'en',
+          'User-Agent': 'Corecity/1.0 (corecity.com.ng)',
+        };
+
+        // Structured search — more reliable than a free-text query for NG addresses
+        const params = new URLSearchParams({ format: 'json', limit: '1', countrycodes: 'ng' });
+        params.set('street', address);
+        if (lgaName)   params.set('city',  lgaName);
+        if (stateName) params.set('state', stateName);
+
+        let results = await fetch(
+          `https://nominatim.openstreetmap.org/search?${params}`, { headers }
+        ).then((r) => r.json());
+
+        // Fallback 1: drop street, search by LGA / state only
+        if (results.length === 0 && (lgaName || stateName)) {
+          const p2 = new URLSearchParams({ format: 'json', limit: '1', countrycodes: 'ng' });
+          if (lgaName)   p2.set('city',  lgaName);
+          if (stateName) p2.set('state', stateName);
+          results = await fetch(
+            `https://nominatim.openstreetmap.org/search?${p2}`, { headers }
+          ).then((r) => r.json());
+        }
+
+        // Fallback 2: free-text with state + Nigeria
+        if (results.length === 0 && stateName) {
+          results = await fetch(
+            `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(`${stateName}, Nigeria`)}`,
+            { headers }
+          ).then((r) => r.json());
+        }
+
         if (results.length > 0) {
           const { lat, lon } = results[0];
-          setValue('latitude', parseFloat(lat).toFixed(6));
+          setValue('latitude',  parseFloat(lat).toFixed(6));
           setValue('longitude', parseFloat(lon).toFixed(6));
           setCoordsAutoFilled(true);
         }
       } catch {
-        // Silently ignore geocoding errors — user can still enter manually
+        // Silently ignore geocoding errors — user can still enter coordinates manually
       } finally {
         setGeocoding(false);
       }
