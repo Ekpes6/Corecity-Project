@@ -1309,28 +1309,67 @@ export default function DashboardPage() {
 }
 
 function PaymentsPage() {
-  const [transactions, setTransactions] = useState([]);
+  const [items, setItems]   = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    transactionAPI.getMine().then((r) => setTransactions(r.data)).catch(() => {});
+    Promise.all([
+      transactionAPI.getMine().catch(() => ({ data: [] })),
+      reservationAPI.getMine().catch(() => ({ data: [] })),
+    ]).then(([txnRes, rsvRes]) => {
+      const txns = (txnRes.data || []).map((t) => ({
+        id: `TXN-${t.id}`,
+        label: t.type,
+        sub: t.propertyId ? `Property #${t.propertyId}` : '',
+        amount: t.totalAmount,
+        status: t.status,
+        reference: t.reference,
+        date: t.createdAt,
+      }));
+
+      const rsv = (rsvRes.data || [])
+        .filter((r) => r.paidAt != null)
+        .map((r) => ({
+          id: `RSV-${r.id}`,
+          label: 'RESERVATION FEE',
+          sub: r.propertyTitle || `Property #${r.propertyId}`,
+          amount: 1000,
+          status: 'SUCCESS',
+          reference: r.paymentReference,
+          date: r.paidAt,
+        }));
+
+      const all = [...txns, ...rsv].sort((a, b) => new Date(b.date) - new Date(a.date));
+      setItems(all);
+    }).finally(() => setLoading(false));
   }, []);
+
+  if (loading) return (
+    <div className="space-y-3">
+      {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}
+    </div>
+  );
+
   return (
     <div>
       <h2 className="font-display text-2xl font-bold text-forest-900 mb-6">My Payments</h2>
-      {transactions.length === 0 ? (
+      {items.length === 0 ? (
         <div className="text-center py-16 card"><p className="text-gray-400">No transactions yet</p></div>
       ) : (
         <div className="card divide-y divide-gray-50">
-          {transactions.map((t) => (
+          {items.map((t) => (
             <div key={t.id} className="flex items-center justify-between px-5 py-4">
               <div>
-                <p className="text-sm font-medium text-gray-800">{t.type} — Property #{t.propertyId}</p>
-                <p className="text-xs text-gray-400">{t.reference} · {timeAgo(t.createdAt)}</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {t.label}{t.sub ? ` — ${t.sub}` : ''}
+                </p>
+                <p className="text-xs text-gray-400">{t.reference} · {timeAgo(t.date)}</p>
               </div>
               <div className="text-right">
-                <p className="naira text-sm font-bold">{formatNaira(t.totalAmount)}</p>
+                <p className="naira text-sm font-bold">{formatNaira(t.amount)}</p>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   t.status === 'SUCCESS' ? 'bg-green-50 text-green-700' :
-                  t.status === 'FAILED'  ? 'bg-red-50 text-red-700' :
+                  t.status === 'FAILED'  ? 'bg-red-50 text-red-700'    :
                   'bg-yellow-50 text-yellow-700'
                 }`}>{t.status}</span>
               </div>
