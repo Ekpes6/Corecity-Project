@@ -73,12 +73,50 @@ export default function PaymentVerifyPage() {
         })
         .catch(() => setStatus('failed'));
     } else {
-      transactionAPI.verify(reference)
-        .then(({ data }) => {
-          setTransaction(data);
-          setStatus(data.status === 'SUCCESS' ? 'success' : 'failed');
-        })
-        .catch(() => setStatus('failed'));
+      // HLK- (property transaction): poll Paystack via the backend — same race-condition
+      // defence as RSV-.  Paystack may return "pending" immediately after redirect before
+      // finalising the transaction on their end.  The backend now leaves the DB status
+      // unchanged on "pending", so we retry until we see SUCCESS or explicit FAILED.
+      let cancelled = false;
+      let attempts  = 0;
+      const MAX_ATTEMPTS = 5;
+      const RETRY_MS     = 2500;
+      let timerId = null;
+
+      const attemptVerify = () => {
+        attempts++;
+        transactionAPI.verify(reference)
+          .then(({ data }) => {
+            if (cancelled) return;
+            setTransaction(data);
+            if (data.status === 'SUCCESS') {
+              setStatus('success');
+            } else if (data.status === 'FAILED') {
+              setStatus('failed');
+            } else if (attempts < MAX_ATTEMPTS) {
+              // PENDING / INITIATED — webhook hasn't fired yet, try again
+              timerId = setTimeout(attemptVerify, RETRY_MS);
+            } else {
+              // Max retries — webhook still hasn't arrived; show pending state as success
+              // if Paystack charged (Paystack shows success but DB is behind)
+              setStatus('failed');
+            }
+          })
+          .catch(() => {
+            if (cancelled) return;
+            if (attempts < MAX_ATTEMPTS) {
+              timerId = setTimeout(attemptVerify, RETRY_MS);
+            } else {
+              setStatus('failed');
+            }
+          });
+      };
+
+      attemptVerify();
+      return () => {
+        cancelled = true;
+        if (timerId) clearTimeout(timerId);
+      };
     }
   }, [reference, isReservation, isSubscription, isLoanRepayment]);
 
@@ -87,6 +125,7 @@ export default function PaymentVerifyPage() {
       <div className="text-center">
         <Loader2 size={48} className="animate-spin text-forest-800 mx-auto mb-4" />
         <p className="text-gray-500">Verifying your payment…</p>
+        <p className="text-gray-400 text-xs mt-2">This may take a few seconds</p>
       </div>
     </div>
   );
