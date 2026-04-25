@@ -78,4 +78,42 @@ public class UserServiceClient {
         public String getAccessLevel() { return accessLevel; }
         public void setAccessLevel(String v) { accessLevel = v; }
     }
+
+    /**
+     * Fetches the public profile of a user from user-service.
+     * Used by ReservationService to include owner name/phone on confirmed reservations.
+     * Returns null on any network or service error — callers must handle null gracefully.
+     */
+    public UserProfile getUserProfile(Long userId) {
+        try {
+            return webClient.get()
+                .uri("/api/v1/users/me")
+                .header("X-User-Id", userId.toString())
+                .retrieve()
+                .bodyToMono(UserProfile.class)
+                .block();
+        } catch (Exception e) {
+            log.warn("user-service profile fetch failed for user {}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
+
+    /** Minimal projection of user-service's UserDTO. */
+    public static class UserProfile {
+        private String firstName;
+        private String lastName;
+        private String phone;
+
+        public String getFirstName() { return firstName; }
+        public void setFirstName(String v) { firstName = v; }
+        public String getLastName()  { return lastName; }
+        public void setLastName(String v)  { lastName  = v; }
+        public String getPhone()     { return phone; }
+        public void setPhone(String v)     { phone     = v; }
+
+        public String fullName() {
+            if (firstName == null && lastName == null) return null;
+            return ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
+        }
+    }
 }
