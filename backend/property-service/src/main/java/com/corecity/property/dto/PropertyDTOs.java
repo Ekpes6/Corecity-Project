@@ -140,5 +140,20 @@ public class PropertyDTOs {
         private java.time.LocalDateTime paidAt;
         private java.time.LocalDateTime expiresAt;
         private java.time.LocalDateTime createdAt;
+
+        // ─── Enriched property snapshot (populated by getMyReservations) ────
+        private String propertyTitle;
+        private String primaryImageUrl;
+        private BigDecimal propertyPrice;
+        private String propertyListingType;
+        /** Full address — always shown to the reservation holder. */
+        private String propertyAddress;
+        private String propertyStatus;
+
+        // ─── Owner contact — only populated for ACTIVE reservations ─────────
+        /** Full name of the property owner (seller / agent). */
+        private String ownerName;
+        /** Phone number of the property owner; only set when status=ACTIVE. */
+        private String ownerPhone;
     }
 }
