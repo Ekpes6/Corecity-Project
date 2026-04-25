@@ -121,6 +121,20 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.getByReference(reference, userId));
     }
 
+    /**
+     * Actively verify the payment with Paystack and activate the reservation if confirmed.
+     * Eliminates the webhook-vs-browser-redirect race condition on the verify page.
+     * Safe to call multiple times (idempotent — already-ACTIVE reservations are returned as-is).
+     *
+     * GET /api/v1/reservations/verify/{reference}
+     */
+    @GetMapping("/api/v1/reservations/verify/{reference}")
+    public ResponseEntity<ReservationResponse> verifyReservation(
+            @PathVariable String reference,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(reservationService.verifyAndActivate(reference, userId));
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────
 
     /**

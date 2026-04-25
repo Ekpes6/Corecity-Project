@@ -257,6 +257,71 @@ public class ReservationService {
         }
     }
 
+    /**
+     * Frontend-triggered server-side Paystack verify.
+     *
+     * Eliminates the race condition between Paystack's asynchronous webhook delivery
+     * and the browser redirect: instead of trusting the DB state on the verify page
+     * (which may still be PENDING_PAYMENT if the webhook hasn't fired yet), the
+     * frontend calls this endpoint which talks to Paystack directly and activates
+     * the reservation if payment is confirmed.
+     *
+     * Safe to call many times — idempotent: if the reservation is already ACTIVE
+     * (webhook beat the frontend), it returns immediately.
+     */
+    @Transactional
+    public ReservationResponse verifyAndActivate(String reference, Long requesterId) {
+        Objects.requireNonNull(reference, "reference must not be null");
+        Reservation r = reservationRepository.findByPaymentReference(reference)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Reservation not found"));
+        if (!r.getCustomerId().equals(requesterId))
+            throw new ResponseStatusException(FORBIDDEN, "Access denied");
+
+        // Webhook already processed it — nothing to do
+        if (r.getStatus() == Reservation.ReservationStatus.ACTIVE) {
+            log.debug("verifyAndActivate: reservation {} already ACTIVE, returning immediately", reference);
+            return toResponse(r);
+        }
+
+        // EXPIRED / COMPLETED — not verifiable
+        if (r.getStatus() != Reservation.ReservationStatus.PENDING_PAYMENT) {
+            log.debug("verifyAndActivate: reservation {} is {}, not verifiable", reference, r.getStatus());
+            return toResponse(r);
+        }
+
+        // Actively call Paystack — resolves the webhook-vs-redirect race
+        ReservationPaystackClient.VerifyResult result = paystackClient.verifyReservation(reference);
+        if (result.success()) {
+            log.info("verifyAndActivate: Paystack confirmed payment for {} — activating (PENDING_PAYMENT → ACTIVE)", reference);
+            LocalDateTime now = LocalDateTime.now();
+            r.setStatus(Reservation.ReservationStatus.ACTIVE);
+            r.setPaidAt(now);
+            r.setExpiresAt(now.plusDays(negotiationDays));
+            reservationRepository.save(r);
+
+            propertyRepository.findById(Objects.requireNonNull(r.getPropertyId())).ifPresent(p -> {
+                p.setStatus(Property.PropertyStatus.ON_NEGOTIATION);
+                propertyRepository.save(p);
+            });
+
+            try {
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_activated",
+                    Map.of(
+                        "reservationId", r.getId(),
+                        "propertyId",    r.getPropertyId(),
+                        "customerId",    r.getCustomerId(),
+                        "expiresAt",     r.getExpiresAt().toString()
+                    ));
+            } catch (Exception e) {
+                log.warn("Could not publish reservation activation notification", e);
+            }
+        } else {
+            log.info("verifyAndActivate: Paystack returned status='{}' for {} — payment not confirmed", result.status(), reference);
+        }
+
+        return toResponse(r);
+    }
+
     private ReservationResponse toResponse(Reservation r) {
         return ReservationResponse.builder()
             .id(r.getId())
