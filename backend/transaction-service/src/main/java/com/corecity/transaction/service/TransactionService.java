@@ -17,6 +17,7 @@ import java.math.RoundingMode;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -37,6 +38,38 @@ public class TransactionService {
     @Transactional
     public InitTransactionResponse initTransaction(InitTransactionRequest req, Long buyerId) {
         Long safeBuyerId = Objects.requireNonNull(buyerId, "buyer id must not be null");
+
+        // Idempotency guard: if there is already a PENDING or INITIATED transaction for this
+        // buyer+property, return it with the stored Paystack URL rather than creating a duplicate.
+        // This handles the gateway-timeout race: transaction-service saved the record and stored
+        // the authorizationUrl, but the 503 returned to the frontend before the response arrived.
+        // On retry the frontend will receive the same URL and redirect correctly.
+        Optional<Transaction> existingOpt = transactionRepository
+            .findTopByPropertyIdAndBuyerIdAndStatusInOrderByCreatedAtDesc(
+                req.getPropertyId(), safeBuyerId,
+                List.of(Transaction.TransactionStatus.INITIATED, Transaction.TransactionStatus.PENDING));
+        if (existingOpt.isPresent()) {
+            Transaction existing = existingOpt.get();
+            if (existing.getAuthorizationUrl() != null) {
+                log.info("Returning existing {} transaction {} for buyer {} / property {} (idempotent retry)",
+                    existing.getStatus(), existing.getReference(), safeBuyerId, req.getPropertyId());
+                BigDecimal fee = paystackService.calculateFee(existing.getAmount());
+                return InitTransactionResponse.builder()
+                    .transactionId(existing.getId())
+                    .reference(existing.getReference())
+                    .authorizationUrl(existing.getAuthorizationUrl())
+                    .amount(existing.getAmount())
+                    .serviceFee(fee)
+                    .totalAmount(existing.getAmount().add(fee))
+                    .build();
+            }
+            // authorizationUrl is null — Paystack call never completed; fall through to create fresh
+            log.info("Existing {} transaction {} has no authorizationUrl; cancelling and retrying Paystack call",
+                existing.getStatus(), existing.getReference());
+            existing.setStatus(Transaction.TransactionStatus.FAILED);
+            transactionRepository.save(existing);
+        }
+
         BigDecimal fee = paystackService.calculateFee(req.getAmount());
         // UUID reference: globally unique, no millisecond-collision risk under concurrent load
         String reference = "HLK-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
