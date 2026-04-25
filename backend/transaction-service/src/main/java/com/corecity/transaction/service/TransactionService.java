@@ -138,9 +138,18 @@ public class TransactionService {
                 "propertyId", tx.getPropertyId()
             ));
             log.info("Transaction {} verified successfully via {}", reference, result.channel());
-        } else {
+        } else if ("failed".equalsIgnoreCase(result.status())) {
+            // Only write FAILED when Paystack explicitly confirms the payment failed.
+            // Any other status (e.g. "pending" — Paystack hasn't finalised yet) leaves
+            // the DB row unchanged so the webhook can still set it to SUCCESS when it arrives.
             tx.setStatus(Transaction.TransactionStatus.FAILED);
-            log.warn("Transaction {} failed, Paystack status: {}", reference, result.status());
+            log.warn("Transaction {} explicitly failed on Paystack (status={})", reference, result.status());
+        } else {
+            // Paystack returned a non-success, non-failed status (e.g. "pending" / "abandoned").
+            // Do NOT overwrite the current status — the webhook will arrive shortly and set SUCCESS.
+            log.info("Transaction {} Paystack status='{}' — leaving DB status as {} to await webhook",
+                reference, result.status(), tx.getStatus());
+            return toResponse(tx); // return current state without saving
         }
 
         var savedTransaction = transactionRepository.save(
