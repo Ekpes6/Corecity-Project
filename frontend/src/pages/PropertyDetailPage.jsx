@@ -26,6 +26,7 @@ export default function PropertyDetailPage() {
   const [initiatingPay, setInitiatingPay] = useState(false);
   const [reserving, setReserving] = useState(false);
   const [agentRep, setAgentRep]   = useState(null);
+  const [myActiveReservation, setMyActiveReservation] = useState(null);
 
   useEffect(() => {
     propertyAPI.getOne(id)
@@ -48,6 +49,19 @@ export default function PropertyDetailPage() {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  // Check whether the logged-in user already holds an active reservation on this property
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    reservationAPI.getMine()
+      .then((r) => {
+        const found = (r.data || []).find(
+          (res) => String(res.propertyId) === String(id) && res.status === 'ACTIVE'
+        );
+        setMyActiveReservation(found || null);
+      })
+      .catch(() => {});
+  }, [id, isAuthenticated]);
 
   const images = property?.imageUrls?.length ? property.imageUrls : [PLACEHOLDER];
 
@@ -321,10 +335,25 @@ export default function PropertyDetailPage() {
                 </button>
                 {/* Reserve button – lock in the property for 24 h with a reservation fee */}
                 {(property.status === 'ACTIVE' || property.status === 'ON_NEGOTIATION') && (
-                  <button onClick={handleReserve} disabled={reserving || initiatingPay}
-                    className="btn-secondary w-full flex items-center justify-center gap-2 mb-3">
-                    {reserving ? 'Reserving…' : <><BookMarked size={15} /> Reserve Property</>}
-                  </button>
+                  myActiveReservation ? (
+                    <div className="w-full mb-3">
+                      <button disabled
+                        className="btn-secondary w-full flex items-center justify-center gap-2 opacity-60 cursor-not-allowed">
+                        <BookMarked size={15} /> Already Reserved
+                      </button>
+                      <p className="text-xs text-center text-gray-400 mt-1">
+                        You hold an active reservation on this property.{' '}
+                        <Link to="/dashboard/reservations" className="text-forest-700 hover:underline">
+                          View in dashboard
+                        </Link>
+                      </p>
+                    </div>
+                  ) : (
+                    <button onClick={handleReserve} disabled={reserving || initiatingPay}
+                      className="btn-secondary w-full flex items-center justify-center gap-2 mb-3">
+                      {reserving ? 'Reserving…' : <><BookMarked size={15} /> Reserve Property</>}
+                    </button>
+                  )
                 )}
               </>
             )}
