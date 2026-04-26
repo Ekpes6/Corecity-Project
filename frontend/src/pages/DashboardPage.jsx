@@ -1247,7 +1247,7 @@ export default function DashboardPage() {
     { to: '/dashboard/list',          label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
     { to: '/dashboard/moderation',    label: 'Moderation',     icon: ShieldCheck, adminOnly: true },
     { to: '/dashboard/payments',      label: 'Payments',       icon: CreditCard },
-    { to: '/dashboard/commissions',   label: 'Commissions',    icon: Landmark,    agentOrSeller: true },
+    { to: '/dashboard/commissions',   label: 'Commissions',    icon: Landmark,    agentAdminOrSeller: true },
     { to: '/dashboard/reservations',  label: 'Reservations',   icon: CalendarCheck },
     { to: '/dashboard/subscription',  label: 'Subscription',   icon: Crown,       agentOrSeller: true },
     { to: '/dashboard/reputation',    label: 'Reputation',     icon: BadgeCheck,  agentOnly: true },
@@ -1273,11 +1273,12 @@ export default function DashboardPage() {
           </div>
 
           <nav className="card p-2 space-y-0.5">
-            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller }) => {
+            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller, agentAdminOrSeller }) => {
               if (sellerOnly && !isSeller) return null;
               if (adminOnly && !isAdmin) return null;
               if (agentOnly && !isAgent) return null;
               if (agentOrSeller && !isAgent && !isSeller) return null;
+              if (agentAdminOrSeller && !isAgent && !isAdmin && !isSeller) return null;
               return (
                 <NavLink key={to} to={to} end={end}
                   className={({ isActive }) =>
@@ -1300,11 +1301,12 @@ export default function DashboardPage() {
         <main className="flex-1 min-w-0">
           {/* Mobile nav tabs */}
           <div className="lg:hidden flex gap-1 overflow-x-auto pb-2 mb-4 scrollbar-none">
-            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller }) => {
+            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller, agentAdminOrSeller }) => {
               if (sellerOnly && !isSeller) return null;
               if (adminOnly && !isAdmin) return null;
               if (agentOnly && !isAgent) return null;
               if (agentOrSeller && !isAgent && !isSeller) return null;
+              if (agentAdminOrSeller && !isAgent && !isAdmin && !isSeller) return null;
               return (
                 <NavLink key={to} to={to} end={end}
                   className={({ isActive }) =>
