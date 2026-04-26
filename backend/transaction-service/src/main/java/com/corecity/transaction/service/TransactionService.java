@@ -102,7 +102,7 @@ public class TransactionService {
 
         // Paystack succeeded — now persist the transaction with the real authorization URL.
         // Saved directly as PENDING (no intermediate INITIATED state needed).
-        var savedTransaction = Objects.requireNonNull(transactionRepository.save(
+        var savedTransaction = transactionRepository.save(
             Transaction.builder()
                 .reference(reference)
                 .propertyId(req.getPropertyId())
@@ -114,7 +114,7 @@ public class TransactionService {
                 .authorizationUrl(result.authorizationUrl())
                 .status(Transaction.TransactionStatus.PENDING)
                 .build()
-        ));
+        );
         log.info("Transaction {} persisted as PENDING for buyer {} / property {}",
             reference, safeBuyerId, req.getPropertyId());
 
