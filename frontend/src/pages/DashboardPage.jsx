@@ -1409,6 +1409,91 @@ function PaymentsPage() {
   );
 }
 
+function CommissionsPage() {
+  const { isAdmin, isAgent } = useAuth();
+  const [commissions, setCommissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = isAdmin ? commissionAPI.getAll() : commissionAPI.getMine();
+    fetch
+      .then((r) => setCommissions(r.data || []))
+      .catch(() => toast.error('Failed to load commissions'))
+      .finally(() => setLoading(false));
+  }, [isAdmin]);
+
+  if (loading) return <div className="animate-pulse space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-gray-100 rounded-xl" />)}</div>;
+
+  // Totals
+  const totalAgentCommission    = commissions.reduce((s, c) => s + Number(c.agentCommission    || 0), 0);
+  const totalCorecityCommission = commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0);
+  const totalValue              = commissions.reduce((s, c) => s + Number(c.propertyValue      || 0), 0);
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-display text-2xl font-bold text-forest-900">
+        {isAdmin ? 'All Commissions' : 'My Commissions'}
+      </h2>
+
+      {/* Summary cards */}
+      <div className={`grid gap-4 ${isAdmin ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
+        <div className="card p-5">
+          <p className="text-xs text-gray-500 mb-1">Total Property Value</p>
+          <p className="text-xl font-bold text-gray-800 naira">{formatNaira(totalValue)}</p>
+        </div>
+        {isAdmin && (
+          <div className="card p-5 border-l-4 border-forest-700">
+            <p className="text-xs text-gray-500 mb-1">CoreCity Earnings (3%)</p>
+            <p className="text-xl font-bold text-forest-800 naira">{formatNaira(totalCorecityCommission)}</p>
+          </div>
+        )}
+        <div className="card p-5 border-l-4 border-blue-400">
+          <p className="text-xs text-gray-500 mb-1">{isAdmin ? 'Agent Earnings (7%)' : 'My Commission (7%)'}</p>
+          <p className="text-xl font-bold text-blue-700 naira">{formatNaira(totalAgentCommission)}</p>
+        </div>
+      </div>
+
+      {/* Commission rows */}
+      {commissions.length === 0 ? (
+        <div className="text-center py-16 card">
+          <Landmark size={36} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-gray-400">No commissions yet. Commissions are generated when a property payment is completed.</p>
+        </div>
+      ) : (
+        <div className="card divide-y divide-gray-50">
+          {commissions.map((c) => (
+            <div key={c.id} className="px-5 py-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-800">Property #{c.propertyId}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Transaction #{c.transactionId}
+                    {isAdmin && ` · Agent #${c.agentId}`}
+                    {' · '}{timeAgo(c.createdAt)}
+                  </p>
+                  <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+                    <span>Property value: <span className="font-medium text-gray-700 naira">{formatNaira(c.propertyValue)}</span></span>
+                    {isAdmin && <span>CoreCity (3%): <span className="font-medium text-forest-700 naira">{formatNaira(c.corecityCommission)}</span></span>}
+                    <span>{isAdmin ? 'Agent (7%)' : 'My share (7%)'}: <span className="font-medium text-blue-700 naira">{formatNaira(c.agentCommission)}</span></span>
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="naira text-base font-bold text-gray-800">
+                    {formatNaira(isAdmin ? c.corecityCommission : c.agentCommission)}
+                  </p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    c.status === 'DISBURSED' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+                  }`}>{c.status}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PlaceholderPage({ icon, title }) {
   return (
     <div className="text-center py-24 card">
