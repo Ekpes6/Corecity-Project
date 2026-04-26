@@ -119,6 +119,7 @@ export const reputationAPI = {
 // ─── Commissions ─────────────────────────────────────────────
 export const commissionAPI = {
   getMine: () => api.get('/transactions/commissions/my'),
+  getAll:  () => api.get('/transactions/commissions/all'),
 };
 
 // ─── States / LGAs ───────────────────────────────────────────

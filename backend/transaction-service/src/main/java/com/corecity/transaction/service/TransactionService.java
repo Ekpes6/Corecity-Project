@@ -185,7 +185,8 @@ public class TransactionService {
 
     public List<TransactionResponse> getMyTransactions(Long userId, String role) {
         Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
-        List<Transaction> txs = "seller".equalsIgnoreCase(role)
+        boolean isSeller = "seller".equalsIgnoreCase(role) || "agent".equalsIgnoreCase(role);
+        List<Transaction> txs = isSeller
             ? transactionRepository.findBySellerIdOrderByCreatedAtDesc(safeUserId)
             : transactionRepository.findByBuyerIdOrderByCreatedAtDesc(safeUserId);
         return txs.stream().map(this::toResponse).collect(Collectors.toList());
@@ -226,6 +227,12 @@ public class TransactionService {
 
     public List<CommissionResponse> getMyCommissions(Long agentId) {
         return commissionRepository.findByAgentIdOrderByCreatedAtDesc(agentId)
+            .stream().map(this::toCommissionResponse).collect(Collectors.toList());
+    }
+
+    /** Admin-only: all commissions across every agent and property. */
+    public List<CommissionResponse> getAllCommissions() {
+        return commissionRepository.findAllByOrderByCreatedAtDesc()
             .stream().map(this::toCommissionResponse).collect(Collectors.toList());
     }
 

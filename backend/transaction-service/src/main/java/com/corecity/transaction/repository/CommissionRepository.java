@@ -11,4 +11,6 @@ public interface CommissionRepository extends JpaRepository<Commission, Long> {
     Optional<Commission> findByTransactionId(Long transactionId);
 
     List<Commission> findByAgentIdOrderByCreatedAtDesc(Long agentId);
+
+    List<Commission> findAllByOrderByCreatedAtDesc();
 }
