@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useDropzone } from 'react-dropzone';
@@ -25,6 +25,7 @@ export default function ListPropertyPage() {
   });
 
   const listingType = watch('listingType');
+  const watchedPrice = watch('price');
   const selectedStateId = watch('stateId');
   const watchedAddress = watch('address');
   const watchedLgaId = watch('lgaId');
@@ -127,7 +128,24 @@ export default function ListPropertyPage() {
     loadLgas();
   }, [selectedStateId, setValue]);
 
-  // ── Dropzone ──────────────────────────────────────────────
+  // ── Live commission + fee breakdown ──────────────────────────
+  // Computed from the agent's entered price:
+  //   CoreCity commission = 3%
+  //   Agent commission    = 7%
+  //   Paystack fee        = 1.5% + ₦100, capped at ₦2,000
+  //   Final listed price  = base + corecity + agent + paystack
+  const priceBreakdown = useMemo(() => {
+    const base = parseFloat(watchedPrice);
+    if (!base || base <= 0) return null;
+    const corecity  = +(base * 0.03).toFixed(2);
+    const agent     = +(base * 0.07).toFixed(2);
+    const rawPaystack = +(base * 0.015 + 100).toFixed(2);
+    const paystack  = Math.min(rawPaystack, 2000);
+    const total     = +(base + corecity + agent + paystack).toFixed(2);
+    return { base, corecity, agent, paystack, total };
+  }, [watchedPrice]);
+
+
   const onDrop = useCallback((accepted) => {
     const newFiles = accepted.slice(0, 10 - images.length);
     setImages((prev) => [...prev, ...newFiles]);
@@ -286,6 +304,33 @@ export default function ListPropertyPage() {
                 <input type="number" {...register('price', { required: 'Price is required', min: 1 })}
                   placeholder="e.g. 2500000" className="input-field" />
                 {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
+
+                {/* Live commission + fee breakdown */}
+                {priceBreakdown && (
+                  <div className="mt-3 bg-forest-50 border border-forest-100 rounded-xl p-4 space-y-1.5 text-xs">
+                    <p className="font-semibold text-forest-900 mb-2">Price breakdown (auto-generated)</p>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Your base price</span>
+                      <span className="font-medium">₦{priceBreakdown.base.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>CoreCity commission (3%)</span>
+                      <span className="font-medium">₦{priceBreakdown.corecity.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Agent commission (7%)</span>
+                      <span className="font-medium">₦{priceBreakdown.agent.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>Paystack fee (1.5% + ₦100, max ₦2,000)</span>
+                      <span className="font-medium">₦{priceBreakdown.paystack.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-forest-900 font-bold border-t border-forest-200 pt-2 mt-1">
+                      <span>Buyer pays (final listed price)</span>
+                      <span>₦{priceBreakdown.total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Price Period</label>
