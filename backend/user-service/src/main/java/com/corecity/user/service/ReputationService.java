@@ -69,7 +69,7 @@ public class ReputationService {
             ReputationEvent event = ReputationEvent.builder()
                 .agentId(agentId)
                 .source(ReputationEvent.ReputationSource.SYSTEM_VALIDATION)
-                .points(1)
+                .points(2)
                 .referenceId(transactionId)
                 .negative(false)
                 .build();
