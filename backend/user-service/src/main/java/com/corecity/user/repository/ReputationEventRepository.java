@@ -15,4 +15,7 @@ public interface ReputationEventRepository extends JpaRepository<ReputationEvent
     int sumPositivePoints(@Param("agentId") Long agentId);
 
     boolean existsByAgentIdAndNegativeTrue(Long agentId);
+
+    /** Used to prevent double-awarding for the same transaction. */
+    boolean existsByAgentIdAndReferenceIdAndNegativeFalse(Long agentId, Long referenceId);
 }

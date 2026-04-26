@@ -163,7 +163,8 @@ public class TransactionService {
             rabbitTemplate.convertAndSend("corecity.exchange", "notification.payment_success", Map.of(
                 "buyerId", tx.getBuyerId(), "sellerId", tx.getSellerId(),
                 "amount", tx.getAmount(), "reference", reference,
-                "propertyId", tx.getPropertyId()
+                "propertyId", tx.getPropertyId(),
+                "transactionId", tx.getId()
             ));
             log.info("Transaction {} verified successfully via {}", reference, result.channel());
         } else if ("failed".equalsIgnoreCase(result.status())) {

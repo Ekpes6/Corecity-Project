@@ -59,12 +59,20 @@ public class ReputationService {
 
     /**
      * Award system-validation points when a transaction closes successfully.
-     * Called internally or via RabbitMQ listener.
+     * Called internally or via RabbitMQ listener. Idempotent: skips if points
+     * were already awarded for this transactionId.
      */
     @Transactional
     public void awardSystemValidation(Long agentId, Long transactionId) {
         userRepository.findById(Objects.requireNonNull(agentId, "agentId must not be null")).ifPresent(agent -> {
             if (agent.getRole() != User.Role.AGENT) return;
+
+            // Idempotency guard: don't double-award for the same transaction
+            if (transactionId != null
+                    && reputationRepo.existsByAgentIdAndReferenceIdAndNegativeFalse(agentId, transactionId)) {
+                log.debug("Reputation already awarded for agent {} / transaction {} — skipping", agentId, transactionId);
+                return;
+            }
 
             ReputationEvent event = ReputationEvent.builder()
                 .agentId(agentId)
@@ -75,7 +83,25 @@ public class ReputationService {
                 .build();
             reputationRepo.save(Objects.requireNonNull(event));
             refreshAgentReputation(agent);
+            log.info("Reputation +2 awarded to agent {} for transaction {}", agentId, transactionId);
         });
+    }
+
+    /**
+     * Admin backfill: award 2 reputation points for each supplied transaction ID.
+     * Safe to call multiple times — idempotent per transactionId.
+     */
+    @Transactional
+    public AgentReputationResponse backfillReputation(Long agentId, java.util.List<Long> transactionIds) {
+        User agent = userRepository.findById(Objects.requireNonNull(agentId, "agentId must not be null"))
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Agent not found"));
+        if (agent.getRole() != User.Role.AGENT)
+            throw new ResponseStatusException(BAD_REQUEST, "Target user is not an agent");
+
+        for (Long txId : transactionIds) {
+            awardSystemValidation(agentId, txId);
+        }
+        return getAgentReputation(agentId);
     }
 
     /** Get the current reputation summary for an agent. */
