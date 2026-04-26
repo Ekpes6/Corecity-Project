@@ -51,7 +51,7 @@ class TransactionServiceTest {
 
     @Test
     @SuppressWarnings("null")
-    void initTransaction_persistsBeforeCallingPaystack() {
+    void initTransaction_callsPaystackFirstThenPersists() {
         // Arrange
         var req = InitTransactionRequest.builder()
             .propertyId(1L).sellerId(2L).buyerEmail("buyer@test.com")
@@ -59,7 +59,8 @@ class TransactionServiceTest {
             .type(Transaction.TransactionType.PURCHASE)
             .build();
 
-        var savedTx = buildTransaction(1L, Transaction.TransactionStatus.INITIATED);
+        // New behaviour: Paystack is called first, then a single save as PENDING.
+        var savedTx = buildTransaction(1L, Transaction.TransactionStatus.PENDING);
         doReturn(savedTx).when(transactionRepository).save(argThat(Objects::nonNull));
         when(paystackService.calculateFee(argThat((BigDecimal amount) -> amount != null)))
             .thenReturn(new BigDecimal("2000"));
@@ -74,8 +75,8 @@ class TransactionServiceTest {
         // Act
         var response = transactionService.initTransaction(req, 10L);
 
-        // Assert — Paystack is called exactly once, after the initial save
-        verify(transactionRepository, times(2)).save(argThat(Objects::nonNull)); // initial + update with URL
+        // Assert — exactly one DB save (PENDING with real authorizationUrl), Paystack called once
+        verify(transactionRepository, times(1)).save(argThat(Objects::nonNull));
         verify(paystackService).initializeTransaction(
             argThat((String email) -> email != null),
             argThat((BigDecimal amount) -> amount != null),
