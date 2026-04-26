@@ -36,6 +36,7 @@ public class TransactionService {
     private final ObjectMapper objectMapper;
 
     @Transactional
+    @SuppressWarnings("null") // Lombok builder returns unannotated Transaction; Spring Data save() is @NonNull — safe at runtime
     public InitTransactionResponse initTransaction(InitTransactionRequest req, Long buyerId) {
         Long safeBuyerId = Objects.requireNonNull(buyerId, "buyer id must not be null");
 
