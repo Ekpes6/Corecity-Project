@@ -17,33 +17,59 @@ import toast from 'react-hot-toast';
 
 // ── Dashboard Overview ─────────────────────────────────────────
 function DashboardHome() {
-  const { user, isSeller } = useAuth();
+  const { user, isSeller, isAdmin, isAgent } = useAuth();
   const [myProperties, setMyProperties] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [commissions, setCommissions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
+    const fetches = [
       propertyAPI.getMyList().catch(() => ({ data: [] })),
       transactionAPI.getMine().catch(() => ({ data: [] })),
-    ]).then(([p, t]) => {
+    ];
+    // Agents and admins also load their commission records for the earnings figure
+    if (isAgent || isAdmin) {
+      fetches.push(
+        isAdmin
+          ? commissionAPI.getAll().catch(() => ({ data: [] }))
+          : commissionAPI.getMine().catch(() => ({ data: [] }))
+      );
+    }
+    Promise.all(fetches).then(([p, t, c]) => {
       setMyProperties(p.data);
       setTransactions(t.data);
+      if (c) setCommissions(c.data || []);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [isAgent, isAdmin]);
 
   const activeProperties = myProperties.filter((p) => p.status === 'ACTIVE');
   const totalViews    = activeProperties.reduce((s, p) => s + (p.viewsCount || 0), 0);
   const activeListings = activeProperties.length;
-  const totalEarnings  = transactions
-    .filter((t) => t.status === 'SUCCESS' && t.sellerId === user?.id)
-    .reduce((s, t) => s + Number(t.amount), 0);
+
+  // Earnings logic:
+  // - ADMIN: sum of all corecityCommission across all commissions
+  // - AGENT: sum of agentCommission from their commissions
+  // - SELLER (non-agent): sum of transaction amounts where they are the seller
+  // - BUYER: sum of successful purchases they made
+  let totalEarnings = 0;
+  if (isAdmin) {
+    totalEarnings = commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0);
+  } else if (isAgent) {
+    totalEarnings = commissions.reduce((s, c) => s + Number(c.agentCommission || 0), 0);
+  } else {
+    totalEarnings = transactions
+      .filter((t) => t.status === 'SUCCESS' && t.sellerId === user?.id)
+      .reduce((s, t) => s + Number(t.amount), 0);
+  }
+
+  const earningsLabel = isAdmin ? 'CoreCity Earnings' : isAgent ? 'My Commission' : 'Total Earnings';
 
   const stats = [
     { icon: Home,       label: 'My Listings',   value: myProperties.length, color: 'forest' },
     { icon: Eye,        label: 'Total Views',    value: totalViews.toLocaleString(), color: 'blue' },
     { icon: TrendingUp, label: 'Active Listings',value: activeListings, color: 'green' },
-    { icon: CreditCard, label: 'Total Earnings', value: formatNaira(totalEarnings, true), color: 'clay' },
+    { icon: CreditCard, label: earningsLabel,    value: formatNaira(totalEarnings, true), color: 'clay' },
   ];
 
   return (
@@ -1221,6 +1247,7 @@ export default function DashboardPage() {
     { to: '/dashboard/list',          label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
     { to: '/dashboard/moderation',    label: 'Moderation',     icon: ShieldCheck, adminOnly: true },
     { to: '/dashboard/payments',      label: 'Payments',       icon: CreditCard },
+    { to: '/dashboard/commissions',   label: 'Commissions',    icon: Landmark,    agentOrSeller: true },
     { to: '/dashboard/reservations',  label: 'Reservations',   icon: CalendarCheck },
     { to: '/dashboard/subscription',  label: 'Subscription',   icon: Crown,       agentOrSeller: true },
     { to: '/dashboard/reputation',    label: 'Reputation',     icon: BadgeCheck,  agentOnly: true },
@@ -1296,6 +1323,7 @@ export default function DashboardPage() {
             <Route path="list"         element={<ListPropertyPage />} />
             <Route path="moderation"   element={<ModerationPage />} />
             <Route path="payments"     element={<PaymentsPage />} />
+            <Route path="commissions"  element={<CommissionsPage />} />
             <Route path="reservations" element={<ReservationsPage />} />
             <Route path="subscription" element={<SubscriptionPage />} />
             <Route path="reputation"   element={<ReputationPage />} />
