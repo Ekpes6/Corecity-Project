@@ -76,7 +76,7 @@ public class TransactionService {
                     .authorizationUrl(existing.getAuthorizationUrl())
                     .amount(existing.getAmount())
                     .serviceFee(fee)
-                    .totalAmount(existing.getAmount().add(fee))
+                    .totalAmount(existing.getAmount()) // fee already baked into amount
                     .build();
             }
             // authorizationUrl is null — Paystack call never completed; fall through to create fresh
@@ -98,8 +98,10 @@ public class TransactionService {
             "propertyId", req.getPropertyId(),
             "type", req.getType().name()
         );
+        // req.getAmount() is the total buyer price (base + 10% commission + Paystack fee).
+        // Pass it directly — do NOT add fee again or the buyer would be double-charged.
         PaystackService.InitResult result =
-            paystackService.initializeTransaction(req.getBuyerEmail(), req.getAmount().add(fee), reference, meta);
+            paystackService.initializeTransaction(req.getBuyerEmail(), req.getAmount(), reference, meta);
 
         // Paystack succeeded — now persist the transaction with the real authorization URL.
         // Saved directly as PENDING (no intermediate INITIATED state needed).
@@ -125,7 +127,7 @@ public class TransactionService {
             .authorizationUrl(result.authorizationUrl())
             .amount(req.getAmount())
             .serviceFee(fee)
-            .totalAmount(req.getAmount().add(fee))
+            .totalAmount(req.getAmount()) // fee already baked in
             .build();
     }
 
@@ -206,19 +208,23 @@ public class TransactionService {
 
     private void createCommission(Transaction tx) {
         if (commissionRepository.findByTransactionId(tx.getId()).isPresent()) return; // idempotent
-        BigDecimal value      = tx.getAmount();
-        BigDecimal coreCityC  = value.multiply(CORECITY_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal agentC     = value.multiply(AGENT_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal totalC     = coreCityC.add(agentC);
+        // tx.getAmount() = total buyer price (base + 10% commission + Paystack fee).
+        // Derive the seller's base: (totalBuyerPrice − paystackFee) ÷ 1.10
+        // e.g. (85,802,000 − 2,000) ÷ 1.10 = 78,000,000
+        BigDecimal base      = tx.getAmount().subtract(tx.getServiceFee())
+            .divide(new BigDecimal("1.10"), 2, RoundingMode.HALF_UP);
+        BigDecimal coreCityC = base.multiply(CORECITY_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal agentC    = base.multiply(AGENT_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalC    = coreCityC.add(agentC);
         Commission commission = Commission.builder()
             .transactionId(tx.getId())
             .propertyId(tx.getPropertyId())
             .agentId(tx.getSellerId())
-            .propertyValue(value)
+            .propertyValue(base)
             .corecityCommission(coreCityC)
             .agentCommission(agentC)
             .totalCommission(totalC)
-            .overallCost(value.add(totalC))
+            .overallCost(base.add(totalC))
             .status(Commission.CommissionStatus.PENDING)
             .build();
         commissionRepository.save(Objects.requireNonNull(commission));

@@ -182,7 +182,9 @@ export default function ListPropertyPage() {
         bedrooms:  parseInt(data.bedrooms)  || 0,
         bathrooms: parseInt(data.bathrooms) || 0,
         toilets:   parseInt(data.toilets)   || 0,
-        price:     parseFloat(data.price),
+        // Store the all-inclusive buyer price (base + 10% commission + Paystack fee).
+        // The breakdown panel lets the agent see the split before submitting.
+        price:     priceBreakdown ? priceBreakdown.total : parseFloat(data.price),
         sizeSqm:   data.sizeSqm ? parseFloat(data.sizeSqm) : null,
         stateId:   data.stateId ? parseInt(data.stateId, 10) : null,
         lgaId:     data.lgaId ? parseInt(data.lgaId, 10) : null,
