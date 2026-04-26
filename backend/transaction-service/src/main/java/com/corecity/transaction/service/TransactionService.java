@@ -89,33 +89,34 @@ public class TransactionService {
         // UUID reference: globally unique, no millisecond-collision risk under concurrent load
         String reference = "HLK-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
 
-        // Persist in INITIATED state before hitting Paystack
-        var builtTransaction = Transaction.builder()
-            .reference(reference)
-            .propertyId(req.getPropertyId())
-            .buyerId(safeBuyerId)
-            .sellerId(req.getSellerId())
-            .amount(req.getAmount())
-            .serviceFee(fee)
-            .type(req.getType())
-            .status(Transaction.TransactionStatus.INITIATED)
-            .build();
-        var savedTransaction = transactionRepository.save(
-            Objects.requireNonNull(builtTransaction, "built transaction must not be null"));
-
-        // Call Paystack
+        // Call Paystack FIRST — before any DB write.
+        // If Paystack fails (network error, timeout, bad response), an exception is thrown here
+        // and nothing is persisted. This guarantees no orphan transaction records in the DB.
+        // The meta omits transactionId because the DB record doesn't exist yet.
         Map<String, Object> meta = Map.of(
             "propertyId", req.getPropertyId(),
-            "transactionId", savedTransaction.getId(),
             "type", req.getType().name()
         );
         PaystackService.InitResult result =
             paystackService.initializeTransaction(req.getBuyerEmail(), req.getAmount().add(fee), reference, meta);
 
-        // Update with Paystack URL
-        savedTransaction.setAuthorizationUrl(result.authorizationUrl());
-        savedTransaction.setStatus(Transaction.TransactionStatus.PENDING);
-        transactionRepository.save(savedTransaction);
+        // Paystack succeeded — now persist the transaction with the real authorization URL.
+        // Saved directly as PENDING (no intermediate INITIATED state needed).
+        var savedTransaction = transactionRepository.save(
+            Transaction.builder()
+                .reference(reference)
+                .propertyId(req.getPropertyId())
+                .buyerId(safeBuyerId)
+                .sellerId(req.getSellerId())
+                .amount(req.getAmount())
+                .serviceFee(fee)
+                .type(req.getType())
+                .authorizationUrl(result.authorizationUrl())
+                .status(Transaction.TransactionStatus.PENDING)
+                .build()
+        );
+        log.info("Transaction {} persisted as PENDING for buyer {} / property {}",
+            reference, safeBuyerId, req.getPropertyId());
 
         return InitTransactionResponse.builder()
             .transactionId(savedTransaction.getId())
