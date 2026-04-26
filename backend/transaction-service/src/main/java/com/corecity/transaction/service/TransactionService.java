@@ -39,7 +39,22 @@ public class TransactionService {
     public InitTransactionResponse initTransaction(InitTransactionRequest req, Long buyerId) {
         Long safeBuyerId = Objects.requireNonNull(buyerId, "buyer id must not be null");
 
-        // Idempotency guard: if there is already a PENDING or INITIATED transaction for this
+        // Guard 1: block if a successful transaction already exists for this buyer+property.
+        // This prevents a second Paystack charge if the buyer uses browser-back and clicks again.
+        boolean alreadyPaid = transactionRepository
+            .findTopByPropertyIdAndBuyerIdAndStatusInOrderByCreatedAtDesc(
+                req.getPropertyId(), safeBuyerId,
+                List.of(Transaction.TransactionStatus.SUCCESS))
+            .isPresent();
+        if (alreadyPaid) {
+            log.warn("Duplicate initTransaction blocked: buyer {} already has a SUCCESS transaction for property {}",
+                safeBuyerId, req.getPropertyId());
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.CONFLICT,
+                "A payment for this property has already been completed.");
+        }
+
+        // Guard 2: if there is already a PENDING or INITIATED transaction for this
         // buyer+property, return it with the stored Paystack URL rather than creating a duplicate.
         // This handles the gateway-timeout race: transaction-service saved the record and stored
         // the authorizationUrl, but the 503 returned to the frontend before the response arrived.
@@ -116,6 +131,15 @@ public class TransactionService {
     public TransactionResponse verifyTransaction(String reference) {
         Transaction tx = transactionRepository.findByReference(reference)
             .orElseThrow(() -> new RuntimeException("Transaction not found: " + reference));
+
+        // Idempotency: if this transaction is already in a terminal state, return immediately.
+        // This prevents double-commission and double-notification when the webhook and the
+        // frontend verify page race each other (both call this method within seconds).
+        if (tx.getStatus() == Transaction.TransactionStatus.SUCCESS
+                || tx.getStatus() == Transaction.TransactionStatus.FAILED) {
+            log.debug("verifyTransaction: {} already {}, returning without Paystack call", reference, tx.getStatus());
+            return toResponse(tx);
+        }
 
         PaystackService.VerifyResult result = paystackService.verifyTransaction(reference);
 

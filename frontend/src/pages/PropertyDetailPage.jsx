@@ -27,6 +27,7 @@ export default function PropertyDetailPage() {
   const [reserving, setReserving] = useState(false);
   const [agentRep, setAgentRep]   = useState(null);
   const [myActiveReservation, setMyActiveReservation] = useState(null);
+  const [mySuccessTransaction, setMySuccessTransaction] = useState(null);
 
   useEffect(() => {
     propertyAPI.getOne(id)
@@ -59,6 +60,20 @@ export default function PropertyDetailPage() {
           (res) => String(res.propertyId) === String(id) && res.status === 'ACTIVE'
         );
         setMyActiveReservation(found || null);
+      })
+      .catch(() => {});
+  }, [id, isAuthenticated]);
+
+  // Check whether the logged-in user already has a successful payment for this property.
+  // Prevents re-initiating payment (and a second Paystack charge) via browser-back.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    transactionAPI.getMine()
+      .then((r) => {
+        const found = (r.data || []).find(
+          (t) => String(t.propertyId) === String(id) && t.status === 'SUCCESS'
+        );
+        setMySuccessTransaction(found || null);
       })
       .catch(() => {});
   }, [id, isAuthenticated]);
@@ -352,12 +367,27 @@ export default function PropertyDetailPage() {
 
             {user?.id !== property.ownerId && (
               <>
-                <button onClick={handlePay} disabled={initiatingPay || reserving}
-                  className="btn-primary w-full mb-2">
-                  {initiatingPay ? 'Redirecting to Paystack…' :
-                    property.listingType === 'FOR_SALE' ? 'Initiate Purchase' :
-                    property.listingType === 'SHORT_LET' ? 'Book Now' : 'Pay Rent Now'}
-                </button>
+                {mySuccessTransaction ? (
+                  <div className="w-full mb-2">
+                    <button disabled
+                      className="btn-primary w-full opacity-60 cursor-not-allowed">
+                      Payment Completed
+                    </button>
+                    <p className="text-xs text-center text-gray-400 mt-1">
+                      You have already paid for this property.{' '}
+                      <Link to="/dashboard/payments" className="text-forest-700 hover:underline">
+                        View receipt
+                      </Link>
+                    </p>
+                  </div>
+                ) : (
+                  <button onClick={handlePay} disabled={initiatingPay || reserving}
+                    className="btn-primary w-full mb-2">
+                    {initiatingPay ? 'Redirecting to Paystack…' :
+                      property.listingType === 'FOR_SALE' ? 'Initiate Purchase' :
+                      property.listingType === 'SHORT_LET' ? 'Book Now' : 'Pay Rent Now'}
+                  </button>
+                )}
                 {/* Reserve button – lock in the property for 24 h with a reservation fee */}
                 {(property.status === 'ACTIVE' || property.status === 'ON_NEGOTIATION') && (
                   myActiveReservation ? (
