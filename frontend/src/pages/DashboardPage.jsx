@@ -1339,14 +1339,20 @@ export default function DashboardPage() {
 }
 
 function PaymentsPage() {
+  const { isAdmin } = useAuth();
   const [items, setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const loanFetch = isAdmin
+      ? subscriptionAPI.getAllLoans().catch(() => ({ data: [] }))
+      : subscriptionAPI.getMyLoans().catch(() => ({ data: [] }));
+
     Promise.all([
       transactionAPI.getMine().catch(() => ({ data: [] })),
       reservationAPI.getMine().catch(() => ({ data: [] })),
-    ]).then(([txnRes, rsvRes]) => {
+      loanFetch,
+    ]).then(([txnRes, rsvRes, loanRes]) => {
       const txns = (txnRes.data || []).map((t) => ({
         id: `TXN-${t.id}`,
         label: t.type,
@@ -1369,10 +1375,22 @@ function PaymentsPage() {
           date: r.paidAt,
         }));
 
-      const all = [...txns, ...rsv].sort((a, b) => new Date(b.date) - new Date(a.date));
+      const loans = (loanRes.data || [])
+        .filter((l) => l.repaymentStatus === 'SUCCESS')
+        .map((l) => ({
+          id: `LOAN-${l.id}`,
+          label: `LOAN REPAYMENT — ${l.plan} Plan`,
+          sub: `Trial #${l.trialNumber} of 13`,
+          amount: l.loanAmount,
+          status: 'SUCCESS',
+          reference: l.repaymentReference || `REP-${l.id}`,
+          date: l.updatedAt || l.createdAt,
+        }));
+
+      const all = [...txns, ...rsv, ...loans].sort((a, b) => new Date(b.date) - new Date(a.date));
       setItems(all);
     }).finally(() => setLoading(false));
-  }, []);
+  }, [isAdmin]);
 
   if (loading) return (
     <div className="space-y-3">
