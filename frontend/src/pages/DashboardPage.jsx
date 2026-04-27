@@ -1384,7 +1384,7 @@ function PaymentsPage() {
           amount: l.loanAmount,
           status: 'SUCCESS',
           reference: l.repaymentReference || `REP-${l.id}`,
-          date: l.updatedAt || l.createdAt,
+          date: l.createdAt,
         }));
 
       const all = [...txns, ...rsv, ...loans].sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -1400,7 +1400,9 @@ function PaymentsPage() {
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold text-forest-900 mb-6">My Payments</h2>
+      <h2 className="font-display text-2xl font-bold text-forest-900 mb-6">
+        {isAdmin ? 'All Payments' : 'My Payments'}
+      </h2>
       {items.length === 0 ? (
         <div className="text-center py-16 card"><p className="text-gray-400">No transactions yet</p></div>
       ) : (

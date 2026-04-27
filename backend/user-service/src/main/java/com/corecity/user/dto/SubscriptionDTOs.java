@@ -84,6 +84,7 @@ public class SubscriptionDTOs {
         private LocalDate dueDate;
         private String status;
         private String repaymentStatus;
+        private String repaymentReference;
         /** Populated when a repay Paystack transaction has been initialized. */
         private String repaymentAuthorizationUrl;
         private Integer trialNumber;
