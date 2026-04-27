@@ -403,6 +403,13 @@ public class SubscriptionService {
             .stream().map(this::toLoanResponse).collect(Collectors.toList());
     }
 
+    /** Returns all loans across all agents, newest first — admin use. */
+    @Transactional(readOnly = true)
+    public List<LoanResponse> getAllLoans() {
+        return loanRepo.findAllByOrderByCreatedAtDesc()
+            .stream().map(this::toLoanResponse).collect(Collectors.toList());
+    }
+
     /**
      * Verify a loan repayment by REP- reference.
      * If the repayment is still PENDING, calls Paystack live and confirms if successful.

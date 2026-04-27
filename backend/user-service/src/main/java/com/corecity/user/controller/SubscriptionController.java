@@ -142,6 +142,17 @@ public class SubscriptionController {
         return ResponseEntity.ok(subscriptionService.getMyLoans(userId));
     }
 
+    /** GET /api/v1/subscriptions/loans/all — all agents' loan records (admin only) */
+    @GetMapping("/loans/all")
+    public ResponseEntity<List<LoanResponse>> allLoans(
+            @RequestHeader("X-User-Role") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN, "Admin only");
+        }
+        return ResponseEntity.ok(subscriptionService.getAllLoans());
+    }
+
     /**
      * GET /api/v1/subscriptions/loans/verify-repayment/{reference}
      * Called by the payment verify page after Paystack redirects back for REP- references.

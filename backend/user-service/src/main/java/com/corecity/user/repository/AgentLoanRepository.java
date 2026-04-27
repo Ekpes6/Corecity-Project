@@ -21,6 +21,9 @@ public interface AgentLoanRepository extends JpaRepository<AgentLoan, Long> {
 
     Optional<AgentLoan> findByRepaymentReference(String repaymentReference);
 
+    /** All loans across all agents, newest first — admin use. */
+    List<AgentLoan> findAllByOrderByCreatedAtDesc();
+
     /** Find ACTIVE loans whose due date has passed — for the overdue scheduler. */
     @Query("SELECT l FROM AgentLoan l WHERE l.status = 'ACTIVE' AND l.dueDate < :today")
     List<AgentLoan> findOverdueActiveLoans(@Param("today") LocalDate today);
