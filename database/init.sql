@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS properties (
     longitude        DECIMAL(11,8),
     owner_id         BIGINT NOT NULL,
     agent_id         BIGINT,
-    status           ENUM('PENDING','ACTIVE','ON_NEGOTIATION','SOLD','RENTED','INACTIVE','REJECTED') DEFAULT 'PENDING',
+    status           ENUM('DRAFT','PENDING','ACTIVE','ON_NEGOTIATION','SOLD','RENTED','INACTIVE','REJECTED') DEFAULT 'DRAFT',
     is_negotiable    BOOLEAN DEFAULT TRUE,
     amenities        JSON,                          -- e.g. ["BOREHOLE","GENERATOR","CCTV","GYM"]
     views_count      INT DEFAULT 0,
@@ -179,7 +179,7 @@ CREATE TABLE IF NOT EXISTS agent_loans (
     loan_amount     DECIMAL(15,2) NOT NULL,
     amount_repaid   DECIMAL(15,2) NOT NULL DEFAULT 0.00,
     due_date        DATE NOT NULL,
-    status          ENUM('PENDING','ACTIVE','REPAID','DEFAULTED') NOT NULL DEFAULT 'PENDING',
+    status          ENUM('PENDING','ACTIVE','REPAID','OVERDUE','DEFAULTED') NOT NULL DEFAULT 'PENDING',
     trial_number    INT NULL,
     loan_program_id BIGINT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
