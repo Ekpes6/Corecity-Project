@@ -21,15 +21,20 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class FileStorageServiceTest {
 
+
     @Mock
     S3Client s3Client;
+
+    @Mock
+    WatermarkService watermarkService;
 
     FileStorageService service;
     private static final String PUBLIC_BASE_URL = "https://pub-test.r2.dev";
 
+
     @BeforeEach
     void setUp() {
-        FileStorageService svc = new FileStorageService(s3Client);
+        FileStorageService svc = new FileStorageService(s3Client, watermarkService);
         ReflectionTestUtils.setField(svc, "bucket", "corecity-test");
         ReflectionTestUtils.setField(svc, "publicBaseUrl", PUBLIC_BASE_URL);
         service = svc;
