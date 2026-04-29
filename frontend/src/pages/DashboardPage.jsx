@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Home, PlusSquare, CreditCard, Bell, Settings,
-  TrendingUp, Eye, MessageSquare, Star, ChevronRight, LogOut,
+  TrendingUp, Eye, MessageSquare, Star, ChevronRight, ChevronLeft, LogOut,
   CheckCircle, XCircle, Clock, RefreshCw, Search, Filter,
   Bed, Bath, MapPin, Building2, AlertCircle, ShieldCheck,
   Crown, BookMarked, BadgeCheck, Landmark, Zap, ArrowUpRight,
@@ -14,6 +14,38 @@ import PropertyCard from '../components/property/PropertyCard';
 import ListPropertyPage from './ListPropertyPage';
 import { formatNaira, timeAgo, listingLabel, listingBadgeClass, propertyTypeLabel } from '../utils/nigeria';
 import toast from 'react-hot-toast';
+
+// ── Shared pagination ──────────────────────────────────────────
+const PAGE_SIZE = 10;
+
+function Pagination({ page, total, onChange }) {
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  if (totalPages <= 1) return null;
+  return (
+    <div className="flex items-center justify-between pt-4 text-sm text-gray-500">
+      <span>{Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {total}</span>
+      <div className="flex gap-1">
+        <button
+          onClick={() => onChange(page - 1)}
+          disabled={page === 1}
+          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+        ><ChevronLeft size={16} /></button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          <button
+            key={p}
+            onClick={() => onChange(p)}
+            className={`w-8 h-8 rounded-lg text-xs font-medium ${p === page ? 'bg-forest-700 text-white' : 'hover:bg-gray-100'}`}
+          >{p}</button>
+        ))}
+        <button
+          onClick={() => onChange(page + 1)}
+          disabled={page === totalPages}
+          className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+        ><ChevronRight size={16} /></button>
+      </div>
+    </div>
+  );
+}
 
 // ── Dashboard Overview ─────────────────────────────────────────
 function DashboardHome() {
