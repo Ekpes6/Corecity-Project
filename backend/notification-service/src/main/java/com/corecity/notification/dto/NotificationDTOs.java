@@ -19,12 +19,15 @@ public class NotificationDTOs {
     /** Request body for POST /api/v1/notifications/admin/send */
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor
     public static class SendNotificationRequest {
-        /** Target a specific user by their ID (mutually exclusive with role). */
+        /** Target a specific user by their numeric ID. */
         private Long userId;
+
+        /** Target a specific user by their email address (alternative to userId). */
+        private String userEmail;
 
         /**
          * Target a role group: AGENT | SELLER | BUYER | ALL.
-         * Ignored when userId is set.
+         * Ignored when userId or userEmail is set.
          */
         private String role;
 
