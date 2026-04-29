@@ -130,4 +130,13 @@ export const locationAPI = {
   getLgas:   (stateId)   => api.get(`/states/${stateId}/lgas`),
 };
 
+// ─── Notifications ───────────────────────────────────────────
+export const notificationAPI = {
+  getAll:         ()     => api.get('/notifications'),
+  getUnreadCount: ()     => api.get('/notifications/unread-count'),
+  markRead:       (id)   => api.post(`/notifications/${id}/read`),
+  markAllRead:    ()     => api.post('/notifications/mark-all-read'),
+  adminSend:      (data) => api.post('/notifications/admin/send', data),
+};
+
 export default api;
