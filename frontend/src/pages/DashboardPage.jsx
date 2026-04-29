@@ -1565,6 +1565,225 @@ function CommissionsPage() {
   );
 }
 
+function MessagesPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'ADMIN';
+
+  // ── Shared inbox state ───────────────────────────────────────
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifs, setLoadingNotifs]  = useState(true);
+
+  const loadNotifications = async () => {
+    setLoadingNotifs(true);
+    try {
+      const res = await notificationAPI.getAll();
+      setNotifications(res.data ?? []);
+    } catch (_) {}
+    finally { setLoadingNotifs(false); }
+  };
+
+  useEffect(() => { loadNotifications(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleMarkRead = async (id) => {
+    await notificationAPI.markRead(id).catch(() => {});
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const handleMarkAllRead = async () => {
+    await notificationAPI.markAllRead().catch(() => {});
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  // ── Admin compose state ──────────────────────────────────────
+  const [targetType, setTargetType] = useState('ALL'); // ALL | ROLE | USER
+  const [targetRole, setTargetRole]   = useState('AGENT');
+  const [targetUserId, setTargetUserId] = useState('');
+  const [notifTitle, setNotifTitle]   = useState('');
+  const [notifBody, setNotifBody]     = useState('');
+  const [notifType, setNotifType]     = useState('INFO');
+  const [sending, setSending]         = useState(false);
+  const [sentMsg, setSentMsg]         = useState('');
+
+  const handleAdminSend = async (e) => {
+    e.preventDefault();
+    if (!notifTitle.trim() || !notifBody.trim()) return;
+    setSending(true);
+    setSentMsg('');
+    try {
+      const payload = {
+        title: notifTitle.trim(),
+        body:  notifBody.trim(),
+        type:  notifType,
+      };
+      if (targetType === 'USER') {
+        payload.userId = parseInt(targetUserId, 10);
+      } else if (targetType === 'ROLE') {
+        payload.role = targetRole;
+      } else {
+        payload.role = 'ALL';
+      }
+      const res = await notificationAPI.adminSend(payload);
+      setSentMsg(`Sent to ${res.data?.sent ?? '?'} user(s).`);
+      setNotifTitle('');
+      setNotifBody('');
+    } catch (err) {
+      setSentMsg('Error: ' + (err.response?.data?.message ?? 'Failed to send'));
+    } finally { setSending(false); }
+  };
+
+  const TYPE_BADGE = { INFO: 'bg-blue-100 text-blue-700', SUCCESS: 'bg-green-100 text-green-700', ALERT: 'bg-red-100 text-red-600' };
+
+  const unread = notifications.filter(n => !n.read).length;
+
+  return (
+    <div className="space-y-6">
+      <h2 className="font-display text-2xl font-bold text-forest-900">
+        {isAdmin ? 'Messages & Notifications' : 'My Notifications'}
+      </h2>
+
+      {/* ── Admin compose panel ── */}
+      {isAdmin && (
+        <div className="card p-6">
+          <h3 className="font-semibold text-gray-800 mb-4">Send Notification</h3>
+          <form onSubmit={handleAdminSend} className="space-y-4">
+            {/* Target */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Target</label>
+                <select
+                  value={targetType}
+                  onChange={e => setTargetType(e.target.value)}
+                  className="input-field w-full"
+                >
+                  <option value="ALL">All Users</option>
+                  <option value="ROLE">By Role</option>
+                  <option value="USER">Individual User</option>
+                </select>
+              </div>
+              {targetType === 'ROLE' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select value={targetRole} onChange={e => setTargetRole(e.target.value)} className="input-field w-full">
+                    <option value="AGENT">Agents</option>
+                    <option value="SELLER">Sellers</option>
+                    <option value="BUYER">Buyers</option>
+                  </select>
+                </div>
+              )}
+              {targetType === 'USER' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                  <input
+                    type="number"
+                    value={targetUserId}
+                    onChange={e => setTargetUserId(e.target.value)}
+                    placeholder="e.g. 42"
+                    className="input-field w-full"
+                    required
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Title + Type */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={notifTitle}
+                  onChange={e => setNotifTitle(e.target.value)}
+                  placeholder="Notification title"
+                  className="input-field w-full"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select value={notifType} onChange={e => setNotifType(e.target.value)} className="input-field w-full">
+                  <option value="INFO">Info</option>
+                  <option value="SUCCESS">Success</option>
+                  <option value="ALERT">Alert</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+              <textarea
+                value={notifBody}
+                onChange={e => setNotifBody(e.target.value)}
+                rows={3}
+                placeholder="Notification body…"
+                className="input-field w-full resize-none"
+                required
+              />
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button type="submit" disabled={sending} className="btn-primary px-6">
+                {sending ? 'Sending…' : 'Send Notification'}
+              </button>
+              {sentMsg && (
+                <span className={`text-sm font-medium ${sentMsg.startsWith('Error') ? 'text-red-600' : 'text-green-700'}`}>
+                  {sentMsg}
+                </span>
+              )}
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── Inbox ── */}
+      <div className="card p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold text-gray-800">
+            Inbox {unread > 0 && <span className="ml-2 px-2 py-0.5 bg-clay-500 text-white text-xs rounded-full">{unread} unread</span>}
+          </h3>
+          {unread > 0 && (
+            <button onClick={handleMarkAllRead} className="text-sm text-forest-700 hover:underline">
+              Mark all read
+            </button>
+          )}
+        </div>
+
+        {loadingNotifs ? (
+          <div className="text-center py-12 text-gray-400">Loading…</div>
+        ) : notifications.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-400">No notifications yet</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {notifications.map(n => (
+              <button
+                key={n.id}
+                onClick={() => !n.read && handleMarkRead(n.id)}
+                className={`w-full text-left px-2 py-4 hover:bg-gray-50 transition-colors rounded-lg ${!n.read ? 'bg-forest-50/40' : ''}`}
+              >
+                <div className="flex items-start gap-3">
+                  <span className={`mt-0.5 px-2 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0 ${TYPE_BADGE[n.type] ?? TYPE_BADGE.INFO}`}>
+                    {n.type}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm ${!n.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>{n.title}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">
+                      {new Date(n.createdAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                  {!n.read && <span className="w-2 h-2 bg-clay-500 rounded-full shrink-0 mt-2" />}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PlaceholderPage({ icon, title }) {
   return (
     <div className="text-center py-24 card">
