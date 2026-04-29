@@ -1132,6 +1132,7 @@ function ReservationCard({ r }) {
 function ReservationsPage() {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading]           = useState(true);
+  const [page, setPage]                 = useState(1);
 
   useEffect(() => {
     reservationAPI.getMine()
@@ -1146,6 +1147,8 @@ function ReservationsPage() {
     </div>
   );
 
+  const paginated = reservations.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
     <div>
       <h2 className="font-display text-2xl font-bold text-forest-900 mb-6">My Reservations</h2>
@@ -1157,7 +1160,8 @@ function ReservationsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {reservations.map((r) => <ReservationCard key={r.id} r={r} />)}
+          {paginated.map((r) => <ReservationCard key={r.id} r={r} />)}
+          <Pagination page={page} total={reservations.length} onChange={setPage} />
         </div>
       )}
     </div>
