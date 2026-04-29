@@ -83,7 +83,7 @@ public class AppNotificationService {
                         .build())
                 .toList();
 
-        repo.saveAll(notifications);
+        repo.saveAll(Objects.requireNonNull(notifications));
         log.info("Admin sent notification '{}' to {} users", req.getTitle(), notifications.size());
         return notifications.size();
     }
