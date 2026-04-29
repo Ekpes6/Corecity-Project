@@ -280,10 +280,13 @@
       - SMTP_USERNAME=${SMTP_USERNAME}
       - SMTP_PASSWORD=${SMTP_PASSWORD}
       - TERMII_API_KEY=${TERMII_API_KEY}
+      - USER_SERVICE_URI=http://user-service:8081
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      user-service:
         condition: service_healthy
     logging:
       driver: "json-file"

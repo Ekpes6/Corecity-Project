@@ -61,4 +61,15 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "UP", "service", "user-service"));
     }
+
+    /**
+     * Internal service-to-service endpoint — NOT routed through the API gateway.
+     * Called by notification-service to fan-out admin notifications by role.
+     * Path intentionally uses /internal/ prefix so it doesn't match any gateway route.
+     */
+    @GetMapping("/internal/users/ids-by-role")
+    public ResponseEntity<List<Long>> getUserIdsByRole(
+            @RequestParam(required = false) String role) {
+        return ResponseEntity.ok(authService.getUserIdsByRole(role));
+    }
 }
