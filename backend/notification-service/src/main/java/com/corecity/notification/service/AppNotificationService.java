@@ -88,14 +88,37 @@ public class AppNotificationService {
         return notifications.size();
     }
 
-    /** Resolve target user IDs: specific user, role group, or everyone. */
+    /** Resolve target user IDs: specific user (by id or email), role group, or everyone. */
+    @SuppressWarnings("unchecked")
     private List<Long> resolveTargetUserIds(SendNotificationRequest req) {
-        // Target a single user
+        // Target a single user by numeric ID
         if (req.getUserId() != null) {
             return List.of(req.getUserId());
         }
 
-        // Fan-out: call user-service internal endpoint to get IDs
+        // Target a single user by email — resolve via user-service
+        if (req.getUserEmail() != null && !req.getUserEmail().isBlank()) {
+            try {
+                var response = webClientBuilder.build()
+                        .get()
+                        .uri(userServiceUri + "/internal/users/id-by-email?email="
+                                + java.net.URLEncoder.encode(req.getUserEmail().trim(),
+                                        java.nio.charset.StandardCharsets.UTF_8))
+                        .retrieve()
+                        .bodyToMono(java.util.Map.class)
+                        .block();
+                if (response != null && response.get("id") instanceof Number n) {
+                    return List.of(n.longValue());
+                }
+                log.warn("No user found for email '{}'", req.getUserEmail());
+                return List.of();
+            } catch (Exception e) {
+                log.error("Failed to resolve email '{}' to userId: {}", req.getUserEmail(), e.getMessage());
+                return List.of();
+            }
+        }
+
+        // Fan-out: call user-service internal endpoint to get IDs by role
         String role = (req.getRole() != null && !req.getRole().isBlank()) ? req.getRole() : "ALL";
         try {
             List<Long> ids = webClientBuilder.build()
