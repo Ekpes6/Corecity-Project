@@ -125,4 +125,21 @@ public class AuthService {
             .role(u.getRole().name()).verified(u.isVerified())
             .avatarUrl(u.getAvatarUrl()).build();
     }
+
+    /**
+     * Internal: returns user IDs for a given role.
+     * Called directly by notification-service (bypasses the gateway).
+     * Pass "ALL" (or null) to return every user's ID.
+     */
+    public List<Long> getUserIdsByRole(String role) {
+        if (role == null || "ALL".equalsIgnoreCase(role)) {
+            return userRepository.findAll().stream().map(User::getId).toList();
+        }
+        try {
+            User.Role r = User.Role.valueOf(role.toUpperCase());
+            return userRepository.findByRole(r).stream().map(User::getId).toList();
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+    }
 }
