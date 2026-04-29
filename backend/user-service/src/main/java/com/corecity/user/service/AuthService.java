@@ -132,7 +132,8 @@ public class AuthService {
 
     /** Change password — verifies the current password before saving the new hash. */
     public void changePassword(Long userId, String currentPassword, String newPassword) {
-        User user = userRepository.findById(userId)
+        Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
+        User user = userRepository.findById(safeUserId)
             .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
