@@ -84,6 +84,7 @@ export const transactionAPI = {
   initiate: (data)      => api.post('/transactions/initiate', data),
   verify:   (reference) => api.get(`/transactions/verify/${reference}`),
   getMine:  ()          => api.get('/transactions/my'),
+  getAll:   ()          => api.get('/transactions/all'),
   getOne:   (id)        => api.get(`/transactions/${id}`),
 };
 
@@ -105,6 +106,7 @@ export const subscriptionAPI = {
 export const reservationAPI = {
   reserve:           (propertyId) => api.post(`/properties/${propertyId}/reserve`),
   getMine:           ()           => api.get('/reservations/my'),
+  getAll:            ()           => api.get('/reservations/all'),
   getForProperty:    (propertyId) => api.get(`/properties/${propertyId}/reservation`),
   getByReference:    (reference)  => api.get(`/reservations/by-reference/${reference}`),
   // Actively verifies with Paystack and activates the reservation if payment confirmed.

@@ -1384,12 +1384,14 @@ function PaymentsPage() {
     const loanFetch = isAdmin
       ? subscriptionAPI.getAllLoans().catch(() => ({ data: [] }))
       : subscriptionAPI.getMyLoans().catch(() => ({ data: [] }));
+    const txnFetch = isAdmin
+      ? transactionAPI.getAll().catch(() => ({ data: [] }))
+      : transactionAPI.getMine().catch(() => ({ data: [] }));
+    const rsvFetch = isAdmin
+      ? reservationAPI.getAll().catch(() => ({ data: [] }))
+      : reservationAPI.getMine().catch(() => ({ data: [] }));
 
-    Promise.all([
-      transactionAPI.getMine().catch(() => ({ data: [] })),
-      reservationAPI.getMine().catch(() => ({ data: [] })),
-      loanFetch,
-    ]).then(([txnRes, rsvRes, loanRes]) => {
+    Promise.all([txnFetch, rsvFetch, loanFetch]).then(([txnRes, rsvRes, loanRes]) => {
       const txns = (txnRes.data || []).map((t) => ({
         id: `TXN-${t.id}`,
         label: t.type,
