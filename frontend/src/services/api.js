@@ -34,12 +34,13 @@ api.interceptors.response.use(
 
 // ─── Auth ────────────────────────────────────────────────────
 export const authAPI = {
-  register:       (data)  => api.post('/auth/register', data),
-  login:          (data)  => api.post('/auth/login', data),
-  getMe:          ()      => api.get('/users/me'),
-  updateMe:       (data)  => api.put('/users/me', data),
-  changePassword: (data)  => api.post('/users/me/change-password', data),
-  checkPhone:     (phone) => api.get('/users/check-phone', { params: { phone } }),
+  register:         (data)  => api.post('/auth/register', data),
+  login:            (data)  => api.post('/auth/login', data),
+  getMe:            ()      => api.get('/users/me'),
+  updateMe:         (data)  => api.put('/users/me', data),
+  changePassword:   (data)  => api.post('/users/me/change-password', data),
+  verifyIdentity:   (data)  => api.post('/users/me/verify-identity', data),
+  checkPhone:       (phone) => api.get('/users/check-phone', { params: { phone } }),
 };
 
 // ─── Properties ──────────────────────────────────────────────

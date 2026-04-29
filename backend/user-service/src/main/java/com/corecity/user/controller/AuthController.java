@@ -70,6 +70,23 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    /**
+     * POST /api/v1/users/me/verify-identity
+     * Accepts nin and/or bvn in the request body.
+     * Stores them encrypted and marks the user verified when both are on record.
+     */
+    @PostMapping("/users/me/verify-identity")
+    public ResponseEntity<UserDTO> verifyIdentity(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody Map<String, String> body) {
+        String nin = body.get("nin");
+        String bvn = body.get("bvn");
+        if ((nin == null || nin.isBlank()) && (bvn == null || bvn.isBlank())) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(authService.submitIdentityVerification(userId, nin, bvn));
+    }
+
     @GetMapping("/auth/health")
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "UP", "service", "user-service"));
