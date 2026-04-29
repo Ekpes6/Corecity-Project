@@ -31,3 +31,6 @@ spring:
 termii:
   api-key: ${TERMII_API_KEY:}
   sender-id: corecity
+
+user-service:
+  uri: ${USER_SERVICE_URI:http://localhost:8081}
