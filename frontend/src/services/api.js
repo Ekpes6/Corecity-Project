@@ -73,6 +73,7 @@ export const fileAPI = {
     files.forEach((f) => fd.append('files', f));
     return api.post(`/files/upload/property/${propertyId}/batch`, fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180000, // 3 minutes — large batches can take a while to reach R2
     });
   },
   remove: (fileUrl) => api.delete('/files', { params: { fileUrl } }),
