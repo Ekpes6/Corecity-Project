@@ -234,6 +234,19 @@ CREATE TABLE IF NOT EXISTS commissions (
     FOREIGN KEY (property_id) REFERENCES properties(id)
 );
 
+-- ─── In-app notifications ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS app_notifications (
+    id         BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT       NOT NULL,
+    title      VARCHAR(255) NOT NULL,
+    body       TEXT         NOT NULL,
+    type       VARCHAR(50)  NOT NULL DEFAULT 'INFO',
+    is_read    BOOLEAN      NOT NULL DEFAULT FALSE,
+    created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_an_user   (user_id),
+    INDEX idx_an_unread (user_id, is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ─── Seed: Nigerian States ───────────────────────────────────────────────
 INSERT INTO states (name) VALUES
 ('Abia'),('Adamawa'),('Akwa Ibom'),('Anambra'),('Bauchi'),('Bayelsa'),
