@@ -139,4 +139,9 @@ export const notificationAPI = {
   adminSend:      (data) => api.post('/notifications/admin/send', data),
 };
 
+// ─── Admin user search ────────────────────────────────────────
+export const adminAPI = {
+  searchUsers: (q) => api.get(`/users/admin/search?q=${encodeURIComponent(q ?? '')}`),
+};
+
 export default api;
