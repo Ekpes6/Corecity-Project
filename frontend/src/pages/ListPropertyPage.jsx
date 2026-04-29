@@ -176,6 +176,7 @@ export default function ListPropertyPage() {
   const onSubmit = async (data) => {
     setSubmitting(true);
     let createdPropertyId = null;
+    let uploadedToR2 = []; // track R2 URLs so rollback can clean them up
     try {
       const payload = {
         ...data,
@@ -200,6 +201,7 @@ export default function ListPropertyPage() {
       if (images.length > 0) {
         const { data: uploadResult } = await fileAPI.uploadBatch(property.id, images);
         const uploadedUrls = (uploadResult.uploaded || []).map((f) => f.fileUrl).filter(Boolean);
+        uploadedToR2 = uploadedUrls; // remember for rollback
         const uploadErrors = uploadResult.errors || [];
 
         if (uploadedUrls.length === 0) {
@@ -227,10 +229,11 @@ export default function ListPropertyPage() {
       toast.success('Property listed successfully! Pending review.');
       navigate(`/properties/${property.id}`);
     } catch (err) {
-      // If the property was already created before the error, roll it back
+      // Roll back: delete the DB record and any files already uploaded to R2
       if (createdPropertyId) {
         await propertyAPI.remove(createdPropertyId).catch(() => {});
       }
+      await Promise.allSettled(uploadedToR2.map((url) => fileAPI.remove(url)));
       toast.error(err.response?.data?.message || 'Failed to create listing. Please try again.');
     } finally {
       setSubmitting(false);
