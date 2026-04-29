@@ -1369,7 +1369,7 @@ export default function DashboardPage() {
             <Route path="subscription" element={<SubscriptionPage />} />
             <Route path="reputation"   element={<ReputationPage />} />
             <Route path="messages"     element={<MessagesPage />} />
-            <Route path="settings"     element={<PlaceholderPage icon="⚙️" title="Settings" />} />
+            <Route path="settings"     element={<SettingsPage />} />
           </Routes>
         </main>
       </div>
@@ -1840,6 +1840,293 @@ function MessagesPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Settings Page
+// ─────────────────────────────────────────────────────────────────────────────
+function SettingsPage() {
+  const { user, updateUser, isAdmin, isAgent, isSeller } = useAuth();
+
+  // ── Profile form ───────────────────────────────────────────────────────────
+  const [firstName, setFirstName]         = useState(user?.firstName ?? '');
+  const [lastName, setLastName]           = useState(user?.lastName ?? '');
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  // ── Password form ──────────────────────────────────────────────────────────
+  const [currentPwd, setCurrentPwd]   = useState('');
+  const [newPwd, setNewPwd]           = useState('');
+  const [confirmPwd, setConfirmPwd]   = useState('');
+  const [savingPwd, setSavingPwd]     = useState(false);
+  const [showPwdForm, setShowPwdForm] = useState(false);
+
+  const handleProfileSave = async (e) => {
+    e.preventDefault();
+    if (!firstName.trim() || !lastName.trim()) { toast.error('Name cannot be empty'); return; }
+    setSavingProfile(true);
+    try {
+      const { data } = await authAPI.updateMe({ firstName: firstName.trim(), lastName: lastName.trim() });
+      updateUser(data);
+      toast.success('Profile updated');
+    } catch {
+      toast.error('Failed to update profile');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (newPwd.length < 8) { toast.error('New password must be at least 8 characters'); return; }
+    if (newPwd !== confirmPwd) { toast.error('Passwords do not match'); return; }
+    setSavingPwd(true);
+    try {
+      await authAPI.changePassword({ currentPassword: currentPwd, newPassword: newPwd });
+      toast.success('Password changed successfully');
+      setCurrentPwd(''); setNewPwd(''); setConfirmPwd('');
+      setShowPwdForm(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Incorrect current password');
+    } finally {
+      setSavingPwd(false);
+    }
+  };
+
+  const ROLE_STYLE = {
+    ADMIN:  'bg-red-100 text-red-800',
+    AGENT:  'bg-blue-100 text-blue-800',
+    SELLER: 'bg-amber-100 text-amber-800',
+    BUYER:  'bg-green-100 text-green-800',
+  };
+
+  const initials     = `${user?.firstName?.[0] ?? ''}${user?.lastName?.[0] ?? ''}`.toUpperCase();
+  const memberSince  = user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-NG', { month: 'long', year: 'numeric' })
+    : null;
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <h2 className="font-display text-2xl font-bold text-forest-900">Settings</h2>
+
+      {/* ── Profile card ─────────────────────────────────────────────────── */}
+      <div className="card p-6 flex items-center gap-4">
+        <div className="w-16 h-16 rounded-full bg-forest-800 flex items-center justify-center text-white text-xl font-bold shrink-0 overflow-hidden">
+          {user?.avatarUrl
+            ? <img src={user.avatarUrl} alt="avatar" className="w-16 h-16 object-cover" />
+            : initials}
+        </div>
+        <div>
+          <p className="font-display font-bold text-lg text-gray-900">{user?.firstName} {user?.lastName}</p>
+          <p className="text-sm text-gray-500">{user?.email}</p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_STYLE[user?.role?.toUpperCase()] ?? 'bg-gray-100 text-gray-600'}`}>
+              {user?.role}
+            </span>
+            {user?.verified
+              ? <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircle size={11} /> Verified</span>
+              : <span className="text-xs text-amber-600 flex items-center gap-1"><Clock size={11} /> Unverified</span>
+            }
+            {memberSince && <span className="text-xs text-gray-400">Member since {memberSince}</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Edit profile ─────────────────────────────────────────────────── */}
+      <div className="card p-6 space-y-4">
+        <h3 className="font-semibold text-gray-800 flex items-center gap-2"><User size={16} /> Profile Information</h3>
+        <form onSubmit={handleProfileSave} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+              <input
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+                className="input-field w-full"
+                placeholder="First name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+              <input
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+                className="input-field w-full"
+                placeholder="Last name"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <input
+                value={user?.email ?? ''}
+                readOnly
+                className="input-field w-full bg-gray-50 text-gray-500 cursor-not-allowed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+              <input
+                value={user?.phone ?? ''}
+                readOnly
+                className="input-field w-full bg-gray-50 text-gray-500 cursor-not-allowed"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <button type="submit" disabled={savingProfile} className="btn-primary flex items-center gap-2">
+              {savingProfile
+                ? <><RefreshCw size={14} className="animate-spin" /> Saving…</>
+                : <><Save size={14} /> Save Changes</>}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* ── Change password ───────────────────────────────────────────────── */}
+      <div className="card p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2"><Lock size={16} /> Security</h3>
+          <button
+            type="button"
+            onClick={() => setShowPwdForm(v => !v)}
+            className="text-sm text-forest-800 hover:underline"
+          >
+            {showPwdForm ? 'Cancel' : 'Change Password'}
+          </button>
+        </div>
+
+        {!showPwdForm && (
+          <p className="text-sm text-gray-500">Your password is managed securely. Click "Change Password" to update it.</p>
+        )}
+
+        {showPwdForm && (
+          <form onSubmit={handlePasswordChange} className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
+              <input
+                type="password"
+                value={currentPwd}
+                onChange={e => setCurrentPwd(e.target.value)}
+                className="input-field w-full"
+                placeholder="Enter current password"
+                autoComplete="current-password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
+              <input
+                type="password"
+                value={newPwd}
+                onChange={e => setNewPwd(e.target.value)}
+                className="input-field w-full"
+                placeholder="Minimum 8 characters"
+                autoComplete="new-password"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPwd}
+                onChange={e => setConfirmPwd(e.target.value)}
+                className="input-field w-full"
+                placeholder="Repeat new password"
+                autoComplete="new-password"
+              />
+            </div>
+            {newPwd && confirmPwd && newPwd !== confirmPwd && (
+              <p className="text-xs text-red-500 flex items-center gap-1"><XCircle size={12} /> Passwords do not match</p>
+            )}
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={savingPwd || !currentPwd || !newPwd || !confirmPwd}
+                className="btn-primary flex items-center gap-2"
+              >
+                {savingPwd
+                  ? <><RefreshCw size={14} className="animate-spin" /> Updating…</>
+                  : <><Lock size={14} /> Update Password</>}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* ── Agent status ──────────────────────────────────────────────────── */}
+      {isAgent && (
+        <div className="card p-6 space-y-4">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2"><Star size={16} /> Agent Status</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-forest-50 rounded-xl p-4 text-center">
+              <p className="text-3xl font-bold text-forest-800">{user?.reputationScore ?? 0}</p>
+              <p className="text-xs text-forest-600 mt-1">Reputation Score</p>
+            </div>
+            <div className={`rounded-xl p-4 text-center flex flex-col items-center justify-center gap-1 ${user?.executiveAgent ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border border-yellow-200' : 'bg-gray-50'}`}>
+              <Crown size={22} className={user?.executiveAgent ? 'text-yellow-500' : 'text-gray-300'} />
+              <p className={`text-xs font-semibold ${user?.executiveAgent ? 'text-yellow-700' : 'text-gray-400'}`}>
+                {user?.executiveAgent ? 'Executive Agent' : 'Standard Agent'}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-4 flex-wrap pt-1">
+            <Link to="/dashboard/reputation" className="text-sm text-forest-800 hover:underline flex items-center gap-1">
+              Reputation History <ArrowUpRight size={13} />
+            </Link>
+            <Link to="/dashboard/commissions" className="text-sm text-forest-800 hover:underline flex items-center gap-1">
+              My Commissions <ArrowUpRight size={13} />
+            </Link>
+            <Link to="/dashboard/subscription" className="text-sm text-forest-800 hover:underline flex items-center gap-1">
+              Manage Subscription <ArrowUpRight size={13} />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── Seller quick links (non-agent sellers only) ───────────────────── */}
+      {isSeller && !isAgent && (
+        <div className="card p-6 space-y-3">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2"><Home size={16} /> Seller Quick Access</h3>
+          <div className="flex gap-4 flex-wrap">
+            <Link to="/dashboard/listings" className="text-sm text-forest-800 hover:underline flex items-center gap-1">
+              My Listings <ArrowUpRight size={13} />
+            </Link>
+            <Link to="/dashboard/payments" className="text-sm text-forest-800 hover:underline flex items-center gap-1">
+              Payments <ArrowUpRight size={13} />
+            </Link>
+            <Link to="/dashboard/subscription" className="text-sm text-forest-800 hover:underline flex items-center gap-1">
+              Subscription <ArrowUpRight size={13} />
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── Admin quick access ────────────────────────────────────────────── */}
+      {isAdmin && (
+        <div className="card p-6 space-y-4">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2"><ShieldCheck size={16} /> Admin Quick Access</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[
+              { label: 'Moderation',      to: '/dashboard/moderation',   icon: ShieldCheck },
+              { label: 'All Payments',    to: '/dashboard/payments',     icon: CreditCard },
+              { label: 'Commissions',     to: '/dashboard/commissions',  icon: Landmark },
+              { label: 'Reservations',    to: '/dashboard/reservations', icon: CalendarCheck },
+              { label: 'Notifications',   to: '/dashboard/messages',     icon: Bell },
+              { label: 'Subscription Plans', to: '/dashboard/subscription', icon: Crown },
+            ].map(({ label, to, icon: Icon }) => (
+              <Link
+                key={label}
+                to={to}
+                className="flex items-center gap-2 p-3 rounded-xl bg-gray-50 hover:bg-forest-50 text-sm text-gray-700 hover:text-forest-800 transition-colors"
+              >
+                <Icon size={15} /> {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
