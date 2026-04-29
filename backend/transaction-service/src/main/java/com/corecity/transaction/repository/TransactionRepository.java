@@ -14,4 +14,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     /** Used for idempotent initiation — find an in-flight transaction for same buyer+property. */
     Optional<Transaction> findTopByPropertyIdAndBuyerIdAndStatusInOrderByCreatedAtDesc(
         Long propertyId, Long buyerId, List<Transaction.TransactionStatus> statuses);
+    /** Admin: all transactions, newest first. */
+    List<Transaction> findAllByOrderByCreatedAtDesc();
 }

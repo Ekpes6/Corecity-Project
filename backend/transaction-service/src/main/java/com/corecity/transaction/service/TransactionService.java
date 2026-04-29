@@ -237,6 +237,12 @@ public class TransactionService {
             .stream().map(this::toCommissionResponse).collect(Collectors.toList());
     }
 
+    /** Admin-only: all transactions across all buyers and sellers. */
+    public List<TransactionResponse> getAllTransactions() {
+        return transactionRepository.findAllByOrderByCreatedAtDesc()
+            .stream().map(this::toResponse).collect(Collectors.toList());
+    }
+
     /** Admin-only: all commissions across every agent and property. */
     public List<CommissionResponse> getAllCommissions() {
         return commissionRepository.findAllByOrderByCreatedAtDesc()

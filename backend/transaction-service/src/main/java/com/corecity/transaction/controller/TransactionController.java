@@ -117,6 +117,16 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.getMyCommissions(userId));
     }
 
+    /** GET /api/v1/transactions/all — all transactions (ADMIN only) */
+    @GetMapping("/all")
+    public ResponseEntity<List<TransactionResponse>> allTransactions(
+            @RequestHeader(value = "X-User-Role", defaultValue = "") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(transactionService.getAllTransactions());
+    }
+
     /** GET /api/v1/transactions/commissions/all — all commissions (ADMIN only) */
     @GetMapping("/commissions/all")
     public ResponseEntity<List<CommissionResponse>> allCommissions(

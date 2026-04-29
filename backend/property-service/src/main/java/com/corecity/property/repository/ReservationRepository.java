@@ -30,4 +30,6 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
 
     boolean existsByPropertyIdAndCustomerIdAndStatusIn(
             Long propertyId, Long customerId, List<Reservation.ReservationStatus> statuses);
+    /** Admin: all reservations, newest first. */
+    List<Reservation> findAllByOrderByCreatedAtDesc();
 }

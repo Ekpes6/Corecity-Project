@@ -96,6 +96,20 @@ public class ReservationController {
     }
 
     /**
+     * Admin-only: all reservations across all customers.
+     *
+     * GET /api/v1/reservations/all
+     */
+    @GetMapping("/api/v1/reservations/all")
+    public ResponseEntity<List<ReservationResponse>> allReservations(
+            @RequestHeader(value = "X-User-Role", defaultValue = "") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(reservationService.getAllReservations());
+    }
+
+    /**
      * Get the active reservation for a property (owner or admin only).
      *
      * GET /api/v1/properties/{id}/reservation

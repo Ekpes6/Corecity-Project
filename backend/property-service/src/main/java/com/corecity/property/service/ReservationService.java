@@ -160,6 +160,13 @@ public class ReservationService {
             reference, reservation.getPropertyId(), reservation.getExpiresAt());
     }
 
+    /** Admin-only: all reservations across all customers. */
+    @Transactional(readOnly = true)
+    public List<ReservationResponse> getAllReservations() {
+        return reservationRepository.findAllByOrderByCreatedAtDesc()
+            .stream().map(this::toEnrichedResponse).toList();
+    }
+
     /** Get all reservations made by the currently authenticated customer, enriched with property snapshot + owner contact. */
     @Transactional(readOnly = true)
     public List<ReservationResponse> getMyReservations(Long customerId) {
