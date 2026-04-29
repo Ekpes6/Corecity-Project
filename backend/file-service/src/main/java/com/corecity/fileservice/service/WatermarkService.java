@@ -77,18 +77,27 @@ public class WatermarkService {
                 .size(wmWidth, wmHeight)
                 .asBufferedImage();
 
+            // Create a copy of the source image to draw on
+            BufferedImage combined = new BufferedImage(
+                source.getWidth(), source.getHeight(),
+                source.getType() == 0 ? BufferedImage.TYPE_INT_RGB : source.getType()
+            );
+            Graphics2D g = combined.createGraphics();
+            g.drawImage(source, 0, 0, null);
+
+            // Calculate position: bottom center, offset upward by BOTTOM_PADDING
+            int x = (source.getWidth() - wmWidth) / 2;
+            int y = source.getHeight() - wmHeight - BOTTOM_PADDING;
+            g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.5f));
+            g.drawImage(scaledWm, x, y, null);
+            g.dispose();
+
             // Determine output format
             boolean isPng = "image/png".equals(mimeType);
             String format = isPng ? "png" : "jpeg";
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            Thumbnails.of(source)
-                .size(source.getWidth(), source.getHeight())
-                .watermark(Positions.BOTTOM_CENTER, scaledWm, 0.5f)
-                .outputFormat(format)
-                .outputQuality(isPng ? 1.0 : 0.92)
-                .toOutputStream(out);
-
+            ImageIO.write(combined, format, out);
             return out.toByteArray();
 
         } catch (Exception e) {
