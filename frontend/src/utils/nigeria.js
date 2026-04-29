@@ -104,5 +104,14 @@ export const timeAgo = (dateStr) => {
   if (mins  < 60)  return `${mins}m ago`;
   if (hours < 24)  return `${hours}h ago`;
   if (days  < 30)  return `${days}d ago`;
-  return new Date(dateStr).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' });
+  return formatDateTime(dateStr);
+};
+
+/** Format a date/time in 12-hour clock, e.g. "29 Apr 2026, 7:09 PM" */
+export const formatDateTime = (dateStr) => {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleString('en-NG', {
+    day: 'numeric', month: 'short', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  });
 };

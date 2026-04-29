@@ -12,7 +12,7 @@ import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputatio
 import { useAuth } from '../context/AuthContext';
 import PropertyCard from '../components/property/PropertyCard';
 import ListPropertyPage from './ListPropertyPage';
-import { formatNaira, timeAgo, listingLabel, listingBadgeClass, propertyTypeLabel } from '../utils/nigeria';
+import { formatNaira, timeAgo, formatDateTime, listingLabel, listingBadgeClass, propertyTypeLabel } from '../utils/nigeria';
 import toast from 'react-hot-toast';
 
 // ── Shared pagination ──────────────────────────────────────────
@@ -1122,6 +1122,9 @@ function ReservationCard({ r }) {
             <span className="text-xs text-gray-300 ml-auto">
               {r.paymentReference?.slice(0, 20)}
             </span>
+            {r.createdAt && (
+              <span className="text-xs text-gray-400 ml-auto">{timeAgo(r.createdAt)}</span>
+            )}
           </div>
         </div>
       </div>
@@ -1827,7 +1830,7 @@ function MessagesPage() {
                     <p className={`text-sm ${!n.read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>{n.title}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
                     <p className="text-[10px] text-gray-400 mt-1">
-                      {new Date(n.createdAt).toLocaleString('en-NG', { dateStyle: 'medium', timeStyle: 'short' })}
+                      {formatDateTime(n.createdAt)}
                     </p>
                   </div>
                   {!n.read && <span className="w-2 h-2 bg-clay-500 rounded-full shrink-0 mt-2" />}
