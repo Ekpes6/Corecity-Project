@@ -57,6 +57,19 @@ public class AuthController {
         return ResponseEntity.ok(authService.updateProfile(userId, req));
     }
 
+    @PostMapping("/users/me/change-password")
+    public ResponseEntity<Void> changePassword(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody Map<String, String> body) {
+        String current = body.get("currentPassword");
+        String newPwd  = body.get("newPassword");
+        if (current == null || current.isBlank() || newPwd == null || newPwd.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        authService.changePassword(userId, current, newPwd);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/auth/health")
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "UP", "service", "user-service"));
