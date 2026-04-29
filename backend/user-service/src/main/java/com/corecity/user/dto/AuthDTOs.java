@@ -50,6 +50,9 @@ public class AuthDTOs {
         private String role;
         private boolean verified;
         private String avatarUrl;
+        private Integer reputationScore;
+        private boolean executiveAgent;
+        private java.time.LocalDateTime createdAt;
     }
 
     /** Lightweight projection returned by the admin user-search endpoint. */

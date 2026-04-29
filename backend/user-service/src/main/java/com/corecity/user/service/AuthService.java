@@ -123,7 +123,30 @@ public class AuthService {
             .id(u.getId()).email(u.getEmail()).phone(u.getPhone())
             .firstName(u.getFirstName()).lastName(u.getLastName())
             .role(u.getRole().name()).verified(u.isVerified())
-            .avatarUrl(u.getAvatarUrl()).build();
+            .avatarUrl(u.getAvatarUrl())
+            .reputationScore(u.getReputationScore())
+            .executiveAgent(u.isExecutiveAgent())
+            .createdAt(u.getCreatedAt())
+            .build();
+    }
+
+    /** Change password — verifies the current password before saving the new hash. */
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.NOT_FOUND, "User not found"));
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.UNPROCESSABLE_ENTITY,
+                "Current password is incorrect");
+        }
+        if (newPassword.length() < 8) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST,
+                "New password must be at least 8 characters");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
     }
 
     /**
