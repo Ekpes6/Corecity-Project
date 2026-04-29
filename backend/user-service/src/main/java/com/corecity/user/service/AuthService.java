@@ -131,6 +131,11 @@ public class AuthService {
      * Called directly by notification-service (bypasses the gateway).
      * Pass "ALL" (or null) to return every user's ID.
      */
+    /** Internal: look up a user's ID by email address. */
+    public java.util.Optional<Long> getUserIdByEmail(String email) {
+        return userRepository.findByEmail(email).map(User::getId);
+    }
+
     public List<Long> getUserIdsByRole(String role) {
         if (role == null || "ALL".equalsIgnoreCase(role)) {
             return userRepository.findAll().stream().map(User::getId).toList();

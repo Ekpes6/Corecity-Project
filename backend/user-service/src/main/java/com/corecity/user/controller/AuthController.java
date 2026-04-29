@@ -72,4 +72,16 @@ public class AuthController {
             @RequestParam(required = false) String role) {
         return ResponseEntity.ok(authService.getUserIdsByRole(role));
     }
+
+    /**
+     * Internal: resolves a user's email to their numeric ID.
+     * Used by notification-service when admin sends to an individual by email.
+     */
+    @GetMapping("/internal/users/id-by-email")
+    public ResponseEntity<Map<String, Long>> getUserIdByEmail(
+            @RequestParam String email) {
+        return authService.getUserIdByEmail(email)
+                .map(id -> ResponseEntity.ok(Map.of("id", id)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
 }
