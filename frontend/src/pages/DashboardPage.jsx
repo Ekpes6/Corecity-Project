@@ -1597,7 +1597,41 @@ function MessagesPage() {
   // ── Admin compose state ──────────────────────────────────────
   const [targetType, setTargetType] = useState('ALL'); // ALL | ROLE | USER
   const [targetRole, setTargetRole]   = useState('AGENT');
-  const [targetUserEmail, setTargetUserEmail] = useState('');
+  // Autocomplete state for individual user
+  const [userQuery, setUserQuery]         = useState('');
+  const [userResults, setUserResults]     = useState([]);
+  const [selectedUser, setSelectedUser]   = useState(null); // {id, email, firstName, lastName, role}
+  const [userSearching, setUserSearching] = useState(false);
+  const userSearchRef = useRef(null);
+  const userDebounceRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => { if (!userSearchRef.current?.contains(e.target)) setUserResults([]); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleUserQuery = (val) => {
+    setUserQuery(val);
+    setSelectedUser(null);
+    clearTimeout(userDebounceRef.current);
+    if (val.trim().length < 2) { setUserResults([]); return; }
+    userDebounceRef.current = setTimeout(async () => {
+      setUserSearching(true);
+      try {
+        const res = await adminAPI.searchUsers(val.trim());
+        setUserResults(res.data ?? []);
+      } catch (_) { setUserResults([]); }
+      finally { setUserSearching(false); }
+    }, 300);
+  };
+
+  const handleSelectUser = (u) => {
+    setSelectedUser(u);
+    setUserQuery(`${u.firstName} ${u.lastName} <${u.email}>`);
+    setUserResults([]);
+  };
   const [notifTitle, setNotifTitle]   = useState('');
   const [notifBody, setNotifBody]     = useState('');
   const [notifType, setNotifType]     = useState('INFO');
@@ -1616,7 +1650,8 @@ function MessagesPage() {
         type:  notifType,
       };
       if (targetType === 'USER') {
-        payload.userEmail = targetUserEmail.trim();
+        if (!selectedUser) { setSentMsg('Error: please select a user from the list'); setSending(false); return; }
+        payload.userId = selectedUser.id;
       } else if (targetType === 'ROLE') {
         payload.role = targetRole;
       } else {
