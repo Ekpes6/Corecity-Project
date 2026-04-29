@@ -1862,6 +1862,16 @@ function SettingsPage() {
   const [savingPwd, setSavingPwd]     = useState(false);
   const [showPwdForm, setShowPwdForm] = useState(false);
 
+  // ── Identity verification form ────────────────────────────────────────────
+  const [nin, setNin]                   = useState('');
+  const [bvn, setBvn]                   = useState('');
+  const [savingId, setSavingId]         = useState(false);
+  const [showIdForm, setShowIdForm]     = useState(false);
+  // local verified state mirrors user.verified so the badge updates instantly
+  const [localVerified, setLocalVerified] = useState(user?.verified ?? false);
+  const [localNinSet, setLocalNinSet]     = useState(user?.ninSet ?? false);
+  const [localBvnSet, setLocalBvnSet]     = useState(user?.bvnSet ?? false);
+
   const handleProfileSave = async (e) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim()) { toast.error('Name cannot be empty'); return; }
@@ -1924,7 +1934,7 @@ function SettingsPage() {
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_STYLE[user?.role?.toUpperCase()] ?? 'bg-gray-100 text-gray-600'}`}>
               {user?.role}
             </span>
-            {user?.verified
+            {localVerified
               ? <span className="text-xs text-green-600 flex items-center gap-1"><CheckCircle size={11} /> Verified</span>
               : <span className="text-xs text-amber-600 flex items-center gap-1"><Clock size={11} /> Unverified</span>
             }
@@ -2049,6 +2059,132 @@ function SettingsPage() {
                 {savingPwd
                   ? <><RefreshCw size={14} className="animate-spin" /> Updating…</>
                   : <><Lock size={14} /> Update Password</>}
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* ── Identity Verification ────────────────────────────────────────── */}
+      <div className="card p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            <BadgeCheck size={16} /> Identity Verification
+          </h3>
+          {localVerified
+            ? <span className="text-xs text-green-600 font-semibold flex items-center gap-1"><CheckCircle size={13} /> Verified</span>
+            : (
+              <button
+                type="button"
+                onClick={() => setShowIdForm(v => !v)}
+                className="text-sm text-forest-800 hover:underline"
+              >
+                {showIdForm ? 'Cancel' : 'Verify Now'}
+              </button>
+            )
+          }
+        </div>
+
+        {/* Status badges */}
+        <div className="flex gap-3 flex-wrap">
+          <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+            localNinSet ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+          }`}>
+            {localNinSet ? <CheckCircle size={11} /> : <Clock size={11} />}
+            NIN {localNinSet ? 'submitted' : 'not submitted'}
+          </span>
+          <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+            localBvnSet ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+          }`}>
+            {localBvnSet ? <CheckCircle size={11} /> : <Clock size={11} />}
+            BVN {localBvnSet ? 'submitted' : 'not submitted'}
+          </span>
+        </div>
+
+        {localVerified && (
+          <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-2 flex items-center gap-2">
+            <ShieldCheck size={15} /> Your identity has been verified. Your account is fully trusted.
+          </p>
+        )}
+
+        {!localVerified && !showIdForm && (
+          <p className="text-sm text-gray-500">
+            Submit your NIN and BVN to verify your identity. Both are required for full verification.
+            Your data is encrypted and never shared.
+          </p>
+        )}
+
+        {!localVerified && showIdForm && (
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!nin.trim() && !bvn.trim()) { toast.error('Enter at least NIN or BVN'); return; }
+              if (nin.trim() && !/^\d{11}$/.test(nin.trim())) { toast.error('NIN must be exactly 11 digits'); return; }
+              if (bvn.trim() && !/^\d{11}$/.test(bvn.trim())) { toast.error('BVN must be exactly 11 digits'); return; }
+              setSavingId(true);
+              try {
+                const payload = {};
+                if (nin.trim()) payload.nin = nin.trim();
+                if (bvn.trim()) payload.bvn = bvn.trim();
+                const { data } = await authAPI.verifyIdentity(payload);
+                updateUser(data);
+                setLocalNinSet(data.ninSet);
+                setLocalBvnSet(data.bvnSet);
+                setLocalVerified(data.verified);
+                setNin(''); setBvn('');
+                if (data.verified) {
+                  toast.success('Identity verified! Your account is now fully trusted.');
+                  setShowIdForm(false);
+                } else {
+                  toast.success('Details saved. Submit the remaining field to complete verification.');
+                }
+              } catch (err) {
+                toast.error(err.response?.data?.message || 'Verification failed. Please check your details.');
+              } finally {
+                setSavingId(false);
+              }
+            }}
+            className="space-y-3"
+          >
+            {!localNinSet && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">NIN (National Identification Number)</label>
+                <input
+                  value={nin}
+                  onChange={e => setNin(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  className="input-field w-full font-mono tracking-widest"
+                  placeholder="11-digit NIN"
+                  maxLength={11}
+                  inputMode="numeric"
+                />
+              </div>
+            )}
+            {!localBvnSet && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">BVN (Bank Verification Number)</label>
+                <input
+                  value={bvn}
+                  onChange={e => setBvn(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  className="input-field w-full font-mono tracking-widest"
+                  placeholder="11-digit BVN"
+                  maxLength={11}
+                  inputMode="numeric"
+                />
+              </div>
+            )}
+            <p className="text-xs text-gray-400 flex items-start gap-1">
+              <Lock size={11} className="mt-0.5 shrink-0" />
+              Your NIN and BVN are encrypted with AES-256 and never shared with third parties.
+            </p>
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={savingId}
+                className="btn-primary flex items-center gap-2"
+              >
+                {savingId
+                  ? <><RefreshCw size={14} className="animate-spin" /> Submitting…</>
+                  : <><ShieldCheck size={14} /> Submit for Verification</>}
               </button>
             </div>
           </form>
