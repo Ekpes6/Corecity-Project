@@ -136,6 +136,21 @@ public class AuthService {
         return userRepository.findByEmail(email).map(User::getId);
     }
 
+    /** Admin: search users by partial email, first name, or last name. Returns up to 20 results. */
+    public List<UserSearchResult> searchUsers(String q) {
+        return userRepository.searchByEmailOrName(q == null ? "" : q.trim())
+                .stream()
+                .limit(20)
+                .map(u -> UserSearchResult.builder()
+                        .id(u.getId())
+                        .email(u.getEmail())
+                        .firstName(u.getFirstName())
+                        .lastName(u.getLastName())
+                        .role(u.getRole().name())
+                        .build())
+                .toList();
+    }
+
     public List<Long> getUserIdsByRole(String role) {
         if (role == null || "ALL".equalsIgnoreCase(role)) {
             return userRepository.findAll().stream().map(User::getId).toList();

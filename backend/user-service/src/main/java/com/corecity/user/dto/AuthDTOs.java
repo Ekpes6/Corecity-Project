@@ -51,4 +51,14 @@ public class AuthDTOs {
         private boolean verified;
         private String avatarUrl;
     }
+
+    /** Lightweight projection returned by the admin user-search endpoint. */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class UserSearchResult {
+        private Long id;
+        private String email;
+        private String firstName;
+        private String lastName;
+        private String role;
+    }
 }

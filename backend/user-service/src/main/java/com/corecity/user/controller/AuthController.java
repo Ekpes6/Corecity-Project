@@ -67,6 +67,20 @@ public class AuthController {
      * Called by notification-service to fan-out admin notifications by role.
      * Path intentionally uses /internal/ prefix so it doesn't match any gateway route.
      */
+    /**
+     * GET /api/v1/users/admin/search?q=X — admin user search for autocomplete.
+     * Returns up to 20 users whose email/name contains the query string.
+     */
+    @GetMapping("/users/admin/search")
+    public ResponseEntity<List<UserSearchResult>> searchUsers(
+            @RequestParam(defaultValue = "") String q,
+            @RequestHeader("X-User-Role") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(authService.searchUsers(q));
+    }
+
     @GetMapping("/internal/users/ids-by-role")
     public ResponseEntity<List<Long>> getUserIdsByRole(
             @RequestParam(required = false) String role) {
