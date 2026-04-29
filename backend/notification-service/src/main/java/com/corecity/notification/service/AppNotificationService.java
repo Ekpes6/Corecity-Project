@@ -14,6 +14,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +44,7 @@ public class AppNotificationService {
 
     @Transactional
     public void markRead(Long id, Long userId) {
-        AppNotification n = repo.findById(id)
+        AppNotification n = repo.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (!n.getUserId().equals(userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
