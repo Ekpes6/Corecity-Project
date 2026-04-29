@@ -3,7 +3,6 @@ package com.corecity.fileservice.service;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
-import net.coobird.thumbnailator.geometry.Positions;
 import org.springframework.stereotype.Component;
 
 import javax.imageio.ImageIO;
