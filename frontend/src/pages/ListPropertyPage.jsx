@@ -197,16 +197,27 @@ export default function ListPropertyPage() {
       const { data: property } = await propertyAPI.create(payload);
       createdPropertyId = property.id;
 
-      // Upload images — if they all fail, delete the property and stop
+      // Upload images one-by-one so each request stays well under timeout limits
       if (images.length > 0) {
-        const { data: uploadResult } = await fileAPI.uploadBatch(property.id, images);
-        const uploadedUrls = (uploadResult.uploaded || []).map((f) => f.fileUrl).filter(Boolean);
-        uploadedToR2 = uploadedUrls; // remember for rollback
-        const uploadErrors = uploadResult.errors || [];
+        const uploadedUrls = [];
+        const uploadErrors = [];
+
+        for (let i = 0; i < images.length; i++) {
+          try {
+            const { data: result } = await fileAPI.uploadSingle(property.id, images[i]);
+            if (result.fileUrl) {
+              uploadedUrls.push(result.fileUrl);
+              uploadedToR2 = uploadedUrls; // keep rollback list current
+            }
+          } catch (e) {
+            uploadErrors.push(`Image ${i + 1}: ${e.response?.data?.error || e.message}`);
+          }
+        }
 
         if (uploadedUrls.length === 0) {
-          // All uploads failed — roll back by deleting the property
+          // Every image failed — roll back
           await propertyAPI.remove(property.id).catch(() => {});
+          uploadedToR2 = [];
           toast.error(uploadErrors.length > 0
             ? `Image upload failed: ${uploadErrors[0]}. Please try again.`
             : 'Image upload failed. Please check your files and try again.');
