@@ -8,7 +8,7 @@ import {
   Crown, BookMarked, BadgeCheck, Landmark, Zap, ArrowUpRight,
   CalendarCheck, Lock, Unlock, RotateCcw, Phone,
 } from 'lucide-react';
-import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI } from '../services/api';
+import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI, notificationAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import PropertyCard from '../components/property/PropertyCard';
 import ListPropertyPage from './ListPropertyPage';
@@ -1365,7 +1365,7 @@ export default function DashboardPage() {
             <Route path="reservations" element={<ReservationsPage />} />
             <Route path="subscription" element={<SubscriptionPage />} />
             <Route path="reputation"   element={<ReputationPage />} />
-            <Route path="messages"     element={<PlaceholderPage icon="💬" title="Messages" />} />
+            <Route path="messages"     element={<MessagesPage />} />
             <Route path="settings"     element={<PlaceholderPage icon="⚙️" title="Settings" />} />
           </Routes>
         </main>
