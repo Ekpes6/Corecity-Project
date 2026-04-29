@@ -25,6 +25,7 @@ public class FileStorageService {
     private static final long MAX_SIZE_BYTES = 10L * 1024 * 1024; // 10 MB
 
     private final S3Client s3Client;
+    private final WatermarkService watermarkService;
 
     @Value("${cloud.aws.s3.bucket}")
     private String bucket;
@@ -35,7 +36,8 @@ public class FileStorageService {
     public record UploadResult(String fileUrl, String fileName, String fileType, long sizeBytes) {}
 
     /**
-     * Validates, detects MIME type via magic bytes (Tika), and uploads a file to S3/R2.
+     * Validates, detects MIME type via magic bytes (Tika), applies watermark to images,
+     * and uploads to S3/R2.
      * Key format: {category}/{propertyId}/{uuid}-{sanitised-filename}
      */
     public UploadResult uploadFile(MultipartFile file, Long propertyId, String category) throws IOException {
@@ -53,6 +55,9 @@ public class FileStorageService {
         if (!ALLOWED_TYPES.contains(detectedType)) {
             throw new IllegalArgumentException("File type not allowed: " + detectedType);
         }
+
+        // Apply watermark to property images (skips PDFs, GIFs, and if watermark is unconfigured)
+        bytes = watermarkService.apply(bytes, detectedType);
 
         String rawName = file.getOriginalFilename();
         String safeName = (rawName != null ? rawName : "file").replaceAll("[^a-zA-Z0-9._-]", "_");
@@ -93,3 +98,4 @@ public class FileStorageService {
             .build());
     }
 }
+
