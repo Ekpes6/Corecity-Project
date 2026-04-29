@@ -1478,11 +1478,12 @@ function CommissionsPage() {
   const { isAdmin, isAgent } = useAuth();
   const [commissions, setCommissions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const fetch = isAdmin ? commissionAPI.getAll() : commissionAPI.getMine();
     fetch
-      .then((r) => setCommissions(r.data || []))
+      .then((r) => { setCommissions(r.data || []); setPage(1); })
       .catch(() => toast.error('Failed to load commissions'))
       .finally(() => setLoading(false));
   }, [isAdmin]);
@@ -1493,6 +1494,8 @@ function CommissionsPage() {
   const totalAgentCommission    = commissions.reduce((s, c) => s + Number(c.agentCommission    || 0), 0);
   const totalCorecityCommission = commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0);
   const totalValue              = commissions.reduce((s, c) => s + Number(c.propertyValue      || 0), 0);
+
+  const paginated = commissions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -1525,34 +1528,37 @@ function CommissionsPage() {
           <p className="text-gray-400">No commissions yet. Commissions are generated when a property payment is completed.</p>
         </div>
       ) : (
-        <div className="card divide-y divide-gray-50">
-          {commissions.map((c) => (
-            <div key={c.id} className="px-5 py-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-800">Property #{c.propertyId}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    Transaction #{c.transactionId}
-                    {isAdmin && ` · Agent #${c.agentId}`}
-                    {' · '}{timeAgo(c.createdAt)}
-                  </p>
-                  <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
-                    <span>Property value: <span className="font-medium text-gray-700 naira">{formatNaira(c.propertyValue)}</span></span>
-                    {isAdmin && <span>CoreCity (3%): <span className="font-medium text-forest-700 naira">{formatNaira(c.corecityCommission)}</span></span>}
-                    <span>{isAdmin ? 'Agent (7%)' : 'My share (7%)'}: <span className="font-medium text-blue-700 naira">{formatNaira(c.agentCommission)}</span></span>
+        <div className="space-y-0">
+          <div className="card divide-y divide-gray-50">
+            {paginated.map((c) => (
+              <div key={c.id} className="px-5 py-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800">Property #{c.propertyId}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      Transaction #{c.transactionId}
+                      {isAdmin && ` · Agent #${c.agentId}`}
+                      {' · '}{timeAgo(c.createdAt)}
+                    </p>
+                    <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+                      <span>Property value: <span className="font-medium text-gray-700 naira">{formatNaira(c.propertyValue)}</span></span>
+                      {isAdmin && <span>CoreCity (3%): <span className="font-medium text-forest-700 naira">{formatNaira(c.corecityCommission)}</span></span>}
+                      <span>{isAdmin ? 'Agent (7%)' : 'My share (7%)'}: <span className="font-medium text-blue-700 naira">{formatNaira(c.agentCommission)}</span></span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="naira text-base font-bold text-gray-800">
+                      {formatNaira(isAdmin ? c.corecityCommission : c.agentCommission)}
+                    </p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                      c.status === 'DISBURSED' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
+                    }`}>{c.status}</span>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <p className="naira text-base font-bold text-gray-800">
-                    {formatNaira(isAdmin ? c.corecityCommission : c.agentCommission)}
-                  </p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    c.status === 'DISBURSED' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'
-                  }`}>{c.status}</span>
-                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <Pagination page={page} total={commissions.length} onChange={setPage} />
         </div>
       )}
     </div>
