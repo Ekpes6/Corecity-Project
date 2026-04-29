@@ -1378,6 +1378,7 @@ function PaymentsPage() {
   const { isAdmin } = useAuth();
   const [items, setItems]   = useState([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage]     = useState(1);
 
   useEffect(() => {
     const loanFetch = isAdmin
@@ -1425,6 +1426,7 @@ function PaymentsPage() {
 
       const all = [...txns, ...rsv, ...loans].sort((a, b) => new Date(b.date) - new Date(a.date));
       setItems(all);
+      setPage(1);
     }).finally(() => setLoading(false));
   }, [isAdmin]);
 
@@ -1434,6 +1436,8 @@ function PaymentsPage() {
     </div>
   );
 
+  const paginated = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
     <div>
       <h2 className="font-display text-2xl font-bold text-forest-900 mb-6">
@@ -1442,25 +1446,28 @@ function PaymentsPage() {
       {items.length === 0 ? (
         <div className="text-center py-16 card"><p className="text-gray-400">No transactions yet</p></div>
       ) : (
-        <div className="card divide-y divide-gray-50">
-          {items.map((t) => (
-            <div key={t.id} className="flex items-center justify-between px-5 py-4">
-              <div>
-                <p className="text-sm font-medium text-gray-800">
-                  {t.label}{t.sub ? ` — ${t.sub}` : ''}
-                </p>
-                <p className="text-xs text-gray-400">{t.reference} · {timeAgo(t.date)}</p>
+        <div>
+          <div className="card divide-y divide-gray-50">
+            {paginated.map((t) => (
+              <div key={t.id} className="flex items-center justify-between px-5 py-4">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {t.label}{t.sub ? ` — ${t.sub}` : ''}
+                  </p>
+                  <p className="text-xs text-gray-400">{t.reference} · {timeAgo(t.date)}</p>
+                </div>
+                <div className="text-right">
+                  <p className="naira text-sm font-bold">{formatNaira(t.amount)}</p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    t.status === 'SUCCESS' ? 'bg-green-50 text-green-700' :
+                    t.status === 'FAILED'  ? 'bg-red-50 text-red-700'    :
+                    'bg-yellow-50 text-yellow-700'
+                  }`}>{t.status}</span>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="naira text-sm font-bold">{formatNaira(t.amount)}</p>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  t.status === 'SUCCESS' ? 'bg-green-50 text-green-700' :
-                  t.status === 'FAILED'  ? 'bg-red-50 text-red-700'    :
-                  'bg-yellow-50 text-yellow-700'
-                }`}>{t.status}</span>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <Pagination page={page} total={items.length} onChange={setPage} />
         </div>
       )}
     </div>
