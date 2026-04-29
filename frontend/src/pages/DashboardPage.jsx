@@ -1597,7 +1597,7 @@ function MessagesPage() {
   // ── Admin compose state ──────────────────────────────────────
   const [targetType, setTargetType] = useState('ALL'); // ALL | ROLE | USER
   const [targetRole, setTargetRole]   = useState('AGENT');
-  const [targetUserId, setTargetUserId] = useState('');
+  const [targetUserEmail, setTargetUserEmail] = useState('');
   const [notifTitle, setNotifTitle]   = useState('');
   const [notifBody, setNotifBody]     = useState('');
   const [notifType, setNotifType]     = useState('INFO');
@@ -1616,7 +1616,7 @@ function MessagesPage() {
         type:  notifType,
       };
       if (targetType === 'USER') {
-        payload.userId = parseInt(targetUserId, 10);
+        payload.userEmail = targetUserEmail.trim();
       } else if (targetType === 'ROLE') {
         payload.role = targetRole;
       } else {
@@ -1672,12 +1672,12 @@ function MessagesPage() {
               )}
               {targetType === 'USER' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">User ID</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">User Email</label>
                   <input
-                    type="number"
-                    value={targetUserId}
-                    onChange={e => setTargetUserId(e.target.value)}
-                    placeholder="e.g. 42"
+                    type="email"
+                    value={targetUserEmail}
+                    onChange={e => setTargetUserEmail(e.target.value)}
+                    placeholder="user@example.com"
                     className="input-field w-full"
                     required
                   />
