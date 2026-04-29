@@ -46,6 +46,10 @@ spring:
               args:
                 name: file-service-cb
                 fallbackUri: forward:/fallback
+          # File uploads to R2 can take several minutes for large batches —
+          # override the global 60s response-timeout for this route only.
+          metadata:
+            response-timeout: 300000
 
         - id: transaction-service
           uri: ${TRANSACTION_SERVICE_URI:http://localhost:8084}
