@@ -53,6 +53,10 @@ public class AuthDTOs {
         private Integer reputationScore;
         private boolean executiveAgent;
         private java.time.LocalDateTime createdAt;
+        /** True if the user has already submitted a NIN (we never return the raw value). */
+        private boolean ninSet;
+        /** True if the user has already submitted a BVN (we never return the raw value). */
+        private boolean bvnSet;
     }
 
     /** Lightweight projection returned by the admin user-search endpoint. */

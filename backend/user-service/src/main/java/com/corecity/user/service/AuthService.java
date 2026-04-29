@@ -127,10 +127,51 @@ public class AuthService {
             .reputationScore(u.getReputationScore())
             .executiveAgent(u.isExecutiveAgent())
             .createdAt(u.getCreatedAt())
+            .ninSet(u.getNin() != null && !u.getNin().isBlank())
+            .bvnSet(u.getBvn() != null && !u.getBvn().isBlank())
             .build();
     }
 
-    /** Change password — verifies the current password before saving the new hash. */
+    /**
+     * Saves a user's NIN and/or BVN, then marks them verified when both are present.
+     * The numbers are stored AES-256-GCM encrypted via the JPA converter on the entity.
+     * Validation rules:
+     *   - NIN: exactly 11 digits
+     *   - BVN: exactly 11 digits
+     * This is a self-service submission; no third-party API call is made here.
+     * A backend job or admin can do deeper verification externally.
+     */
+    @Transactional
+    public UserDTO submitIdentityVerification(Long userId, String nin, String bvn) {
+        Long safeId = Objects.requireNonNull(userId, "user id must not be null");
+        User user = userRepository.findById(safeId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        if (nin != null && !nin.isBlank()) {
+            if (!nin.matches("\\d{11}")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "NIN must be exactly 11 digits");
+            }
+            user.setNin(nin);
+        }
+        if (bvn != null && !bvn.isBlank()) {
+            if (!bvn.matches("\\d{11}")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "BVN must be exactly 11 digits");
+            }
+            user.setBvn(bvn);
+        }
+
+        // Mark verified as soon as both NIN and BVN are on record
+        boolean hasNin = user.getNin() != null && !user.getNin().isBlank();
+        boolean hasBvn = user.getBvn() != null && !user.getBvn().isBlank();
+        if (hasNin && hasBvn && !user.isVerified()) {
+            user.setVerified(true);
+        }
+
+        User saved = userRepository.save(user);
+        return toDTO(saved);
+    }
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
         User user = userRepository.findById(safeUserId)
