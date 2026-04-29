@@ -1706,16 +1706,36 @@ function MessagesPage() {
                 </div>
               )}
               {targetType === 'USER' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">User Email</label>
+                <div className="relative" ref={userSearchRef}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Search User</label>
                   <input
-                    type="email"
-                    value={targetUserEmail}
-                    onChange={e => setTargetUserEmail(e.target.value)}
-                    placeholder="user@example.com"
+                    type="text"
+                    value={userQuery}
+                    onChange={e => handleUserQuery(e.target.value)}
+                    placeholder="Type name or email…"
                     className="input-field w-full"
-                    required
+                    autoComplete="off"
                   />
+                  {/* Dropdown */}
+                  {(userResults.length > 0 || userSearching) && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lift max-h-56 overflow-y-auto">
+                      {userSearching && <p className="px-4 py-3 text-sm text-gray-400">Searching…</p>}
+                      {!userSearching && userResults.length === 0 && (
+                        <p className="px-4 py-3 text-sm text-gray-400">No users found</p>
+                      )}
+                      {userResults.map(u => (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onMouseDown={() => handleSelectUser(u)}
+                          className="w-full text-left px-4 py-2.5 hover:bg-forest-50 transition-colors"
+                        >
+                          <p className="text-sm font-medium text-gray-800">{u.firstName} {u.lastName}</p>
+                          <p className="text-xs text-gray-500">{u.email} · <span className="capitalize">{u.role?.toLowerCase()}</span></p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
