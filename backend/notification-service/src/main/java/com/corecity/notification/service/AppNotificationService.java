@@ -89,7 +89,6 @@ public class AppNotificationService {
     }
 
     /** Resolve target user IDs: specific user (by id or email), role group, or everyone. */
-    @SuppressWarnings("unchecked")
     private List<Long> resolveTargetUserIds(SendNotificationRequest req) {
         // Target a single user by numeric ID
         if (req.getUserId() != null) {
