@@ -434,7 +434,7 @@ export default function ListPropertyPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5 flex items-center gap-1">
+                <label className="flex text-sm font-medium text-gray-700 mb-1.5 items-center gap-1">
                   Latitude
                   {geocoding && <Loader2 size={12} className="animate-spin text-forest-600" />}
                   {coordsAutoFilled && !geocoding && <MapPin size={12} className="text-forest-600" />}
