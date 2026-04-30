@@ -45,17 +45,25 @@ public class ApiExceptionHandler {
             case "Email already registered",
                  "Phone number already registered" -> HttpStatus.CONFLICT;
             case "User not found"                -> HttpStatus.NOT_FOUND;
+            case "Encryption failed",
+                 "Decryption failed"             -> HttpStatus.INTERNAL_SERVER_ERROR;
             default -> {
                 // Only log unexpected errors — expected ones are just business logic
-                log.error("Unhandled user-service exception: {}", msg);
+                log.error("Unhandled user-service exception: {}", msg, ex);
                 yield HttpStatus.INTERNAL_SERVER_ERROR;
             }
         };
 
-        // Never expose the raw exception message for 500s — generic message only
-        String responseMsg = status == HttpStatus.INTERNAL_SERVER_ERROR
-            ? "An unexpected error occurred"
-            : msg;
+        // Never expose the raw exception message for unexpected 500s — generic message only.
+        // Encryption errors surface a safe hint since they are infrastructure-level failures.
+        String responseMsg;
+        if (status == HttpStatus.INTERNAL_SERVER_ERROR) {
+            responseMsg = (msg.equals("Encryption failed") || msg.equals("Decryption failed"))
+                ? "A data encryption error occurred. Please contact support."
+                : "An unexpected error occurred";
+        } else {
+            responseMsg = msg;
+        }
 
         return ResponseEntity.status(status).body(Map.of("message", responseMsg));
     }
