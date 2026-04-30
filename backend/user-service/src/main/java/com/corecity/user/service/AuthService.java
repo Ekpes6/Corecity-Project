@@ -4,6 +4,7 @@ import com.corecity.user.dto.AuthDTOs.*;
 import com.corecity.user.dto.UpdateProfileRequest;
 import com.corecity.user.entity.User;
 import com.corecity.user.repository.UserRepository;
+import com.corecity.user.security.EncryptionService;
 import com.corecity.user.security.JwtUtil;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -27,6 +28,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final RabbitTemplate rabbitTemplate;
+    private final EncryptionService encryptionService;
 
     @Transactional
     public AuthResponse register(RegisterRequest req) {
@@ -134,12 +136,11 @@ public class AuthService {
 
     /**
      * Saves a user's NIN and/or BVN, then marks them verified when both are present.
-     * The numbers are stored AES-256-GCM encrypted via the JPA converter on the entity.
-     * Validation rules:
-     *   - NIN: exactly 11 digits
-     *   - BVN: exactly 11 digits
-     * This is a self-service submission; no third-party API call is made here.
-     * A backend job or admin can do deeper verification externally.
+     *
+     * Encrypts values in this service layer (using the properly Spring-managed
+     * EncryptionService bean) and writes them via native SQL, completely bypassing
+     * the JPA AttributeConverter. This avoids a Hibernate 6 issue where converter
+     * instances created outside the Spring container have a null EncryptionService.
      */
     @Transactional
     public UserDTO submitIdentityVerification(Long userId, String nin, String bvn) {
@@ -152,25 +153,51 @@ public class AuthService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "NIN must be exactly 11 digits");
             }
-            user.setNin(nin);
         }
         if (bvn != null && !bvn.isBlank()) {
             if (!bvn.matches("\\d{11}")) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "BVN must be exactly 11 digits");
             }
-            user.setBvn(bvn);
         }
 
-        // Mark verified as soon as both NIN and BVN are on record
-        boolean hasNin = user.getNin() != null && !user.getNin().isBlank();
-        boolean hasBvn = user.getBvn() != null && !user.getBvn().isBlank();
-        if (hasNin && hasBvn && !user.isVerified()) {
-            user.setVerified(true);
+        // Check what's already stored (raw column values — non-null means already set)
+        boolean alreadyHasNin = userRepository.getRawNin(safeId) != null;
+        boolean alreadyHasBvn = userRepository.getRawBvn(safeId) != null;
+
+        // Write pre-encrypted values via native SQL — no converter involved
+        if (nin != null && !nin.isBlank()) {
+            userRepository.setEncryptedNin(safeId, encryptionService.encrypt(nin));
+            alreadyHasNin = true;
+        }
+        if (bvn != null && !bvn.isBlank()) {
+            userRepository.setEncryptedBvn(safeId, encryptionService.encrypt(bvn));
+            alreadyHasBvn = true;
         }
 
-        User saved = userRepository.save(user);
-        return toDTO(saved);
+        boolean nowVerified = user.isVerified();
+        if (alreadyHasNin && alreadyHasBvn && !user.isVerified()) {
+            userRepository.markVerified(safeId);
+            nowVerified = true;
+        }
+
+        // Build response directly — do not call getNin()/getBvn() on the entity
+        // (they would go through the converter and could fail if Hibernate re-fetches)
+        return UserDTO.builder()
+            .id(user.getId())
+            .email(user.getEmail())
+            .phone(user.getPhone())
+            .firstName(user.getFirstName())
+            .lastName(user.getLastName())
+            .role(user.getRole().name())
+            .verified(nowVerified)
+            .avatarUrl(user.getAvatarUrl())
+            .reputationScore(user.getReputationScore())
+            .executiveAgent(user.isExecutiveAgent())
+            .createdAt(user.getCreatedAt())
+            .ninSet(alreadyHasNin)
+            .bvnSet(alreadyHasBvn)
+            .build();
     }
     public void changePassword(Long userId, String currentPassword, String newPassword) {
         Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
