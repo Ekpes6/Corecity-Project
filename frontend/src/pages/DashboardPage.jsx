@@ -1324,6 +1324,7 @@ export default function DashboardPage() {
     { to: '/dashboard/subscription',  label: 'Subscription',   icon: Crown,       agentOrSeller: true },
     { to: '/dashboard/reputation',    label: 'Reputation',     icon: BadgeCheck,  agentOnly: true },
     { to: '/dashboard/messages',      label: 'Messages',       icon: MessageSquare },
+    { to: '/dashboard/account',       label: 'Account',        icon: Wallet },
     { to: '/dashboard/settings',      label: 'Settings',       icon: Settings },
   ];
 
