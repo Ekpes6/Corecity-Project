@@ -5,6 +5,7 @@ import com.corecity.transaction.entity.Transaction;
 import com.corecity.transaction.repository.CommissionRepository;
 import com.corecity.transaction.repository.TransactionRepository;
 import com.corecity.transaction.service.PaystackService;
+import com.corecity.transaction.service.PropertyServiceClient;
 import com.corecity.transaction.service.TransactionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +32,7 @@ class TransactionServiceTest {
     @Mock CommissionRepository commissionRepository;
     @Mock PaystackService paystackService;
     @Mock RabbitTemplate rabbitTemplate;
+    @Mock PropertyServiceClient propertyServiceClient;
 
     @InjectMocks TransactionService transactionService;
 
