@@ -53,9 +53,10 @@ SET @col_owner_name = (
     SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = 'corecity_db' AND TABLE_NAME = 'properties' AND COLUMN_NAME = 'owner_name'
 );
-PREPARE stmt_owner_name FROM IF(@col_owner_name = 0,
+SET @sql_owner_name = IF(@col_owner_name = 0,
     'ALTER TABLE properties ADD COLUMN owner_name VARCHAR(200) NULL',
     'SELECT 1');
+PREPARE stmt_owner_name FROM @sql_owner_name;
 EXECUTE stmt_owner_name;
 DEALLOCATE PREPARE stmt_owner_name;
 
@@ -63,9 +64,10 @@ SET @col_owner_phone = (
     SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = 'corecity_db' AND TABLE_NAME = 'properties' AND COLUMN_NAME = 'owner_phone'
 );
-PREPARE stmt_owner_phone FROM IF(@col_owner_phone = 0,
+SET @sql_owner_phone = IF(@col_owner_phone = 0,
     'ALTER TABLE properties ADD COLUMN owner_phone VARCHAR(30) NULL',
     'SELECT 1');
+PREPARE stmt_owner_phone FROM @sql_owner_phone;
 EXECUTE stmt_owner_phone;
 DEALLOCATE PREPARE stmt_owner_phone;
 
@@ -73,9 +75,10 @@ SET @col_owner_email = (
     SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = 'corecity_db' AND TABLE_NAME = 'properties' AND COLUMN_NAME = 'owner_email'
 );
-PREPARE stmt_owner_email FROM IF(@col_owner_email = 0,
+SET @sql_owner_email = IF(@col_owner_email = 0,
     'ALTER TABLE properties ADD COLUMN owner_email VARCHAR(200) NULL',
     'SELECT 1');
+PREPARE stmt_owner_email FROM @sql_owner_email;
 EXECUTE stmt_owner_email;
 DEALLOCATE PREPARE stmt_owner_email;
 
@@ -83,9 +86,10 @@ SET @col_owner_bank_name = (
     SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = 'corecity_db' AND TABLE_NAME = 'properties' AND COLUMN_NAME = 'owner_bank_name'
 );
-PREPARE stmt_owner_bank_name FROM IF(@col_owner_bank_name = 0,
+SET @sql_owner_bank_name = IF(@col_owner_bank_name = 0,
     'ALTER TABLE properties ADD COLUMN owner_bank_name VARCHAR(100) NULL',
     'SELECT 1');
+PREPARE stmt_owner_bank_name FROM @sql_owner_bank_name;
 EXECUTE stmt_owner_bank_name;
 DEALLOCATE PREPARE stmt_owner_bank_name;
 
@@ -93,9 +97,10 @@ SET @col_owner_acct_num = (
     SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = 'corecity_db' AND TABLE_NAME = 'properties' AND COLUMN_NAME = 'owner_account_number'
 );
-PREPARE stmt_owner_acct_num FROM IF(@col_owner_acct_num = 0,
+SET @sql_owner_acct_num = IF(@col_owner_acct_num = 0,
     'ALTER TABLE properties ADD COLUMN owner_account_number VARCHAR(30) NULL',
     'SELECT 1');
+PREPARE stmt_owner_acct_num FROM @sql_owner_acct_num;
 EXECUTE stmt_owner_acct_num;
 DEALLOCATE PREPARE stmt_owner_acct_num;
 
@@ -103,8 +108,9 @@ SET @col_owner_acct_name = (
     SELECT COUNT(*) FROM information_schema.COLUMNS
     WHERE TABLE_SCHEMA = 'corecity_db' AND TABLE_NAME = 'properties' AND COLUMN_NAME = 'owner_account_name'
 );
-PREPARE stmt_owner_acct_name FROM IF(@col_owner_acct_name = 0,
+SET @sql_owner_acct_name = IF(@col_owner_acct_name = 0,
     'ALTER TABLE properties ADD COLUMN owner_account_name VARCHAR(200) NULL',
     'SELECT 1');
+PREPARE stmt_owner_acct_name FROM @sql_owner_acct_name;
 EXECUTE stmt_owner_acct_name;
 DEALLOCATE PREPARE stmt_owner_acct_name;
