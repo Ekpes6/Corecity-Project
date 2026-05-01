@@ -1033,6 +1033,17 @@ function ReservationCard({ r }) {
     ? Math.max(0, Math.ceil((new Date(r.expiresAt) - Date.now()) / 86_400_000))
     : null;
 
+  // Lifecycle countdown for COMPLETED reservations (RENT / SHORTLET)
+  const lifecycleMs   = r.lifecycle?.endTime ? (new Date(r.lifecycle.endTime) - Date.now()) : 0;
+  const lifecycleDays  = Math.max(0, Math.ceil(lifecycleMs / 86_400_000));
+  const lifecycleHours = Math.max(0, Math.ceil(lifecycleMs / 3_600_000));
+  const lifecycleExpired = r.lifecycle?.endTime ? lifecycleMs <= 0 : false;
+  const lifecycleLabel = lifecycleExpired
+    ? 'Occupancy ended'
+    : lifecycleDays < 1
+      ? `${lifecycleHours}h remaining`
+      : `${lifecycleDays} day${lifecycleDays !== 1 ? 's' : ''} remaining`;
+
   const statusStyle = {
     ACTIVE:          'bg-green-50 text-green-700',
     PENDING_PAYMENT: 'bg-yellow-50 text-yellow-700',
