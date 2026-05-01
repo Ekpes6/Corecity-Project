@@ -117,6 +117,7 @@ public class WalletService {
      * Idempotent: if the reference is already SUCCESSFUL, this is a no-op.
      */
     @Transactional
+    @SuppressWarnings("null")
     public void creditWalletFromWebhook(String reference) {
         WalletTransaction txn = walletTransactionRepository.findByReference(reference)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
