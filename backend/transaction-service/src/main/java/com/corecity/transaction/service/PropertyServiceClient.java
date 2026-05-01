@@ -23,7 +23,7 @@ public class PropertyServiceClient {
     public PropertyServiceClient(
             WebClient.Builder builder,
             @Value("${services.property-service-url:http://property-service:8082}") String propertyServiceUrl) {
-        this.webClient = builder.baseUrl(propertyServiceUrl).build();
+        this.webClient = builder.baseUrl(java.util.Objects.requireNonNull(propertyServiceUrl)).build();
     }
 
     /**

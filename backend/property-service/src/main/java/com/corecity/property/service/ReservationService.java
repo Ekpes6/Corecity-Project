@@ -429,7 +429,7 @@ public class ReservationService {
             lifecycleRepository.save(lc);
 
             // Revert RENTED / SHORTLET → ACTIVE so the property can be reserved again
-            propertyRepository.findById(lc.getPropertyId()).ifPresent(p -> {
+            propertyRepository.findById(Objects.requireNonNull(lc.getPropertyId())).ifPresent(p -> {
                 if (p.getStatus() == Property.PropertyStatus.RENTED
                         || p.getStatus() == Property.PropertyStatus.SHORTLET) {
                     p.setStatus(Property.PropertyStatus.ACTIVE);
