@@ -91,6 +91,12 @@ public class PropertyService {
             .negotiable(req.getNegotiable())
             .amenities(amenitiesJson)
             .status(Property.PropertyStatus.DRAFT)
+            .ownerName(req.getOwnerName())
+            .ownerPhone(req.getOwnerPhone())
+            .ownerEmail(req.getOwnerEmail())
+            .ownerBankName(req.getOwnerBankName())
+            .ownerAccountNumber(req.getOwnerAccountNumber())
+            .ownerAccountName(req.getOwnerAccountName())
             .build();
 
         var savedProperty = propertyRepository.save(
@@ -401,6 +407,9 @@ public class PropertyService {
             .negotiable(p.getNegotiable()).amenities(amenities)
             .imageUrls(imageUrls).primaryImageUrl(primaryImage)
             .viewsCount(p.getViewsCount()).createdAt(p.getCreatedAt())
+            .ownerName(p.getOwnerName()).ownerPhone(p.getOwnerPhone())
+            .ownerEmail(p.getOwnerEmail()).ownerBankName(p.getOwnerBankName())
+            .ownerAccountNumber(p.getOwnerAccountNumber()).ownerAccountName(p.getOwnerAccountName())
             .build();
     }
 
