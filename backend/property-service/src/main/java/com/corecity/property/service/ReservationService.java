@@ -2,7 +2,9 @@ package com.corecity.property.service;
 
 import com.corecity.property.dto.PropertyDTOs.*;
 import com.corecity.property.entity.Property;
+import com.corecity.property.entity.PropertyLifecycle;
 import com.corecity.property.entity.Reservation;
+import com.corecity.property.repository.PropertyLifecycleRepository;
 import com.corecity.property.repository.PropertyRepository;
 import com.corecity.property.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final PropertyRepository propertyRepository;
+    private final PropertyLifecycleRepository lifecycleRepository;
     private final ReservationPaystackClient paystackClient;
     private final RabbitTemplate rabbitTemplate;
     private final UserServiceClient userServiceClient;
@@ -331,6 +334,119 @@ public class ReservationService {
         return toResponse(r);
     }
 
+    /**
+     * Called by the internal endpoint when transaction-service confirms a PURCHASE or RENT
+     * payment succeeded.  Marks the reservation COMPLETED, updates property status, and
+     * creates a PropertyLifecycle record so the frontend can show the occupancy countdown.
+     */
+    @Transactional
+    public void completeReservation(Long propertyId, Long buyerId, String transactionType, Integer leaseDays) {
+        Objects.requireNonNull(propertyId, "propertyId must not be null");
+        Objects.requireNonNull(buyerId, "buyerId must not be null");
+        Objects.requireNonNull(transactionType, "transactionType must not be null");
+
+        // 1. Mark the ACTIVE reservation as COMPLETED
+        reservationRepository.findByPropertyIdAndStatus(propertyId, Reservation.ReservationStatus.ACTIVE)
+            .filter(r -> r.getCustomerId().equals(buyerId))
+            .ifPresent(r -> {
+                r.setStatus(Reservation.ReservationStatus.COMPLETED);
+                reservationRepository.save(r);
+                log.info("Reservation {} marked COMPLETED (property={} buyer={})", r.getId(), propertyId, buyerId);
+            });
+
+        // 2. Determine new property status and lifecycle type from the property's listing type
+        Property property = propertyRepository.findById(propertyId).orElse(null);
+        if (property == null) {
+            log.warn("completeReservation: property {} not found — skipping status update", propertyId);
+            return;
+        }
+
+        Property.PropertyStatus newStatus;
+        String lifecycleType;
+        if ("PURCHASE".equalsIgnoreCase(transactionType)) {
+            newStatus = Property.PropertyStatus.SOLD;
+            lifecycleType = "PURCHASE";
+        } else {
+            // RENT transaction — actual lifecycle type depends on the listing type
+            if (property.getListingType() == Property.ListingType.SHORT_LET) {
+                newStatus = Property.PropertyStatus.SHORTLET;
+                lifecycleType = "SHORTLET";
+            } else {
+                newStatus = Property.PropertyStatus.RENTED;
+                lifecycleType = "RENT";
+            }
+        }
+
+        property.setStatus(newStatus);
+        propertyRepository.save(property);
+        log.info("Property {} status → {}", propertyId, newStatus);
+
+        // 3. Create lifecycle record with appropriate end time
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime endTime = null;
+        if ("SHORTLET".equals(lifecycleType)) {
+            endTime = now.plusHours(24);
+        } else if ("RENT".equals(lifecycleType)) {
+            int days = (leaseDays != null && leaseDays > 0) ? leaseDays : 365;
+            endTime = now.plusDays(days);
+        }
+        // PURCHASE: endTime remains null (permanent — no automatic reversion)
+
+        PropertyLifecycle lifecycle = PropertyLifecycle.builder()
+            .propertyId(propertyId)
+            .userId(buyerId)
+            .type(lifecycleType)
+            .startTime(now)
+            .endTime(endTime)
+            .status("ACTIVE")
+            .build();
+        lifecycleRepository.save(lifecycle);
+        log.info("PropertyLifecycle created: type={} property={} endTime={}", lifecycleType, propertyId, endTime);
+
+        // 4. Publish notification event (best-effort)
+        try {
+            rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_completed",
+                Map.of("propertyId", propertyId, "buyerId", buyerId, "type", lifecycleType));
+        } catch (Exception e) {
+            log.warn("Could not publish reservation_completed notification", e);
+        }
+    }
+
+    /**
+     * Scheduled task: expire ACTIVE lifecycle records whose end_time has passed.
+     * Reverts RENTED / SHORTLET properties back to ACTIVE so new reservations can be made.
+     * Runs every hour, same cadence as the other scheduled tasks.
+     */
+    @Scheduled(fixedDelay = 3_600_000)
+    @Transactional
+    public void expireLifecycles() {
+        List<PropertyLifecycle> expired = lifecycleRepository.findExpiredActive(LocalDateTime.now());
+        if (expired.isEmpty()) return;
+
+        log.info("Expiring {} property lifecycle(s)", expired.size());
+        for (PropertyLifecycle lc : expired) {
+            lc.setStatus("EXPIRED");
+            lifecycleRepository.save(lc);
+
+            // Revert RENTED / SHORTLET → ACTIVE so the property can be reserved again
+            propertyRepository.findById(lc.getPropertyId()).ifPresent(p -> {
+                if (p.getStatus() == Property.PropertyStatus.RENTED
+                        || p.getStatus() == Property.PropertyStatus.SHORTLET) {
+                    p.setStatus(Property.PropertyStatus.ACTIVE);
+                    propertyRepository.save(p);
+                    log.info("Property {} reverted to ACTIVE after lifecycle expiry", p.getId());
+                }
+            });
+
+            try {
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.lifecycle_expired",
+                    Map.of("propertyId", lc.getPropertyId(), "userId", lc.getUserId(), "type", lc.getType()));
+            } catch (Exception e) {
+                log.warn("Could not publish lifecycle_expired notification for lifecycle {}", lc.getId());
+            }
+        }
+    }
+
     private ReservationResponse toResponse(Reservation r) {
         return ReservationResponse.builder()
             .id(r.getId())
@@ -367,6 +483,10 @@ public class ReservationService {
             builder.propertyStatus(p.getStatus().name());
             // Reservation holder always gets the full address
             builder.propertyAddress(p.getAddress());
+
+            // Location — always shared with the reservation holder
+            builder.latitude(p.getLatitude());
+            builder.longitude(p.getLongitude());
 
             // Derive primary image URL from the property's file collection
             List<com.corecity.property.entity.PropertyFile> files =
