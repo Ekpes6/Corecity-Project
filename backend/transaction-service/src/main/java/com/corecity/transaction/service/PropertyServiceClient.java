@@ -7,6 +7,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * WebClient-based client for calling property-service internal endpoints.
@@ -23,7 +24,7 @@ public class PropertyServiceClient {
     public PropertyServiceClient(
             WebClient.Builder builder,
             @Value("${services.property-service-url:http://property-service:8082}") String propertyServiceUrl) {
-        this.webClient = builder.baseUrl(java.util.Objects.requireNonNull(propertyServiceUrl)).build();
+        this.webClient = builder.baseUrl(Objects.requireNonNull(propertyServiceUrl)).build();
     }
 
     /**
