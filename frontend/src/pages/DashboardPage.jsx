@@ -2199,7 +2199,7 @@ function AccountPage() {
                       <p className="text-xs text-gray-400">{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</p>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex flex-col items-end gap-1">
                     <p className={`text-sm font-semibold ${tx.type === 'CREDIT' ? 'text-green-700' : 'text-red-600'}`}>
                       {tx.type === 'CREDIT' ? '+' : '-'}₦{Number(tx.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                     </p>
@@ -2208,6 +2208,21 @@ function AccountPage() {
                       tx.status === 'PENDING'    ? 'bg-yellow-100 text-yellow-700' :
                       'bg-red-100 text-red-600'
                     }`}>{tx.status}</span>
+                    {tx.status === 'PENDING' && tx.type === 'CREDIT' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const { data } = await walletAPI.resume(tx.reference);
+                            const win = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
+                            if (!win) window.location.href = data.authorizationUrl;
+                          } catch (err) {
+                            toast.error(err.response?.data?.message || 'Could not resume payment');
+                          }
+                        }}
+                        className="text-xs text-forest-700 underline hover:text-forest-900">
+                        Resume Payment
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}
