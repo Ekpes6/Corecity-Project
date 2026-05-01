@@ -61,6 +61,7 @@ public class WalletService {
      * @return Paystack authorization URL to redirect the user
      */
     @Transactional
+    @SuppressWarnings("null")
     public FundInitResult initiateWalletFunding(Long userId, String userEmail, BigDecimal amountNgn) {
         if (amountNgn.compareTo(BigDecimal.valueOf(100)) < 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Minimum wallet top-up is ₦100");
