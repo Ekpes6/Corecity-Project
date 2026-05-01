@@ -69,6 +69,16 @@ public class WalletController {
         return ResponseEntity.ok(walletService.getTransactionHistory(userId));
     }
 
+    /** Re-fetches the Paystack payment URL for a PENDING wallet top-up. */
+    @PostMapping("/transactions/{reference}/resume")
+    public ResponseEntity<Map<String, String>> resumePayment(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Email") String userEmail,
+            @PathVariable String reference) {
+        String url = walletService.resumeWalletFunding(userId, reference, userEmail);
+        return ResponseEntity.ok(Map.of("authorizationUrl", url));
+    }
+
     /**
      * Paystack webhook endpoint for wallet funding events.
      *

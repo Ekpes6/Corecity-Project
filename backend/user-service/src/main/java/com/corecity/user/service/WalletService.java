@@ -200,5 +200,70 @@ public class WalletService {
         return walletTransactionRepository.findByWalletIdOrderByCreatedAtDesc(wallet.getId());
     }
 
+    /**
+     * Re-initializes a PENDING wallet top-up with Paystack to retrieve a fresh payment URL.
+     * This lets users resume a payment they didn't complete.
+     * Only the owner of the wallet can call this.
+     */
+    @SuppressWarnings("null")
+    public String resumeWalletFunding(Long userId, String reference, String userEmail) {
+        WalletTransaction txn = walletTransactionRepository.findByReference(reference)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+
+        // Security: verify the transaction belongs to the caller's wallet
+        Wallet wallet = walletRepository.findByUserId(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        if (!txn.getWalletId().equals(wallet.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your transaction");
+        }
+        if (txn.getStatus() != Status.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Only PENDING transactions can be resumed");
+        }
+
+        long amountKobo = txn.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
+        Map<String, Object> body = Map.of(
+            "email", userEmail,
+            "amount", amountKobo,
+            "reference", reference,   // Paystack deduplicates by reference
+            "currency", "NGN",
+            "callback_url", callbackUrl,
+            "metadata", Map.of("wallet_id", wallet.getId(), "user_id", userId)
+        );
+
+        try {
+            String response = webClientBuilder.build()
+                .post()
+                .uri(PAYSTACK_BASE + "/transaction/initialize")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + paystackSecretKey)
+                .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+            log.info("Paystack resume response for ref {}: {}", reference, response);
+            JsonNode root = objectMapper.readTree(response);
+            boolean status = root.path("status").asBoolean(false);
+            if (!status) {
+                String message = root.path("message").asText("Unknown error");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Payment gateway rejected resume: " + message);
+            }
+            String url = root.path("data").path("authorization_url").asText(null);
+            if (url == null || url.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Payment gateway did not return a valid URL");
+            }
+            return url;
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Paystack resume failed for ref {}: {}", reference, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                "Payment gateway unavailable – please try again later");
+        }
+    }
+
     public record FundInitResult(String reference, String authorizationUrl) {}
 }
