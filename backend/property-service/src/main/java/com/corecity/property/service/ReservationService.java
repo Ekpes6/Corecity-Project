@@ -392,14 +392,14 @@ public class ReservationService {
         }
         // PURCHASE: endTime remains null (permanent — no automatic reversion)
 
-        PropertyLifecycle lifecycle = PropertyLifecycle.builder()
+        PropertyLifecycle lifecycle = Objects.requireNonNull(PropertyLifecycle.builder()
             .propertyId(propertyId)
             .userId(buyerId)
             .type(lifecycleType)
             .startTime(now)
             .endTime(endTime)
             .status("ACTIVE")
-            .build();
+            .build());
         lifecycleRepository.save(lifecycle);
         log.info("PropertyLifecycle created: type={} property={} endTime={}", lifecycleType, propertyId, endTime);
 
