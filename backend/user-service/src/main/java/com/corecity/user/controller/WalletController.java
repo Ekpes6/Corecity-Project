@@ -126,10 +126,4 @@ public class WalletController {
         }
         return ResponseEntity.ok().build();
     }
-
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    private static boolean isEmptyOrNull(String s) {
-        return s == null || s.isBlank();
-    }
 }
