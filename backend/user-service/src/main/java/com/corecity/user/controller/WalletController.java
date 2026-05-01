@@ -71,26 +71,51 @@ public class WalletController {
 
     /**
      * Paystack webhook endpoint for wallet funding events.
-     * Paystack sends POST with event type "charge.success".
-     * References prefixed with WLT- are routed here; all others are ignored.
      *
-     * Security: Paystack signatures should be verified in production.
-     * This endpoint is intentionally at /api/v1/users/me/wallet/webhook so
-     * the gateway forwards it. For stronger security, move to an /internal/ path.
+     * Security: every request is verified using HMAC-SHA512 of the raw request body
+     * signed with the Paystack secret key (sent in the X-Paystack-Signature header).
+     * Requests without a valid signature are silently ignored with HTTP 200 so
+     * Paystack does not retry them as failures.
      */
     @PostMapping("/webhook")
-    public ResponseEntity<Void> handleWebhook(@RequestBody Map<String, Object> payload) {
+    public ResponseEntity<Void> handleWebhook(
+            @RequestBody String rawBody,
+            @RequestHeader(value = "X-Paystack-Signature", required = false) String paystackSignature) {
+
+        // ── 1. Reject missing signature ──────────────────────────────────────
+        if (paystackSignature == null || paystackSignature.isBlank()) {
+            log.warn("Paystack webhook received without X-Paystack-Signature header — ignoring");
+            return ResponseEntity.ok().build();
+        }
+
+        // ── 2. Verify HMAC-SHA512 signature ──────────────────────────────────
         try {
-            String event = (String) payload.get("event");
+            Mac mac = Mac.getInstance("HmacSHA512");
+            mac.init(new SecretKeySpec(paystackSecretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA512"));
+            byte[] hash = mac.doFinal(rawBody.getBytes(StandardCharsets.UTF_8));
+            String expectedSignature = HexFormat.of().formatHex(hash);
+
+            // Constant-time comparison to prevent timing attacks
+            if (!MessageDigest.isEqual(
+                    expectedSignature.getBytes(StandardCharsets.UTF_8),
+                    paystackSignature.getBytes(StandardCharsets.UTF_8))) {
+                log.warn("Paystack webhook signature mismatch — ignoring");
+                return ResponseEntity.ok().build();
+            }
+        } catch (Exception e) {
+            log.error("Webhook signature verification error: {}", e.getMessage());
+            return ResponseEntity.ok().build();
+        }
+
+        // ── 3. Parse and process ─────────────────────────────────────────────
+        try {
+            JsonNode payload = objectMapper.readTree(rawBody);
+            String event = payload.path("event").asText(null);
             if (!"charge.success".equals(event)) {
                 return ResponseEntity.ok().build();
             }
 
-            @SuppressWarnings("unchecked")
-            Map<String, Object> data = (Map<String, Object>) payload.get("data");
-            if (data == null) return ResponseEntity.ok().build();
-
-            String reference = (String) data.get("reference");
+            String reference = payload.path("data").path("reference").asText(null);
             if (reference == null || !reference.startsWith("WLT-")) {
                 return ResponseEntity.ok().build();
             }
@@ -100,5 +125,11 @@ public class WalletController {
             log.error("Wallet webhook processing error: {}", e.getMessage());
         }
         return ResponseEntity.ok().build();
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private static boolean isEmptyOrNull(String s) {
+        return s == null || s.isBlank();
     }
 }
