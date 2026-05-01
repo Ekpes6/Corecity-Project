@@ -95,10 +95,24 @@ public class WalletService {
                 .bodyToMono(String.class)
                 .block();
 
+            log.info("Paystack initialize response for user {} ref {}: {}", userId, reference, response);
+
             JsonNode root = objectMapper.readTree(response);
+
+            // Paystack can return HTTP 200 with {"status": false, "message": "..."} for bad keys
+            boolean paystackStatus = root.path("status").asBoolean(false);
+            if (!paystackStatus) {
+                String message = root.path("message").asText("Unknown error");
+                log.error("Paystack returned status=false for user {} ref {}: {}", userId, reference, message);
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Payment gateway rejected the request: " + message);
+            }
+
             authorizationUrl = root.path("data").path("authorization_url").asText(null);
+        } catch (ResponseStatusException e) {
+            throw e; // re-throw our own exceptions unchanged
         } catch (Exception e) {
-            log.error("Paystack wallet fund init failed: {}", e.getMessage());
+            log.error("Paystack wallet fund init failed for user {} ref {}: {}", userId, reference, e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                 "Payment gateway unavailable – please try again later");
         }

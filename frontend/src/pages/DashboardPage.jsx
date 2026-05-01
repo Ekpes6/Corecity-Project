@@ -2004,8 +2004,16 @@ function AccountPage() {
         toast.error('Payment gateway did not return a valid URL. Please try again.');
         return;
       }
-      // Redirect to Paystack — only reached when a valid URL is returned
-      window.location.href = data.authorizationUrl;
+      // Open Paystack in a new tab so the user can return to the dashboard
+      const win = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
+      if (!win) {
+        // Pop-up was blocked — fallback to same-tab redirect
+        window.location.href = data.authorizationUrl;
+      } else {
+        toast.success('Paystack payment page opened in a new tab');
+        setShowFundModal(false);
+        setFundAmount('');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not initiate wallet top-up');
     } finally {
