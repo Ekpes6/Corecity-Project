@@ -155,5 +155,41 @@ public class PropertyDTOs {
         private String ownerName;
         /** Phone number of the property owner; only set when status=ACTIVE. */
         private String ownerPhone;
+
+        // ─── Location — exposed to the reservation holder ────────────────────
+        private BigDecimal latitude;
+        private BigDecimal longitude;
+
+        // ─── Lifecycle — populated for COMPLETED reservations ────────────────
+        private LifecycleInfo lifecycle;
+    }
+
+    /**
+     * Lifecycle info embedded in a ReservationResponse when status=COMPLETED.
+     * Tells the buyer how long the property is occupied and whether that period has ended.
+     */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class LifecycleInfo {
+        /** PURCHASE, RENT, or SHORTLET */
+        private String type;
+        private java.time.LocalDateTime startTime;
+        /** Null for PURCHASE. */
+        private java.time.LocalDateTime endTime;
+        /** ACTIVE or EXPIRED */
+        private String status;
+    }
+
+    /**
+     * Request body for the internal endpoint called by transaction-service
+     * when a PURCHASE or RENT transaction succeeds.
+     */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class CompleteTransactionRequest {
+        private Long propertyId;
+        private Long buyerId;
+        /** PURCHASE or RENT (transaction-service's TransactionType name). */
+        private String transactionType;
+        /** Optional days for rental lifecycle (null → property-service uses its own defaults). */
+        private Integer leaseDays;
     }
 }
