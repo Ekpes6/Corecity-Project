@@ -51,6 +51,11 @@ paystack:
   secret-key: ${PAYSTACK_SECRET_KEY}
   callback-url: ${PAYSTACK_CALLBACK_URL:https://corecity.com.ng/payment/verify}
 
+server:
+  error:
+    include-message: always      # Spring Boot 3 hides error messages by default; expose them for API clients
+    include-binding-errors: always
+
 management:
   server:
     port: 9091  # Not published in docker-compose — actuator unreachable from outside
