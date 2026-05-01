@@ -240,10 +240,13 @@
       - SPRING_RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL}
+      - PROPERTY_SERVICE_URL=http://property-service:8082
     depends_on:
       mysql:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      property-service:
         condition: service_healthy
     logging:
       driver: "json-file"
