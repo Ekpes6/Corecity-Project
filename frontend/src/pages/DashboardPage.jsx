@@ -1133,9 +1133,9 @@ function ReservationCard({ r }) {
             >
               View Property <ArrowUpRight size={11} />
             </Link>
-            {r.status === 'ACTIVE' && r.latitude != null && r.longitude != null && (
+            {r.status === 'ACTIVE' && r.propertyAddress && (
               <a
-                href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`}
+                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.propertyAddress)}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-1 rounded-lg font-medium transition-colors"
