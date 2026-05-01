@@ -41,7 +41,15 @@ ALTER TABLE agent_loans
         ENUM('PENDING','ACTIVE','REPAID','OVERDUE','DEFAULTED')
         NOT NULL DEFAULT 'PENDING';
 
+-- ─── 4. users.nin / users.bvn — widen for AES-256-GCM ciphertext ─────────────
+-- AES-256-GCM + Base64 of an 11-digit number produces ~80-100 chars.
+-- Original VARCHAR(11) was too small; widen to VARCHAR(500).
+ALTER TABLE users
+  MODIFY COLUMN nin VARCHAR(500),
+  MODIFY COLUMN bvn VARCHAR(500);
+
 -- ─── Verification ─────────────────────────────────────────────────────────────
 -- Run these to confirm:
 --   SHOW COLUMNS FROM properties LIKE 'status';
 --   SHOW COLUMNS FROM agent_loans LIKE 'status';
+--   SHOW COLUMNS FROM users LIKE 'nin';
