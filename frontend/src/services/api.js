@@ -158,9 +158,10 @@ export const bankAccountAPI = {
 
 // ─── Wallet ──────────────────────────────────────────────────
 export const walletAPI = {
-  getBalance:  ()     => api.get('/users/me/wallet'),
-  fund:        (data) => api.post('/users/me/wallet/fund', data),
-  getHistory:  ()     => api.get('/users/me/wallet/transactions'),
+  getBalance:  ()          => api.get('/users/me/wallet'),
+  fund:        (data)      => api.post('/users/me/wallet/fund', data),
+  getHistory:  ()          => api.get('/users/me/wallet/transactions'),
+  resume:      (reference) => api.post(`/users/me/wallet/transactions/${reference}/resume`),
 };
 
 export default api;
