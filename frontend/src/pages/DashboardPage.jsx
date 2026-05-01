@@ -2000,6 +2000,11 @@ function AccountPage() {
     try {
       setFundLoading(true);
       const { data } = await walletAPI.fund({ amount });
+      if (!data?.authorizationUrl) {
+        toast.error('Payment gateway did not return a valid URL. Please try again.');
+        return;
+      }
+      // Redirect to Paystack — only reached when a valid URL is returned
       window.location.href = data.authorizationUrl;
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not initiate wallet top-up');
