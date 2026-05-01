@@ -53,6 +53,10 @@ public class Transaction {
     @Column(name = "paystack_data", columnDefinition = "JSON")
     private String paystackData;       // Raw Paystack response
 
+    /** Optional: rental duration in days (null for PURCHASE, INSPECTION_FEE, etc.). */
+    @Column(name = "lease_days")
+    private Integer leaseDays;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
