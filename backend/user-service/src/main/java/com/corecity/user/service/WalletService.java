@@ -145,6 +145,7 @@ public class WalletService {
      * Throws BAD_REQUEST if balance is insufficient.
      */
     @Transactional
+    @SuppressWarnings("null")
     public void debitWallet(Long userId, BigDecimal amount, String reference, String description) {
         Wallet wallet = walletRepository.findByUserId(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
