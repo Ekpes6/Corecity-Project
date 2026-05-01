@@ -23,6 +23,9 @@ paystack:
   secret-key: ${PAYSTACK_SECRET_KEY}
   callback-url: ${PAYSTACK_CALLBACK_URL:https://corecity.com.ng/payment/verify}
 
+services:
+  property-service-url: ${PROPERTY_SERVICE_URL:http://property-service:8082}
+
 management:
   server:
     port: 9091

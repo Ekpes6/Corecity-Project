@@ -15,6 +15,8 @@ public class TransactionDTOs {
         @NotBlank @Email private String buyerEmail;
         @NotNull @Positive private BigDecimal amount;
         @NotNull private Transaction.TransactionType type;
+        /** Optional: rental duration in days. Only relevant for RENT type transactions. */
+        private Integer leaseDays;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

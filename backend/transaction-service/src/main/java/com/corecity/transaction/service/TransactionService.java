@@ -34,6 +34,7 @@ public class TransactionService {
     private final PaystackService paystackService;
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
+    private final PropertyServiceClient propertyServiceClient;
 
     @Transactional
     @SuppressWarnings("null") // Lombok builder returns unannotated Transaction; Spring Data save() is @NonNull — safe at runtime
@@ -114,6 +115,7 @@ public class TransactionService {
                 .amount(req.getAmount())
                 .serviceFee(fee)
                 .type(req.getType())
+                .leaseDays(req.getLeaseDays())
                 .authorizationUrl(result.authorizationUrl())
                 .status(Transaction.TransactionStatus.PENDING)
                 .build()
@@ -157,6 +159,14 @@ public class TransactionService {
             if (tx.getType() == Transaction.TransactionType.PURCHASE
                     || tx.getType() == Transaction.TransactionType.RENT) {
                 createCommission(tx);
+            }
+
+            // Notify property-service to complete the reservation and start lifecycle countdown.
+            // This is best-effort: failures are logged but don't affect the transaction result.
+            if (tx.getType() == Transaction.TransactionType.PURCHASE
+                    || tx.getType() == Transaction.TransactionType.RENT) {
+                propertyServiceClient.completeReservation(
+                    tx.getPropertyId(), tx.getBuyerId(), tx.getType().name(), tx.getLeaseDays());
             }
 
             // Notify both parties
