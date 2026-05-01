@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +33,7 @@ public class BankAccountService {
             .isPrimary(!hasAccounts) // first account is automatically primary
             .build();
 
-        return bankAccountRepository.save(account);
+        return Objects.requireNonNull(bankAccountRepository.save(account));
     }
 
     @Transactional
