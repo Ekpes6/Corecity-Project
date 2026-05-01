@@ -9,7 +9,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +21,7 @@ public class BankAccountService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public BankAccount addAccount(Long userId, String bankName, String accountNumber, String accountName) {
         boolean hasAccounts = bankAccountRepository.existsByUserId(userId);
 
@@ -33,7 +33,7 @@ public class BankAccountService {
             .isPrimary(!hasAccounts) // first account is automatically primary
             .build();
 
-        return Objects.requireNonNull(bankAccountRepository.save(account));
+        return bankAccountRepository.save(account);
     }
 
     @Transactional
