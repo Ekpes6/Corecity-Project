@@ -509,6 +509,18 @@ public class ReservationService {
             }
         });
 
+        // Lifecycle info — only for COMPLETED reservations
+        if (r.getStatus() == Reservation.ReservationStatus.COMPLETED) {
+            lifecycleRepository
+                .findTopByPropertyIdAndUserIdOrderByCreatedAtDesc(r.getPropertyId(), r.getCustomerId())
+                .ifPresent(lc -> builder.lifecycle(LifecycleInfo.builder()
+                    .type(lc.getType())
+                    .startTime(lc.getStartTime())
+                    .endTime(lc.getEndTime())
+                    .status(lc.getStatus())
+                    .build()));
+        }
+
         return builder.build();
     }
 }

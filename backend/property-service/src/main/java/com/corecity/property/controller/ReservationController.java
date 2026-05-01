@@ -149,6 +149,23 @@ public class ReservationController {
         return ResponseEntity.ok(reservationService.verifyAndActivate(reference, userId));
     }
 
+    /**
+     * Internal endpoint — called by transaction-service (on the Docker network) when a
+     * PURCHASE or RENT transaction succeeds.  Marks the reservation COMPLETED, updates
+     * property status, and starts the lifecycle countdown.
+     *
+     * POST /api/v1/reservations/internal/complete
+     */
+    @PostMapping("/api/v1/reservations/internal/complete")
+    public ResponseEntity<Void> internalComplete(
+            @RequestBody CompleteTransactionRequest req) {
+        log.info("Internal complete: property={} buyer={} type={} leaseDays={}",
+            req.getPropertyId(), req.getBuyerId(), req.getTransactionType(), req.getLeaseDays());
+        reservationService.completeReservation(
+            req.getPropertyId(), req.getBuyerId(), req.getTransactionType(), req.getLeaseDays());
+        return ResponseEntity.ok().build();
+    }
+
     // ── Private helpers ────────────────────────────────────────────────────
 
     /**
