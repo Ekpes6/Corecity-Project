@@ -47,6 +47,7 @@ public class BankAccountService {
     }
 
     @Transactional
+    @SuppressWarnings("null")
     public void deleteAccount(Long userId, Long accountId) {
         BankAccount account = bankAccountRepository.findByIdAndUserId(accountId, userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Bank account not found"));
