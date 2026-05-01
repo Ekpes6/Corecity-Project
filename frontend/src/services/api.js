@@ -148,4 +148,19 @@ export const adminAPI = {
   searchUsers: (q) => api.get(`/users/admin/search?q=${encodeURIComponent(q ?? '')}`),
 };
 
+// ─── Bank Accounts ───────────────────────────────────────────
+export const bankAccountAPI = {
+  getAll:     ()     => api.get('/users/me/bank-accounts'),
+  add:        (data) => api.post('/users/me/bank-accounts', data),
+  setPrimary: (id)   => api.post(`/users/me/bank-accounts/${id}/primary`),
+  remove:     (id)   => api.delete(`/users/me/bank-accounts/${id}`),
+};
+
+// ─── Wallet ──────────────────────────────────────────────────
+export const walletAPI = {
+  getBalance:  ()     => api.get('/users/me/wallet'),
+  fund:        (data) => api.post('/users/me/wallet/fund', data),
+  getHistory:  ()     => api.get('/users/me/wallet/transactions'),
+};
+
 export default api;
