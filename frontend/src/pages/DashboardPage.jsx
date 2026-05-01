@@ -1403,6 +1403,7 @@ export default function DashboardPage() {
             <Route path="subscription" element={<SubscriptionPage />} />
             <Route path="reputation"   element={<ReputationPage />} />
             <Route path="messages"     element={<MessagesPage />} />
+            <Route path="account"      element={<AccountPage />} />
             <Route path="settings"     element={<SettingsPage />} />
           </Routes>
         </main>
