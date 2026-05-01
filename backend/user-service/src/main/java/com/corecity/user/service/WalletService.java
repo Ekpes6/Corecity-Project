@@ -42,6 +42,7 @@ public class WalletService {
 
     /** Returns the wallet for this user, creating one if it does not exist. */
     @Transactional
+    @SuppressWarnings("null")
     public Wallet getOrCreateWallet(Long userId) {
         return walletRepository.findByUserId(userId).orElseGet(() -> {
             Wallet wallet = Wallet.builder()
