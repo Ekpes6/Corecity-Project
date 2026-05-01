@@ -3,12 +3,20 @@ package com.corecity.user.controller;
 import com.corecity.user.entity.Wallet;
 import com.corecity.user.entity.WalletTransaction;
 import com.corecity.user.service.WalletService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +27,10 @@ import java.util.Map;
 public class WalletController {
 
     private final WalletService walletService;
+    private final ObjectMapper objectMapper;
+
+    @Value("${paystack.secret-key}")
+    private String paystackSecretKey;
 
     @GetMapping
     public ResponseEntity<Wallet> getWallet(
