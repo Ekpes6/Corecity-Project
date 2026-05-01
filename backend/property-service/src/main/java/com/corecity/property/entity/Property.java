@@ -87,6 +87,25 @@ public class Property {
     @Builder.Default
     private Integer viewsCount = 0;
 
+    // ─── Owner contact / payment details (optional — provided by agents/sellers) ───
+    @Column(name = "owner_name", length = 200)
+    private String ownerName;
+
+    @Column(name = "owner_phone", length = 30)
+    private String ownerPhone;
+
+    @Column(name = "owner_email", length = 200)
+    private String ownerEmail;
+
+    @Column(name = "owner_bank_name", length = 100)
+    private String ownerBankName;
+
+    @Column(name = "owner_account_number", length = 30)
+    private String ownerAccountNumber;
+
+    @Column(name = "owner_account_name", length = 200)
+    private String ownerAccountName;
+
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private List<PropertyFile> files;
 

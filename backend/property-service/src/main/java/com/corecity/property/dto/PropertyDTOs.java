@@ -37,6 +37,14 @@ public class PropertyDTOs {
         @Builder.Default
         private Boolean negotiable = true;
         private List<String> amenities;
+
+        // ─── Owner details (optional — provided by agents/sellers) ───────────
+        private String ownerName;
+        private String ownerPhone;
+        private String ownerEmail;
+        private String ownerBankName;
+        private String ownerAccountNumber;
+        private String ownerAccountName;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -76,6 +84,14 @@ public class PropertyDTOs {
         private String primaryImageUrl;
         private Integer viewsCount;
         private LocalDateTime createdAt;
+
+        // ─── Owner details ───────────────────────────────────────────────────
+        private String ownerName;
+        private String ownerPhone;
+        private String ownerEmail;
+        private String ownerBankName;
+        private String ownerAccountNumber;
+        private String ownerAccountName;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
