@@ -71,17 +71,6 @@ public class WalletService {
         String reference = "WLT-" + userId + "-" + System.currentTimeMillis();
         long amountKobo = amountNgn.multiply(BigDecimal.valueOf(100)).longValue();
 
-        // Record a PENDING transaction before calling Paystack (idempotency anchor)
-        WalletTransaction pending = WalletTransaction.builder()
-            .walletId(wallet.getId())
-            .type(Type.CREDIT)
-            .amount(amountNgn)
-            .reference(reference)
-            .description("Wallet top-up")
-            .status(Status.PENDING)
-            .build();
-        walletTransactionRepository.save(pending);
-
         Map<String, Object> body = Map.of(
             "email", userEmail,
             "amount", amountKobo,
@@ -91,6 +80,10 @@ public class WalletService {
             "metadata", Map.of("wallet_id", wallet.getId(), "user_id", userId)
         );
 
+        // Call Paystack FIRST — only persist a PENDING record if the gateway
+        // accepts the request and returns a valid authorization URL.
+        // This prevents orphan PENDING records when Paystack is down or rejects the call.
+        String authorizationUrl;
         try {
             String response = webClientBuilder.build()
                 .post()
@@ -103,13 +96,33 @@ public class WalletService {
                 .block();
 
             JsonNode root = objectMapper.readTree(response);
-            String authorizationUrl = root.path("data").path("authorization_url").asText();
-            return new FundInitResult(reference, authorizationUrl);
+            authorizationUrl = root.path("data").path("authorization_url").asText(null);
         } catch (Exception e) {
             log.error("Paystack wallet fund init failed: {}", e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                 "Payment gateway unavailable – please try again later");
         }
+
+        // Paystack returned 200 but with an empty/missing authorization_url —
+        // treat this as a gateway failure; do NOT persist anything.
+        if (authorizationUrl == null || authorizationUrl.isBlank()) {
+            log.error("Paystack returned empty authorization_url for user {} reference {}", userId, reference);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                "Payment gateway did not return a valid payment URL – please try again");
+        }
+
+        // Gateway accepted the request — now record the PENDING transaction.
+        WalletTransaction pending = WalletTransaction.builder()
+            .walletId(wallet.getId())
+            .type(Type.CREDIT)
+            .amount(amountNgn)
+            .reference(reference)
+            .description("Wallet top-up")
+            .status(Status.PENDING)
+            .build();
+        walletTransactionRepository.save(pending);
+
+        return new FundInitResult(reference, authorizationUrl);
     }
 
     /**
