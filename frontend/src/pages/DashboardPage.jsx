@@ -1115,6 +1115,17 @@ function ReservationCard({ r }) {
             </div>
           )}
 
+          {r.status === 'COMPLETED' && r.lifecycle && (
+            <div className="flex items-center gap-1 text-xs font-medium text-blue-700 mt-1">
+              <Clock size={12} />
+              {r.lifecycle.type === 'PURCHASE'
+                ? 'Ownership transferred'
+                : r.lifecycle.endTime
+                  ? `${r.lifecycle.type === 'SHORTLET' ? 'Shortlet' : 'Rental'}: ${lifecycleLabel}`
+                  : 'Transaction complete'}
+            </div>
+          )}
+
           <div className="flex items-center gap-3 mt-auto pt-1 flex-wrap">
             <Link
               to={`/properties/${r.propertyId}`}
@@ -1122,6 +1133,16 @@ function ReservationCard({ r }) {
             >
               View Property <ArrowUpRight size={11} />
             </Link>
+            {r.status === 'ACTIVE' && r.latitude != null && r.longitude != null && (
+              <a
+                href={`https://www.google.com/maps?q=${r.latitude},${r.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-2 py-1 rounded-lg font-medium transition-colors"
+              >
+                <MapPin size={11} /> View on Map
+              </a>
+            )}
             {r.status === 'PENDING_PAYMENT' && r.authorizationUrl && (
               <a
                 href={r.authorizationUrl}
