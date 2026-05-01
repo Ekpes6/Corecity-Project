@@ -7,8 +7,9 @@ import {
   Bed, Bath, MapPin, Building2, AlertCircle, ShieldCheck,
   Crown, BookMarked, BadgeCheck, Landmark, Zap, ArrowUpRight,
   CalendarCheck, Lock, Unlock, RotateCcw, Phone, User, Save,
+  Wallet, Banknote, PlusCircle, Trash2, Star as StarIcon,
 } from 'lucide-react';
-import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI, notificationAPI, adminAPI, authAPI } from '../services/api';
+import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI, notificationAPI, adminAPI, authAPI, bankAccountAPI, walletAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import PropertyCard from '../components/property/PropertyCard';
 import ListPropertyPage from './ListPropertyPage';
