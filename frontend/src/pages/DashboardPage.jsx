@@ -1879,6 +1879,335 @@ function MessagesPage() {
   );
 }
 
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Account Page — Bank Accounts + Wallet
+// ─────────────────────────────────────────────────────────────────────────────
+function AccountPage() {
+  const { user } = useAuth();
+
+  // ── Bank Accounts ─────────────────────────────────────────────────────────
+  const [accounts, setAccounts]           = useState([]);
+  const [acctLoading, setAcctLoading]     = useState(true);
+  const [showAddForm, setShowAddForm]     = useState(false);
+  const [bankName, setBankName]           = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [accountName, setAccountName]     = useState('');
+  const [acctSaving, setAcctSaving]       = useState(false);
+
+  // ── Wallet ────────────────────────────────────────────────────────────────
+  const [wallet, setWallet]               = useState(null);
+  const [walletLoading, setWalletLoading] = useState(true);
+  const [txHistory, setTxHistory]         = useState([]);
+  const [txLoading, setTxLoading]         = useState(true);
+  const [fundAmount, setFundAmount]       = useState('');
+  const [fundLoading, setFundLoading]     = useState(false);
+  const [showFundModal, setShowFundModal] = useState(false);
+
+  const loadAccounts = useCallback(async () => {
+    try {
+      setAcctLoading(true);
+      const { data } = await bankAccountAPI.getAll();
+      setAccounts(data);
+    } catch {
+      toast.error('Could not load bank accounts');
+    } finally {
+      setAcctLoading(false);
+    }
+  }, []);
+
+  const loadWallet = useCallback(async () => {
+    try {
+      setWalletLoading(true);
+      const { data } = await walletAPI.getBalance();
+      setWallet(data);
+    } catch {
+      toast.error('Could not load wallet');
+    } finally {
+      setWalletLoading(false);
+    }
+  }, []);
+
+  const loadTxHistory = useCallback(async () => {
+    try {
+      setTxLoading(true);
+      const { data } = await walletAPI.getHistory();
+      setTxHistory(data);
+    } catch {
+      /* silent */
+    } finally {
+      setTxLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAccounts();
+    loadWallet();
+    loadTxHistory();
+  }, [loadAccounts, loadWallet, loadTxHistory]);
+
+  const handleAddAccount = async (e) => {
+    e.preventDefault();
+    if (!bankName.trim() || !accountNumber.trim() || !accountName.trim()) {
+      toast.error('All fields are required');
+      return;
+    }
+    if (!/^\d{10}$/.test(accountNumber)) {
+      toast.error('Account number must be exactly 10 digits');
+      return;
+    }
+    try {
+      setAcctSaving(true);
+      await bankAccountAPI.add({ bankName, accountNumber, accountName });
+      toast.success('Bank account added');
+      setBankName(''); setAccountNumber(''); setAccountName('');
+      setShowAddForm(false);
+      loadAccounts();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to add account');
+    } finally {
+      setAcctSaving(false);
+    }
+  };
+
+  const handleSetPrimary = async (id) => {
+    try {
+      await bankAccountAPI.setPrimary(id);
+      toast.success('Primary account updated');
+      loadAccounts();
+    } catch {
+      toast.error('Could not update primary account');
+    }
+  };
+
+  const handleDeleteAccount = async (id) => {
+    if (!window.confirm('Delete this bank account?')) return;
+    try {
+      await bankAccountAPI.remove(id);
+      toast.success('Account removed');
+      loadAccounts();
+    } catch {
+      toast.error('Could not delete account');
+    }
+  };
+
+  const handleFundWallet = async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(fundAmount);
+    if (!fundAmount || isNaN(amount) || amount < 100) {
+      toast.error('Minimum top-up is ₦100');
+      return;
+    }
+    try {
+      setFundLoading(true);
+      const { data } = await walletAPI.fund({ amount });
+      window.location.href = data.authorizationUrl;
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not initiate wallet top-up');
+    } finally {
+      setFundLoading(false);
+    }
+  };
+
+  const NIGERIAN_BANKS = [
+    'Access Bank', 'First Bank', 'GTBank', 'Zenith Bank', 'UBA',
+    'Stanbic IBTC', 'Sterling Bank', 'Union Bank', 'Fidelity Bank', 'FCMB',
+    'Wema Bank', 'Heritage Bank', 'Keystone Bank', 'Polaris Bank', 'SunTrust Bank',
+    'Providus Bank', 'Coronation Bank', 'Titan Trust Bank', 'Kuda Bank',
+    'Moniepoint', 'Opay', 'PalmPay', 'VFD Microfinance Bank',
+  ];
+
+  return (
+    <div className="space-y-8 page-enter">
+      {/* ── Bank Accounts ──────────────────────────────────────────────────── */}
+      <div className="card p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="font-display text-lg font-bold text-forest-900 flex items-center gap-2">
+              <Banknote size={20} className="text-forest-700" /> Bank Accounts
+            </h3>
+            <p className="text-sm text-gray-500 mt-0.5">Manage your bank accounts for withdrawals</p>
+          </div>
+          <button
+            onClick={() => setShowAddForm((v) => !v)}
+            className="btn-secondary flex items-center gap-2 text-sm">
+            <PlusCircle size={16} /> {showAddForm ? 'Cancel' : 'Add Account'}
+          </button>
+        </div>
+
+        {/* Add form */}
+        {showAddForm && (
+          <form onSubmit={handleAddAccount} className="bg-forest-50 rounded-xl p-5 mb-5 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Bank Name *</label>
+              <select value={bankName} onChange={(e) => setBankName(e.target.value)} className="input-field">
+                <option value="">Select bank</option>
+                {NIGERIAN_BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Account Number *</label>
+                <input
+                  type="text" maxLength={10} value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                  placeholder="10-digit NUBAN" className="input-field" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Account Name *</label>
+                <input
+                  type="text" value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  placeholder="As on bank record" className="input-field" />
+              </div>
+            </div>
+            <button type="submit" disabled={acctSaving} className="btn-primary">
+              {acctSaving ? 'Saving…' : 'Save Account'}
+            </button>
+          </form>
+        )}
+
+        {/* Account list */}
+        {acctLoading ? (
+          <div className="flex items-center justify-center py-8 text-gray-400">
+            <RefreshCw size={20} className="animate-spin mr-2" /> Loading…
+          </div>
+        ) : accounts.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            <Banknote size={32} className="mx-auto mb-2 opacity-40" />
+            <p className="text-sm">No bank accounts yet. Add one above.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {accounts.map((acct) => (
+              <div key={acct.id} className={`flex items-center justify-between p-4 rounded-xl border ${
+                acct.primary ? 'border-forest-300 bg-forest-50' : 'border-gray-100 bg-white'
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-gray-800 text-sm">{acct.bankName}</span>
+                    {acct.primary && (
+                      <span className="text-xs bg-forest-700 text-white px-2 py-0.5 rounded-full">Primary</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">{acct.accountName} &middot; ••••{acct.accountNumber?.slice(-4)}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!acct.primary && (
+                    <button
+                      onClick={() => handleSetPrimary(acct.id)}
+                      className="text-xs text-forest-700 border border-forest-300 px-2 py-1 rounded-lg hover:bg-forest-50">
+                      Set Primary
+                    </button>
+                  )}
+                  <button
+                    onClick={() => handleDeleteAccount(acct.id)}
+                    className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg">
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Wallet ─────────────────────────────────────────────────────────── */}
+      <div className="card p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="font-display text-lg font-bold text-forest-900 flex items-center gap-2">
+              <Wallet size={20} className="text-forest-700" /> Wallet
+            </h3>
+            <p className="text-sm text-gray-500 mt-0.5">Fund and use your CoreCity wallet for faster payments</p>
+          </div>
+          <button
+            onClick={() => setShowFundModal((v) => !v)}
+            className="btn-primary flex items-center gap-2 text-sm">
+            <PlusCircle size={16} /> Top Up
+          </button>
+        </div>
+
+        {/* Balance */}
+        {walletLoading ? (
+          <div className="flex items-center text-gray-400 py-4">
+            <RefreshCw size={18} className="animate-spin mr-2" /> Loading…
+          </div>
+        ) : (
+          <div className="bg-forest-800 text-white rounded-2xl p-6 mb-6">
+            <p className="text-forest-200 text-sm mb-1">Available Balance</p>
+            <p className="text-3xl font-bold font-display">
+              ₦{wallet?.balance != null ? Number(wallet.balance).toLocaleString('en-NG', { minimumFractionDigits: 2 }) : '0.00'}
+            </p>
+            <p className="text-forest-300 text-xs mt-1">{wallet?.currency ?? 'NGN'}</p>
+          </div>
+        )}
+
+        {/* Fund modal */}
+        {showFundModal && (
+          <form onSubmit={handleFundWallet} className="bg-forest-50 rounded-xl p-5 mb-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount (₦) *</label>
+              <input
+                type="number" min="100" step="100"
+                value={fundAmount} onChange={(e) => setFundAmount(e.target.value)}
+                placeholder="e.g. 5000" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">Minimum ₦100. You will be redirected to Paystack to complete payment.</p>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowFundModal(false)} className="btn-secondary flex-1">Cancel</button>
+              <button type="submit" disabled={fundLoading} className="btn-primary flex-1">
+                {fundLoading ? 'Redirecting…' : 'Proceed to Payment'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Transaction history */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Transaction History</h4>
+          {txLoading ? (
+            <div className="flex items-center text-gray-400 py-4">
+              <RefreshCw size={18} className="animate-spin mr-2" /> Loading…
+            </div>
+          ) : txHistory.length === 0 ? (
+            <p className="text-sm text-gray-400 py-4 text-center">No wallet transactions yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {txHistory.map((tx) => (
+                <div key={tx.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      tx.type === 'CREDIT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                    }`}>
+                      {tx.type === 'CREDIT' ? <ArrowUpRight size={14} /> : <ArrowUpRight size={14} className="rotate-180" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">{tx.description || (tx.type === 'CREDIT' ? 'Wallet Top-up' : 'Debit')}</p>
+                      <p className="text-xs text-gray-400">{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-semibold ${tx.type === 'CREDIT' ? 'text-green-700' : 'text-red-600'}`}>
+                      {tx.type === 'CREDIT' ? '+' : '-'}₦{Number(tx.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                    </p>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      tx.status === 'SUCCESSFUL' ? 'bg-green-100 text-green-700' :
+                      tx.status === 'PENDING'    ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-600'
+                    }`}>{tx.status}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Settings Page
 // ─────────────────────────────────────────────────────────────────────────────

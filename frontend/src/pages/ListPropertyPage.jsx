@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useDropzone } from 'react-dropzone';
-import { Upload, X, CheckCircle2, ArrowRight, MapPin, Loader2 } from 'lucide-react';
+import { Upload, X, CheckCircle2, ArrowRight, MapPin, Loader2, ChevronDown } from 'lucide-react';
 import { propertyAPI, fileAPI, locationAPI } from '../services/api';
 import { PROPERTY_TYPES, LISTING_TYPES, PRICE_PERIODS, ALL_AMENITIES, AMENITY_LABELS } from '../utils/nigeria';
 import toast from 'react-hot-toast';
@@ -18,6 +18,7 @@ export default function ListPropertyPage() {
   const [lgas, setLgas] = useState([]);
   const [geocoding, setGeocoding] = useState(false);
   const [coordsAutoFilled, setCoordsAutoFilled] = useState(false);
+  const [showOwnerFields, setShowOwnerFields] = useState(false);
   const geocodeTimer = useRef(null);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
@@ -395,6 +396,59 @@ export default function ListPropertyPage() {
             <div className="flex items-center gap-2">
               <input type="checkbox" id="negotiable" {...register('negotiable')} className="w-4 h-4 accent-forest-800" />
               <label htmlFor="negotiable" className="text-sm text-gray-700">Price is negotiable</label>
+            </div>
+
+            {/* Owner Details (optional) */}
+            <div className="border border-gray-100 rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowOwnerFields((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-medium text-gray-700">
+                <span>Owner Details <span className="font-normal text-gray-400">(optional — for agents acting on behalf of a landlord)</span></span>
+                <ChevronDown size={16} className={`transition-transform ${showOwnerFields ? 'rotate-180' : ''}`} />
+              </button>
+              {showOwnerFields && (
+                <div className="p-4 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Owner Full Name</label>
+                      <input {...register('ownerName')} placeholder="e.g. Chukwuemeka Obi" className="input-field" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Owner Phone</label>
+                      <input {...register('ownerPhone', {
+                        pattern: { value: /^(\+234|0)[0-9]{9,10}$/, message: 'Enter a valid Nigerian phone number' }
+                      })} placeholder="e.g. +2348012345678" className="input-field" />
+                      {errors.ownerPhone && <p className="text-red-500 text-xs mt-1">{errors.ownerPhone.message}</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Owner Email</label>
+                    <input type="email" {...register('ownerEmail', {
+                      pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email address' }
+                    })} placeholder="e.g. chukwuemeka@example.com" className="input-field" />
+                    {errors.ownerEmail && <p className="text-red-500 text-xs mt-1">{errors.ownerEmail.message}</p>}
+                  </div>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Owner Bank Details</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Bank Name</label>
+                      <input {...register('ownerBankName')} placeholder="e.g. Access Bank" className="input-field" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Account Number</label>
+                      <input {...register('ownerAccountNumber', {
+                        pattern: { value: /^\d{10}$/, message: '10-digit account number required' }
+                      })} maxLength={10} placeholder="10 digits" className="input-field" />
+                      {errors.ownerAccountNumber && <p className="text-red-500 text-xs mt-1">{errors.ownerAccountNumber.message}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Account Name</label>
+                      <input {...register('ownerAccountName')} placeholder="As on bank record" className="input-field" />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <button type="button" onClick={() => setStep(2)} className="btn-primary w-full flex items-center justify-center gap-2">
