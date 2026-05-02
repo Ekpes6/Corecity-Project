@@ -272,5 +272,59 @@ public class WalletService {
         }
     }
 
+    /**
+     * Verifies a PENDING wallet top-up with Paystack and credits the wallet if confirmed paid.
+     * Used when the webhook was missed (e.g. URL not configured at payment time).
+     */
+    @Transactional
+    public String verifyWalletFunding(Long userId, String reference) {
+        WalletTransaction txn = walletTransactionRepository.findByReference(reference)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transaction not found"));
+
+        Wallet wallet = walletRepository.findByUserId(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+        if (!txn.getWalletId().equals(wallet.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not your transaction");
+        }
+
+        if (txn.getStatus() == Status.SUCCESSFUL) {
+            return "already_credited";
+        }
+        if (txn.getStatus() == Status.FAILED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This transaction has already failed");
+        }
+
+        try {
+            String response = webClientBuilder.build()
+                .get()
+                .uri(PAYSTACK_BASE + "/transaction/verify/" + reference)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + paystackSecretKey)
+                .retrieve()
+                .bodyToMono(String.class)
+                .block();
+
+            log.info("Paystack verify response for ref {}: {}", reference, response);
+            JsonNode root = objectMapper.readTree(response);
+            String paystackStatus = root.path("data").path("status").asText("");
+
+            if ("success".equals(paystackStatus)) {
+                creditWalletFromWebhook(reference);
+                return "credited";
+            } else {
+                txn.setStatus(Status.FAILED);
+                walletTransactionRepository.save(txn);
+                log.warn("Paystack verify: ref {} has status '{}' — marking FAILED", reference, paystackStatus);
+                throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
+                    "Payment not completed. Paystack status: " + paystackStatus);
+            }
+        } catch (ResponseStatusException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Paystack verify failed for ref {}: {}", reference, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                "Could not verify payment – please try again");
+        }
+    }
+
     public record FundInitResult(String reference, String authorizationUrl) {}
 }
