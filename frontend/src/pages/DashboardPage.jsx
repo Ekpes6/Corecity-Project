@@ -671,6 +671,7 @@ function SubscriptionPage() {
   const [subscribing, setSubscribing] = useState(null);
   const [repaying, setRepaying]       = useState(null);
   const [customAmount, setCustomAmount] = useState('');
+  const [walletBalance, setWalletBalance] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -678,12 +679,14 @@ function SubscriptionPage() {
         subscriptionAPI.listPlans().catch(() => ({ data: [] })),
         subscriptionAPI.getMine().catch(() => ({ data: [] })),
         subscriptionAPI.getMyLoans().catch(() => ({ data: [] })),
+        walletAPI.getBalance().catch(() => ({ data: null })),
       ];
       if (isAgent) calls.push(subscriptionAPI.getLoanProgram().catch(() => ({ data: null })));
-      const [p, s, l, prog] = await Promise.all(calls);
+      const [p, s, l, w, prog] = await Promise.all(calls);
       setPlans(p.data);
       setMySubs(s.data);
       setMyLoans(l.data);
+      setWalletBalance(w.data?.balance ?? null);
       if (prog) setLoanProgram(prog.data);
     } finally {
       setLoading(false);
