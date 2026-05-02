@@ -97,7 +97,7 @@ export const subscriptionAPI = {
   getMine:        ()             => api.get('/subscriptions/my'),
   getMyLoans:      ()             => api.get('/subscriptions/loans/my'),
   getAllLoans:      ()             => api.get('/subscriptions/loans/all'),
-  repayLoan:      (loanId, body) => api.post(`/subscriptions/loans/${loanId}/repay`, body || {}),
+  repayLoan:      (loanId) => api.post(`/subscriptions/loans/${loanId}/repay`),
   getLoanProgram: ()             => api.get('/subscriptions/loan-program/my'),
   activeCheck:    ()             => api.get('/subscriptions/active-check'),
   verify:         (reference)    => api.get(`/subscriptions/verify/${reference}`),
@@ -106,7 +106,7 @@ export const subscriptionAPI = {
 
 // ─── Reservations ────────────────────────────────────────────
 export const reservationAPI = {
-  reserve:           (propertyId, body) => api.post(`/properties/${propertyId}/reserve`, body || {}),
+  reserve:           (propertyId) => api.post(`/properties/${propertyId}/reserve`),
   getMine:           ()           => api.get('/reservations/my'),
   getAll:            ()           => api.get('/reservations/all'),
   getForProperty:    (propertyId) => api.get(`/properties/${propertyId}/reservation`),

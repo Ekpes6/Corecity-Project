@@ -943,19 +943,9 @@ function SubscriptionPage() {
                   disabled={isCurrent || locked || !!subscribing}
                   className={`btn-primary text-sm flex items-center justify-center gap-2 ${(isCurrent || locked) ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                  {busy(plan.name) ? <RefreshCw size={14} className="animate-spin" /> : <ArrowUpRight size={14} />}
-                  {isCurrent ? 'Current Plan' : locked ? 'Locked' : 'Subscribe & Pay'}
+                  {busy(plan.name) ? <RefreshCw size={14} className="animate-spin" /> : <Wallet size={14} />}
+                  {isCurrent ? 'Current Plan' : locked ? 'Locked' : `Subscribe${walletBalance !== null ? ` (₦${Number(walletBalance).toLocaleString()})` : ''}`}
                 </button>
-                {!isCurrent && !locked && walletBalance !== null && (
-                  <button
-                    onClick={() => handleSubscribeWithWallet(plan.name)}
-                    disabled={!!subscribing}
-                    className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl border border-forest-600 text-forest-700 text-sm hover:bg-forest-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {busy(plan.name + '_wallet') ? <RefreshCw size={14} className="animate-spin" /> : <Wallet size={14} />}
-                    Pay with Wallet (₦{Number(walletBalance).toLocaleString()})
-                  </button>
-                )}
                 {loanAllowed && (
                   <button
                     onClick={() => handleSubscribe(plan.name, true)}
