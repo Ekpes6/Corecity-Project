@@ -2007,8 +2007,7 @@ function AccountPage() {
       // Open Paystack in a new tab so the user can return to the dashboard
       const win = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
       if (!win) {
-        // Pop-up was blocked — fallback to same-tab redirect
-        window.location.href = data.authorizationUrl;
+        toast.error('Pop-up blocked. Please allow pop-ups for this site and try again.');
       } else {
         toast.success('Paystack payment page opened in a new tab');
         setShowFundModal(false);
