@@ -221,11 +221,18 @@ public class WalletService {
                 "Only PENDING transactions can be resumed");
         }
 
+        // Paystack rejects re-initialization with the same reference (HTTP 400).
+        // Generate a fresh reference and update the DB record before calling Paystack.
+        String newReference = "WLT-" + userId + "-" + System.currentTimeMillis();
+        txn.setReference(newReference);
+        walletTransactionRepository.save(txn);
+        log.info("Resume: replaced old ref {} with new ref {} for userId {}", reference, newReference, userId);
+
         long amountKobo = txn.getAmount().multiply(BigDecimal.valueOf(100)).longValue();
         Map<String, Object> body = Map.of(
             "email", userEmail,
             "amount", amountKobo,
-            "reference", reference,   // Paystack deduplicates by reference
+            "reference", newReference,
             "currency", "NGN",
             "callback_url", callbackUrl,
             "metadata", Map.of("wallet_id", wallet.getId(), "user_id", userId)
@@ -242,7 +249,7 @@ public class WalletService {
                 .bodyToMono(String.class)
                 .block();
 
-            log.info("Paystack resume response for ref {}: {}", reference, response);
+            log.info("Paystack resume response for ref {}: {}", newReference, response);
             JsonNode root = objectMapper.readTree(response);
             boolean status = root.path("status").asBoolean(false);
             if (!status) {
@@ -259,7 +266,7 @@ public class WalletService {
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Paystack resume failed for ref {}: {}", reference, e.getMessage());
+            log.error("Paystack resume failed for ref {}: {}", newReference, e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                 "Payment gateway unavailable – please try again later");
         }
