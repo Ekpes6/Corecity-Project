@@ -29,6 +29,8 @@ export default function PropertyDetailPage() {
   const [myActiveReservation, setMyActiveReservation] = useState(null);
   const [mySuccessTransaction, setMySuccessTransaction] = useState(null);
   const [walletBalance, setWalletBalance] = useState(null);
+
+  useEffect(() => {
     propertyAPI.getOne(id)
       .then((r) => {
         setProperty(r.data);
