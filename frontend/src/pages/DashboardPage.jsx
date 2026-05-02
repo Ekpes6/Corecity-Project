@@ -883,8 +883,18 @@ function SubscriptionPage() {
               className="btn-primary text-sm flex items-center gap-2 shrink-0"
             >
               {repaying === activeLoan.id ? <RefreshCw size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-              Repay Now
+              Repay (Paystack)
             </button>
+            {walletBalance !== null && (
+              <button
+                onClick={() => handleRepayWithWallet(activeLoan.id)}
+                disabled={!!repaying}
+                className="flex items-center gap-2 py-2 px-3 rounded-xl border border-forest-600 text-forest-700 text-sm hover:bg-forest-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
+              >
+                {repaying === activeLoan.id + '_wallet' ? <RefreshCw size={14} className="animate-spin" /> : <Wallet size={14} />}
+                Wallet
+              </button>
+            )}
           </div>
         </div>
       )}
