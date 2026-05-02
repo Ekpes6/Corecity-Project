@@ -241,6 +241,36 @@ public class SubscriptionService {
         String reference = "SUB-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         LocalDate today = LocalDate.now();
 
+        // ── WALLET PATH: debit wallet and activate immediately ────────────────
+        if (req.isPayWithWallet()) {
+            walletService.debitWallet(agentId, amount, reference, "Subscription: " + plan.name());
+
+            AgentSubscription sub = AgentSubscription.builder()
+                .agentId(agentId)
+                .plan(plan)
+                .amountPaid(amount)
+                .startDate(today)
+                .endDate(today.plusMonths(1))
+                .status(SubscriptionStatus.ACTIVE)
+                .loan(false)
+                .paymentReference(reference)
+                .build();
+            subscriptionRepo.save(Objects.requireNonNull(sub));
+
+            log.info("Wallet subscription {} activated for agent {} on plan {}", reference, agentId, plan);
+
+            return SubscriptionInitResponse.builder()
+                .subscriptionId(sub.getId())
+                .plan(plan.name())
+                .amountDue(amount)
+                .paymentReference(reference)
+                .isLoan(false)
+                .walletPaid(true)
+                .status(SubscriptionStatus.ACTIVE.name())
+                .build();
+        }
+
+        // ── STANDARD PAYSTACK PATH ────────────────────────────────────────────
         AgentSubscription subscription = AgentSubscription.builder()
             .agentId(agentId)
             .plan(plan)
@@ -446,7 +476,7 @@ public class SubscriptionService {
 
     /** Record a loan repayment and advance the 13-trial cycle on full repayment. */
     @Transactional
-    public LoanRepayInitResponse initiateLoanRepayment(Long loanId, Long agentId, String agentEmail) {
+    public LoanRepayInitResponse initiateLoanRepayment(Long loanId, Long agentId, String agentEmail, boolean payWithWallet) {
         AgentLoan loan = loanRepo.findById(Objects.requireNonNull(loanId, "loanId must not be null"))
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
 
@@ -454,6 +484,23 @@ public class SubscriptionService {
             throw new ResponseStatusException(FORBIDDEN, "Access denied");
         if (loan.getStatus() != AgentLoan.LoanStatus.ACTIVE && loan.getStatus() != AgentLoan.LoanStatus.OVERDUE)
             throw new ResponseStatusException(BAD_REQUEST, "Loan is not repayable (status: " + loan.getStatus() + ")");
+
+        // ── WALLET PATH ────────────────────────────────────────────────────────
+        if (payWithWallet) {
+            String reference = "REP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
+            walletService.debitWallet(agentId, loan.getLoanAmount(), reference, "Loan repayment");
+            loan.setRepaymentReference(reference);
+            loan.setRepaymentStatus(AgentLoan.RepaymentStatus.SUCCESS);
+            loanRepo.save(loan);
+            confirmLoanRepayment(reference);
+            log.info("Wallet loan repayment {} completed for loan {} (agent {})", reference, loanId, agentId);
+            return LoanRepayInitResponse.builder()
+                .loanId(loan.getId())
+                .repaymentReference(reference)
+                .amount(loan.getLoanAmount())
+                .walletPaid(true)
+                .build();
+        }
 
         // Idempotency: return existing Paystack URL if already initiated and not yet confirmed
         if (loan.getRepaymentReference() != null && !loan.getRepaymentReference().isBlank()
