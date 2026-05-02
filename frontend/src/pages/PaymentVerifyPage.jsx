@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { transactionAPI, reservationAPI, subscriptionAPI } from '../services/api';
+import { transactionAPI, reservationAPI, subscriptionAPI, walletAPI } from '../services/api';
 import { formatNaira } from '../utils/nigeria';
 
 export default function PaymentVerifyPage() {
@@ -15,11 +15,50 @@ export default function PaymentVerifyPage() {
   const isReservation    = reference?.startsWith('RSV-');
   const isSubscription   = reference?.startsWith('SUB-');
   const isLoanRepayment  = reference?.startsWith('REP-');
+  const isWalletTopUp    = reference?.startsWith('WLT-');
 
   useEffect(() => {
     if (!reference) { setStatus('failed'); return; }
 
-    if (isReservation) {
+    if (isWalletTopUp) {
+      let cancelled = false;
+      let attempts  = 0;
+      const MAX_ATTEMPTS = 5;
+      const RETRY_MS     = 2500;
+      let timerId = null;
+
+      const attemptVerify = () => {
+        attempts++;
+        walletAPI.verify(reference)
+          .then(({ data }) => {
+            if (cancelled) return;
+            if (data.status === 'credited' || data.status === 'already_credited') {
+              setStatus('success');
+            } else if (attempts < MAX_ATTEMPTS) {
+              timerId = setTimeout(attemptVerify, RETRY_MS);
+            } else {
+              setStatus('failed');
+            }
+          })
+          .catch((err) => {
+            if (cancelled) return;
+            // 402 = payment not completed on Paystack side
+            if (err.response?.status === 402) {
+              setStatus('failed');
+            } else if (attempts < MAX_ATTEMPTS) {
+              timerId = setTimeout(attemptVerify, RETRY_MS);
+            } else {
+              setStatus('failed');
+            }
+          });
+      };
+
+      attemptVerify();
+      return () => {
+        cancelled = true;
+        if (timerId) clearTimeout(timerId);
+      };
+    } else if (isReservation) {
       // Use verifyAndActivate (not getByReference) so we actively confirm with Paystack
       // and activate the reservation if it succeeded.  This resolves the race condition
       // where Paystack's webhook hasn't fired yet when the browser lands here.
@@ -118,7 +157,7 @@ export default function PaymentVerifyPage() {
         if (timerId) clearTimeout(timerId);
       };
     }
-  }, [reference, isReservation, isSubscription, isLoanRepayment]);
+  }, [reference, isReservation, isSubscription, isLoanRepayment, isWalletTopUp]);
 
   if (status === 'loading') return (
     <div className="min-h-screen flex items-center justify-center">
@@ -138,13 +177,15 @@ export default function PaymentVerifyPage() {
             <CheckCircle2 size={56} className="text-green-500 mx-auto mb-5" />
             <h1 className="font-display text-2xl font-bold text-forest-900 mb-2">Payment Successful!</h1>
             <p className="text-gray-500 mb-6">
-              {isReservation
-                ? 'Your reservation is now active. The property owner has been notified.'
-                : isLoanRepayment
-                  ? 'Your loan repayment has been confirmed. Your account access has been restored.'
-                  : isSubscription
-                    ? `Your ${subscription?.plan || ''} subscription is now active.`
-                    : 'Your payment has been confirmed and the property owner has been notified.'}
+              {isWalletTopUp
+                ? 'Your wallet has been credited. You can use your balance for reservations and payments.'
+                : isReservation
+                  ? 'Your reservation is now active. The property owner has been notified.'
+                  : isLoanRepayment
+                    ? 'Your loan repayment has been confirmed. Your account access has been restored.'
+                    : isSubscription
+                      ? `Your ${subscription?.plan || ''} subscription is now active.`
+                      : 'Your payment has been confirmed and the property owner has been notified.'}
             </p>
             {!isReservation && !isSubscription && transaction && (
               <div className="bg-forest-50 rounded-xl p-4 text-left text-sm space-y-2 mb-6">
@@ -168,9 +209,11 @@ export default function PaymentVerifyPage() {
             <XCircle size={56} className="text-red-400 mx-auto mb-5" />
             <h1 className="font-display text-2xl font-bold text-gray-800 mb-2">Payment Failed</h1>
             <p className="text-gray-500 mb-6">
-              {isReservation
-                ? 'Your reservation payment could not be confirmed. No funds have been deducted.'
-                : 'We could not confirm your payment. If you were charged, the transaction will appear in your dashboard within a few minutes once our system syncs with Paystack.'}
+              {isWalletTopUp
+                ? 'Your payment could not be confirmed. If you completed the payment, use the "Verify Payment" button in Dashboard → Account → Wallet to credit your balance.'
+                : isReservation
+                  ? 'Your reservation payment could not be confirmed. No funds have been deducted.'
+                  : 'We could not confirm your payment. If you were charged, the transaction will appear in your dashboard within a few minutes once our system syncs with Paystack.'}
             </p>
             {isReservation && (
               <p className="text-gray-400 text-sm -mt-3 mb-6">
