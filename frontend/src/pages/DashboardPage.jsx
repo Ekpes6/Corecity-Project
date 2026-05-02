@@ -2241,7 +2241,7 @@ function AccountPage() {
                                 walletAPI.getHistory(),
                               ]);
                               setWallet(walletRes.data);
-                              setTransactions(historyRes.data);
+                              setTxHistory(historyRes.data);
                             } catch (err) {
                               toast.error(err.response?.data?.message || 'Could not verify payment');
                             }
