@@ -35,6 +35,7 @@ public class TransactionService {
     private final RabbitTemplate rabbitTemplate;
     private final ObjectMapper objectMapper;
     private final PropertyServiceClient propertyServiceClient;
+    private final UserServiceClient userServiceClient;
 
     @Transactional
     @SuppressWarnings("null") // Lombok builder returns unannotated Transaction; Spring Data save() is @NonNull — safe at runtime
@@ -91,7 +92,58 @@ public class TransactionService {
         // UUID reference: globally unique, no millisecond-collision risk under concurrent load
         String reference = "HLK-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
 
-        // Call Paystack FIRST — before any DB write.
+        // ── WALLET PATH: debit wallet and mark transaction SUCCESS immediately ─
+        if (req.isPayWithWallet()) {
+            userServiceClient.debitWallet(safeBuyerId, req.getAmount(), reference,
+                req.getType().name() + " payment: property " + req.getPropertyId());
+
+            var walletTx = transactionRepository.save(
+                Transaction.builder()
+                    .reference(reference)
+                    .propertyId(req.getPropertyId())
+                    .buyerId(safeBuyerId)
+                    .sellerId(req.getSellerId())
+                    .amount(req.getAmount())
+                    .serviceFee(BigDecimal.ZERO)
+                    .type(req.getType())
+                    .leaseDays(req.getLeaseDays())
+                    .paymentChannel("wallet")
+                    .status(Transaction.TransactionStatus.SUCCESS)
+                    .build()
+            );
+
+            // Auto-create commission for PURCHASE / RENT
+            if (walletTx.getType() == Transaction.TransactionType.PURCHASE
+                    || walletTx.getType() == Transaction.TransactionType.RENT) {
+                createCommission(walletTx);
+                propertyServiceClient.completeReservation(
+                    walletTx.getPropertyId(), walletTx.getBuyerId(), walletTx.getType().name(), walletTx.getLeaseDays());
+            }
+
+            try {
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.payment_success", Map.of(
+                    "buyerId", walletTx.getBuyerId(), "sellerId", walletTx.getSellerId(),
+                    "amount", walletTx.getAmount(), "reference", reference,
+                    "propertyId", walletTx.getPropertyId(),
+                    "transactionId", walletTx.getId()
+                ));
+            } catch (Exception e) {
+                log.warn("Could not publish wallet payment notification for tx {}", walletTx.getId());
+            }
+
+            log.info("Wallet transaction {} SUCCESS for buyer {} / property {}", reference, safeBuyerId, req.getPropertyId());
+
+            return InitTransactionResponse.builder()
+                .transactionId(walletTx.getId())
+                .reference(reference)
+                .amount(req.getAmount())
+                .serviceFee(BigDecimal.ZERO)
+                .totalAmount(req.getAmount())
+                .walletPaid(true)
+                .build();
+        }
+
+        // ── PAYSTACK PATH ─────────────────────────────────────────────────────
         // If Paystack fails (network error, timeout, bad response), an exception is thrown here
         // and nothing is persisted. This guarantees no orphan transaction records in the DB.
         // The meta omits transactionId because the DB record doesn't exist yet.

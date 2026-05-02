@@ -17,6 +17,9 @@ public class TransactionDTOs {
         @NotNull private Transaction.TransactionType type;
         /** Optional: rental duration in days. Only relevant for RENT type transactions. */
         private Integer leaseDays;
+        /** If true, debit the buyer's wallet instead of going through Paystack. */
+        @Builder.Default
+        private boolean payWithWallet = false;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -27,6 +30,9 @@ public class TransactionDTOs {
         private BigDecimal amount;
         private BigDecimal serviceFee;
         private BigDecimal totalAmount;
+        /** True when the payment was debited from the wallet (no Paystack redirect needed). */
+        @Builder.Default
+        private boolean walletPaid = false;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
