@@ -140,13 +140,9 @@ public class PropertyDTOs {
         private Long reservationId;
         private Long propertyId;
         private String paymentReference;
-        private String authorizationUrl;
         /** Fixed ₦1,000 */
         private BigDecimal reservationFee;
         private String status;
-        /** True when the reservation fee was debited from the wallet (no Paystack redirect needed). */
-        @Builder.Default
-        private boolean walletPaid = false;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

@@ -31,7 +31,6 @@ public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final PropertyRepository propertyRepository;
     private final PropertyLifecycleRepository lifecycleRepository;
-    private final ReservationPaystackClient paystackClient;
     private final RabbitTemplate rabbitTemplate;
     private final UserServiceClient userServiceClient;
 
@@ -43,14 +42,14 @@ public class ReservationService {
 
     /**
      * Initiate a reservation for an ACTIVE property.
+     * Debits ₦1,000 from the customer's wallet and activates the reservation immediately.
      *
-     * @param propertyId     the target property
-     * @param customerId     JWT-authenticated customer ID
-     * @param buyerEmail     email used to generate the Paystack link
-     * @param payWithWallet  if true, debit the customer's wallet instead of going to Paystack
+     * @param propertyId the target property
+     * @param customerId JWT-authenticated customer ID
+     * @param buyerEmail customer email (kept for notification context)
      */
     @Transactional
-    public ReservationInitResponse initiateReservation(Long propertyId, Long customerId, String buyerEmail, boolean payWithWallet) {
+    public ReservationInitResponse initiateReservation(Long propertyId, Long customerId, String buyerEmail) {
         Objects.requireNonNull(propertyId, "propertyId must not be null");
         Objects.requireNonNull(customerId, "customerId must not be null");
 
@@ -91,79 +90,47 @@ public class ReservationService {
 
         String reference = "RSV-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
 
-        // ── WALLET PATH: debit wallet and activate reservation immediately ─────
-        if (payWithWallet) {
-            userServiceClient.debitWallet(customerId, reservationFee, reference,
-                "Reservation fee: property " + propertyId);
+        // Debit wallet and activate reservation immediately
+        userServiceClient.debitWallet(customerId, reservationFee, reference,
+            "Reservation fee: property " + propertyId);
 
-            LocalDateTime now = LocalDateTime.now();
-            Reservation reservation = Reservation.builder()
-                .propertyId(propertyId)
-                .customerId(customerId)
-                .paymentReference(reference)
-                .status(Reservation.ReservationStatus.ACTIVE)
-                .paidAt(now)
-                .expiresAt(now.plusDays(negotiationDays))
-                .build();
-            reservationRepository.save(Objects.requireNonNull(reservation));
-
-            // Move property to ON_NEGOTIATION
-            propertyRepository.findById(propertyId).ifPresent(p -> {
-                p.setStatus(Property.PropertyStatus.ON_NEGOTIATION);
-                propertyRepository.save(p);
-            });
-
-            // Publish event so notification-service can email the customer
-            try {
-                rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_activated",
-                    Map.of(
-                        "propertyId", propertyId,
-                        "customerId", customerId,
-                        "expiresAt", reservation.getExpiresAt().toString()
-                    ));
-            } catch (Exception e) {
-                log.warn("Could not publish wallet reservation notification", e);
-            }
-
-            log.info("Wallet reservation {} activated for property {} by customer {}", reference, propertyId, customerId);
-
-            return ReservationInitResponse.builder()
-                .propertyId(propertyId)
-                .paymentReference(reference)
-                .reservationFee(reservationFee)
-                .walletPaid(true)
-                .status(Reservation.ReservationStatus.ACTIVE.name())
-                .build();
-        }
-
-        // ── PAYSTACK PATH ─────────────────────────────────────────────────────
-        Map<String, Object> meta = Map.of(
-            "propertyId", propertyId,
-            "customerId", customerId,
-            "type", "RESERVATION_FEE"
-        );
-
-        ReservationPaystackClient.InitResult initResult =
-            paystackClient.initializeReservation(buyerEmail, reservationFee, reference, meta);
-
+        LocalDateTime now = LocalDateTime.now();
         Reservation reservation = Reservation.builder()
             .propertyId(propertyId)
             .customerId(customerId)
             .paymentReference(reference)
-            .authorizationUrl(initResult.authorizationUrl())
-            .status(Reservation.ReservationStatus.PENDING_PAYMENT)
+            .status(Reservation.ReservationStatus.ACTIVE)
+            .paidAt(now)
+            .expiresAt(now.plusDays(negotiationDays))
             .build();
         reservationRepository.save(Objects.requireNonNull(reservation));
 
-        log.info("Reservation initiated for property {} by customer {}, ref={}", propertyId, customerId, reference);
+        // Move property to ON_NEGOTIATION
+        propertyRepository.findById(propertyId).ifPresent(p -> {
+            p.setStatus(Property.PropertyStatus.ON_NEGOTIATION);
+            propertyRepository.save(p);
+        });
+
+        // Publish event so notification-service can email the customer
+        try {
+            rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_activated",
+                Map.of(
+                    "propertyId", propertyId,
+                    "customerId", customerId,
+                    "expiresAt", reservation.getExpiresAt().toString()
+                ));
+        } catch (Exception e) {
+            log.warn("Could not publish reservation notification", e);
+        }
+
+        log.info("Reservation {} activated for property {} by customer {}", reference, propertyId, customerId);
 
         return ReservationInitResponse.builder()
             .reservationId(reservation.getId())
             .propertyId(propertyId)
             .paymentReference(reference)
-            .authorizationUrl(initResult.authorizationUrl())
             .reservationFee(reservationFee)
-            .status(reservation.getStatus().name())
+            .status(Reservation.ReservationStatus.ACTIVE.name())
             .build();
     }
 

@@ -25,8 +25,7 @@ public class ReservationController {
     private String paystackSecretKey;
 
     /**
-     * Initiate a ₦1,000 reservation on an ACTIVE property.
-     * Accepts optional body: { "payWithWallet": true } to debit wallet instead of Paystack.
+     * Initiate a ₦1,000 reservation on an ACTIVE property — debits the customer's wallet.
      *
      * POST /api/v1/properties/{id}/reserve
      */
@@ -34,12 +33,10 @@ public class ReservationController {
     public ResponseEntity<ReservationInitResponse> reserve(
             @PathVariable Long id,
             @RequestHeader("X-User-Id") Long userId,
-            @RequestHeader("X-User-Email") String userEmail,
-            @RequestBody(required = false) Map<String, Object> body) {
-        boolean payWithWallet = body != null && Boolean.TRUE.equals(body.get("payWithWallet"));
-        log.info("Reservation request for property {} by user {} (wallet={})", id, userId, payWithWallet);
+            @RequestHeader("X-User-Email") String userEmail) {
+        log.info("Reservation request for property {} by user {}", id, userId);
         return ResponseEntity.status(HttpStatus.CREATED)
-            .body(reservationService.initiateReservation(id, userId, userEmail, payWithWallet));
+            .body(reservationService.initiateReservation(id, userId, userEmail));
     }
 
     /**
