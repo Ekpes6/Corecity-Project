@@ -7,6 +7,7 @@ import com.corecity.transaction.repository.TransactionRepository;
 import com.corecity.transaction.service.PaystackService;
 import com.corecity.transaction.service.PropertyServiceClient;
 import com.corecity.transaction.service.TransactionService;
+import com.corecity.transaction.service.UserServiceClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +34,7 @@ class TransactionServiceTest {
     @Mock PaystackService paystackService;
     @Mock RabbitTemplate rabbitTemplate;
     @Mock PropertyServiceClient propertyServiceClient;
+    @Mock UserServiceClient userServiceClient;
 
     @InjectMocks TransactionService transactionService;
 
@@ -53,7 +55,7 @@ class TransactionServiceTest {
 
     @Test
     @SuppressWarnings("null")
-    void initTransaction_callsPaystackFirstThenPersists() {
+    void initTransaction_debitsWalletAndPersistsSuccess() {
         // Arrange
         var req = InitTransactionRequest.builder()
             .propertyId(1L).sellerId(2L).buyerEmail("buyer@test.com")
@@ -61,30 +63,26 @@ class TransactionServiceTest {
             .type(Transaction.TransactionType.PURCHASE)
             .build();
 
-        // New behaviour: Paystack is called first, then a single save as PENDING.
-        var savedTx = buildTransaction(1L, Transaction.TransactionStatus.PENDING);
+        when(transactionRepository.findTopByPropertyIdAndBuyerIdAndStatusInOrderByCreatedAtDesc(
+            eq(1L), eq(10L), anyList()))
+            .thenReturn(Optional.empty());
+        var savedTx = buildTransaction(1L, Transaction.TransactionStatus.SUCCESS);
         doReturn(savedTx).when(transactionRepository).save(argThat(Objects::nonNull));
-        when(paystackService.calculateFee(argThat((BigDecimal amount) -> amount != null)))
-            .thenReturn(new BigDecimal("2000"));
-        when(paystackService.initializeTransaction(
-            argThat((String email) -> email != null),
-            argThat((BigDecimal amount) -> amount != null),
-            argThat((String reference) -> reference != null),
-            argThat((java.util.Map<String, Object> metadata) -> metadata != null)))
-            .thenReturn(new PaystackService.InitResult(
-                "https://checkout.paystack.com/abc", "HLK-ref", "code"));
+        doNothing().when(userServiceClient).debitWallet(
+            anyLong(), any(BigDecimal.class), anyString(), anyString());
+        when(commissionRepository.findByTransactionId(anyLong())).thenReturn(Optional.empty());
+        doNothing().when(propertyServiceClient).completeReservation(
+            anyLong(), anyLong(), anyString(), any());
 
         // Act
         var response = transactionService.initTransaction(req, 10L);
 
-        // Assert — exactly one DB save (PENDING with real authorizationUrl), Paystack called once
+        // Assert — wallet debited, single DB save as SUCCESS, no Paystack involvement
+        verify(userServiceClient, times(1)).debitWallet(
+            eq(10L), eq(new BigDecimal("500000")), anyString(), anyString());
         verify(transactionRepository, times(1)).save(argThat(Objects::nonNull));
-        verify(paystackService).initializeTransaction(
-            argThat((String email) -> email != null),
-            argThat((BigDecimal amount) -> amount != null),
-            argThat((String reference) -> reference != null),
-            argThat((java.util.Map<String, Object> metadata) -> metadata != null));
-        assertThat(response.getAuthorizationUrl()).isNotBlank();
+        verifyNoInteractions(paystackService);
+        assertThat(response.getReference()).startsWith("HLK-");
     }
 
     @Test
