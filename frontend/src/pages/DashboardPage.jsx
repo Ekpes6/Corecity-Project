@@ -710,45 +710,14 @@ function SubscriptionPage() {
         payload.customAmount = parseFloat(customAmount);
       }
       const { data } = await subscriptionAPI.subscribe(payload);
-      if (data.authorizationUrl) {
-        // Standard subscription — redirect to Paystack
-        window.location.href = data.authorizationUrl;
-      } else {
-        // Loan subscription — activated immediately, no payment step now
-        toast.success(
-          useLoan
-            ? `${planName} loan subscription activated! Repay within 30 days to maintain full access.`
-            : 'Subscription activated!'
-        );
-        load();
-      }
+      toast.success(
+        useLoan
+          ? `${planName} loan subscription activated! Repay within 30 days to maintain full access.`
+          : `${planName} subscription activated!`
+      );
+      load();
     } catch (err) {
       const status = err.response?.status;
-      // 503/502: gateway timed out. For loan path, backend may have activated already — just reload.
-      // For standard path, recover by finding the pending sub with the Paystack URL.
-      if (status === 503 || status === 502) {
-        if (useLoan) {
-          // Check if subscription was actually activated despite the timeout
-          try {
-            await load();
-          } catch { /* ignore */ }
-          toast('Network issue — please check your subscription status below', { icon: '⚠️' });
-          return;
-        }
-        try {
-          const { data: subs } = await subscriptionAPI.getMine();
-          const pending = subs.find((s) =>
-            s.status === 'PENDING_PAYMENT' &&
-            s.plan === planName &&
-            s.isLoan === false &&
-            s.authorizationUrl
-          );
-          if (pending) {
-            window.location.href = pending.authorizationUrl;
-            return;
-          }
-        } catch { /* ignore — fall through to toast */ }
-      }
       const msg = status === 409 ? err.response.data?.message || 'You already have an active plan'
                 : status === 400 ? err.response.data?.message || 'Invalid request'
                 : err.response?.data?.message || 'Subscription failed';
@@ -761,48 +730,11 @@ function SubscriptionPage() {
   const handleRepay = async (loanId) => {
     setRepaying(loanId);
     try {
-      const { data } = await subscriptionAPI.repayLoan(loanId);
-      if (data.authorizationUrl) {
-        window.location.href = data.authorizationUrl;
-      } else {
-        toast.error('Payment gateway did not return a URL — please try again');
-      }
+      await subscriptionAPI.repayLoan(loanId);
+      toast.success('Loan repaid successfully!');
+      load();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Repayment failed');
-    } finally {
-      setRepaying(null);
-    }
-  };
-
-  const handleSubscribeWithWallet = async (planName) => {
-    setSubscribing(planName + '_wallet');
-    try {
-      const payload = { plan: planName, useLoan: false, payWithWallet: true };
-      if (planName === 'EXECUTIVE' && user?.executiveAgent && customAmount) {
-        payload.customAmount = parseFloat(customAmount);
-      }
-      const { data } = await subscriptionAPI.subscribe(payload);
-      if (data.walletPaid) {
-        toast.success(`${planName} subscription activated via wallet!`);
-        load();
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Wallet subscription failed');
-    } finally {
-      setSubscribing(null);
-    }
-  };
-
-  const handleRepayWithWallet = async (loanId) => {
-    setRepaying(loanId + '_wallet');
-    try {
-      const { data } = await subscriptionAPI.repayLoan(loanId, { payWithWallet: true });
-      if (data.walletPaid) {
-        toast.success('Loan repaid via wallet!');
-        load();
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Wallet repayment failed');
     } finally {
       setRepaying(null);
     }
@@ -879,22 +811,12 @@ function SubscriptionPage() {
             </div>
             <button
               onClick={() => handleRepay(activeLoan.id)}
-              disabled={repaying === activeLoan.id}
+              disabled={!!repaying}
               className="btn-primary text-sm flex items-center gap-2 shrink-0"
             >
               {repaying === activeLoan.id ? <RefreshCw size={14} className="animate-spin" /> : <RotateCcw size={14} />}
-              Repay (Paystack)
+              Repay Loan
             </button>
-            {walletBalance !== null && (
-              <button
-                onClick={() => handleRepayWithWallet(activeLoan.id)}
-                disabled={!!repaying}
-                className="flex items-center gap-2 py-2 px-3 rounded-xl border border-forest-600 text-forest-700 text-sm hover:bg-forest-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
-              >
-                {repaying === activeLoan.id + '_wallet' ? <RefreshCw size={14} className="animate-spin" /> : <Wallet size={14} />}
-                Wallet
-              </button>
-            )}
           </div>
         </div>
       )}
