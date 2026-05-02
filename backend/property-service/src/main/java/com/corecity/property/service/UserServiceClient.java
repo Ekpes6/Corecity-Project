@@ -132,7 +132,7 @@ public class UserServiceClient {
         try {
             webClient.post()
                 .uri("/api/v1/users/internal/wallet/debit")
-                .bodyValue(body)
+                .bodyValue((Object) body)
                 .retrieve()
                 .bodyToMono(Void.class)
                 .block();
