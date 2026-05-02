@@ -509,7 +509,7 @@ export default function PropertyDetailPage() {
 
             <div className="mt-4 p-3 bg-forest-50 rounded-xl flex items-start gap-2">
               <Shield size={15} className="text-forest-800 mt-0.5 shrink-0" />
-              <p className="text-xs text-forest-800">Payments are secured by Paystack. Your money is protected.</p>
+              <p className="text-xs text-forest-800">Payments are secured by Paystack or your CoreCity wallet. Your money is protected.</p>
             </div>
           </div>
 
