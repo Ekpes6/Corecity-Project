@@ -26,6 +26,11 @@ public class TransactionDTOs {
         private BigDecimal amount;
         private BigDecimal serviceFee;
         private BigDecimal totalAmount;
+        private String authorizationUrl;
+
+        public String getAuthorizationUrl() {
+            return authorizationUrl;
+        }
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
