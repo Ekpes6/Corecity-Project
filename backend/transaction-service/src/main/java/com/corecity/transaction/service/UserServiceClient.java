@@ -42,9 +42,10 @@ public class UserServiceClient {
         try {
             webClient.post()
                 .uri("/api/v1/users/internal/wallet/debit")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .bodyValue(java.util.Objects.requireNonNull((Object) body))
                 .retrieve()
-                .bodyToMono(Void.class)
+                .toBodilessEntity()
                 .block();
             log.info("Wallet debited for user={} amount={} ref={}", userId, amount, reference);
         } catch (WebClientResponseException e) {

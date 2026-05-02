@@ -132,9 +132,10 @@ public class UserServiceClient {
         try {
             webClient.post()
                 .uri("/api/v1/users/internal/wallet/debit")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .bodyValue(java.util.Objects.requireNonNull((Object) body))
                 .retrieve()
-                .bodyToMono(Void.class)
+                .toBodilessEntity()
                 .block();
         } catch (WebClientResponseException e) {
             // Propagate the error status (e.g. 400 Insufficient balance) to the caller
