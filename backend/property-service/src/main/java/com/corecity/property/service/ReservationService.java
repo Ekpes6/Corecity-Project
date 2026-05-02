@@ -33,6 +33,7 @@ public class ReservationService {
     private final PropertyLifecycleRepository lifecycleRepository;
     private final RabbitTemplate rabbitTemplate;
     private final UserServiceClient userServiceClient;
+    private final ReservationPaystackClient paystackClient;
 
     @Value("${reservation.fee:1000}")
     private BigDecimal reservationFee;
