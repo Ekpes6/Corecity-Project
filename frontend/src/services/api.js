@@ -106,7 +106,7 @@ export const subscriptionAPI = {
 
 // ─── Reservations ────────────────────────────────────────────
 export const reservationAPI = {
-  reserve:           (propertyId) => api.post(`/properties/${propertyId}/reserve`),
+  reserve:           (propertyId, body) => api.post(`/properties/${propertyId}/reserve`, body || {}),
   getMine:           ()           => api.get('/reservations/my'),
   getAll:            ()           => api.get('/reservations/all'),
   getForProperty:    (propertyId) => api.get(`/properties/${propertyId}/reservation`),
