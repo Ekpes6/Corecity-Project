@@ -2210,11 +2210,16 @@ function AccountPage() {
                     }`}>{tx.status}</span>
                     {tx.status === 'PENDING' && tx.type === 'CREDIT' && (
                       <button
-                        onClick={async () => {
+                        type="button"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           try {
                             const { data } = await walletAPI.resume(tx.reference);
                             const win = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
-                            if (!win) window.location.href = data.authorizationUrl;
+                            if (!win) {
+                              toast.error('Pop-up blocked. Please allow pop-ups for this site and try again.');
+                            }
                           } catch (err) {
                             toast.error(err.response?.data?.message || 'Could not resume payment');
                           }
