@@ -44,12 +44,13 @@ public class ReservationService {
     /**
      * Initiate a reservation for an ACTIVE property.
      *
-     * @param propertyId  the target property
-     * @param customerId  JWT-authenticated customer ID
-     * @param buyerEmail  email used to generate the Paystack link
+     * @param propertyId     the target property
+     * @param customerId     JWT-authenticated customer ID
+     * @param buyerEmail     email used to generate the Paystack link
+     * @param payWithWallet  if true, debit the customer's wallet instead of going to Paystack
      */
     @Transactional
-    public ReservationInitResponse initiateReservation(Long propertyId, Long customerId, String buyerEmail) {
+    public ReservationInitResponse initiateReservation(Long propertyId, Long customerId, String buyerEmail, boolean payWithWallet) {
         Objects.requireNonNull(propertyId, "propertyId must not be null");
         Objects.requireNonNull(customerId, "customerId must not be null");
 
@@ -90,6 +91,39 @@ public class ReservationService {
 
         String reference = "RSV-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
 
+        // ── WALLET PATH: debit wallet and activate reservation immediately ─────
+        if (payWithWallet) {
+            userServiceClient.debitWallet(customerId, reservationFee, reference,
+                "Reservation fee: property " + propertyId);
+
+            Reservation reservation = Reservation.builder()
+                .propertyId(propertyId)
+                .customerId(customerId)
+                .paymentReference(reference)
+                .status(Reservation.ReservationStatus.PENDING_PAYMENT)
+                .build();
+            reservationRepository.save(Objects.requireNonNull(reservation));
+
+            // Activate immediately (sets ACTIVE, updates property to ON_NEGOTIATION, sends notification)
+            activateReservation(reference);
+
+            // Reload to return the updated state
+            Reservation activated = reservationRepository.findByPaymentReference(reference)
+                .orElse(reservation);
+
+            log.info("Wallet reservation {} activated for property {} by customer {}", reference, propertyId, customerId);
+
+            return ReservationInitResponse.builder()
+                .reservationId(activated.getId())
+                .propertyId(propertyId)
+                .paymentReference(reference)
+                .reservationFee(reservationFee)
+                .walletPaid(true)
+                .status(activated.getStatus().name())
+                .build();
+        }
+
+        // ── PAYSTACK PATH ─────────────────────────────────────────────────────
         Map<String, Object> meta = Map.of(
             "propertyId", propertyId,
             "customerId", customerId,
