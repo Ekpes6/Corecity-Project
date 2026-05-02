@@ -72,7 +72,7 @@ class TransactionServiceTest {
             anyLong(), any(BigDecimal.class), anyString(), anyString());
         when(commissionRepository.findByTransactionId(anyLong())).thenReturn(Optional.empty());
         doNothing().when(propertyServiceClient).completeReservation(
-            anyLong(), anyLong(), anyString(), any());
+            anyLong(), anyLong(), anyString(), nullable(Integer.class));
 
         // Act
         var response = transactionService.initTransaction(req, 10L);
