@@ -23,14 +23,8 @@ export default function PropertyDetailPage() {
   const [property, setProperty]   = useState(null);
   const [loading, setLoading]     = useState(true);
   const [imgIdx, setImgIdx]       = useState(0);
-  const [initiatingPay, setInitiatingPay] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [reserving, setReserving] = useState(false);
-  const [agentRep, setAgentRep]   = useState(null);
-  const [myActiveReservation, setMyActiveReservation] = useState(null);
-  const [mySuccessTransaction, setMySuccessTransaction] = useState(null);
-  const [walletBalance, setWalletBalance] = useState(null);
-  const [payingWithWallet, setPayingWithWallet] = useState(false);
-  const [reservingWithWallet, setReservingWithWallet] = useState(false);
 
   useEffect(() => {
     propertyAPI.getOne(id)
@@ -99,132 +93,37 @@ export default function PropertyDetailPage() {
     toast.success('Link copied to clipboard!');
   };
 
-  const handlePayWithWallet = async () => {
-    if (!isAuthenticated) { navigate('/login'); return; }
-    setPayingWithWallet(true);
-    try {
-      const { data } = await transactionAPI.initiate({
-        propertyId: property.id,
-        sellerId:   property.ownerId,
-        buyerEmail: user.email,
-        amount:     property.price,
-        type:       property.listingType === 'FOR_SALE' ? 'PURCHASE' : 'RENT',
-        payWithWallet: true,
-      });
-      if (data.walletPaid) {
-        toast.success('Payment successful! Property purchase/rent confirmed.');
-        setMySuccessTransaction({ propertyId: property.id, status: 'SUCCESS' });
-        // Refresh wallet balance
-        walletAPI.getBalance().then((r) => setWalletBalance(r.data?.balance ?? null)).catch(() => {});
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Wallet payment failed');
-    } finally {
-      setPayingWithWallet(false);
-    }
-  };
-
-  const handleReserveWithWallet = async () => {
-    if (!isAuthenticated) { navigate('/login'); return; }
-    setReservingWithWallet(true);
-    try {
-      const { data } = await reservationAPI.reserve(property.id, { payWithWallet: true });
-      if (data.walletPaid) {
-        toast.success('Property reserved! ₦1,000 deducted from your wallet.');
-        setMyActiveReservation({ propertyId: property.id, status: 'ACTIVE' });
-        walletAPI.getBalance().then((r) => setWalletBalance(r.data?.balance ?? null)).catch(() => {});
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Reservation with wallet failed');
-    } finally {
-      setReservingWithWallet(false);
-    }
-  };
-
   const handlePay = async () => {
     if (!isAuthenticated) { navigate('/login'); return; }
-    setInitiatingPay(true);
-
-    const doPay = async () => {
-      const { data } = await transactionAPI.initiate({
+    setPaying(true);
+    try {
+      await transactionAPI.initiate({
         propertyId: property.id,
         sellerId:   property.ownerId,
         buyerEmail: user.email,
         amount:     property.price,
         type:       property.listingType === 'FOR_SALE' ? 'PURCHASE' : 'RENT',
       });
-      // Redirect to Paystack checkout
-      window.location.href = data.authorizationUrl;
-    };
-
-    try {
-      await doPay();
+      toast.success('Payment successful! Property confirmed.');
+      setMySuccessTransaction({ propertyId: property.id, status: 'SUCCESS' });
+      walletAPI.getBalance().then((r) => setWalletBalance(r.data?.balance ?? null)).catch(() => {});
     } catch (err) {
-      const httpStatus = err.response?.status;
-
-      // On a transient 503/502 the transaction may have been created server-side
-      // and the authorizationUrl stored — retry once to get the idempotent response
-      // (same reference + URL) without creating a duplicate.
-      if (httpStatus === 503 || httpStatus === 502) {
-        toast('Service is busy — retrying…', { icon: '⏳', duration: 2500 });
-        await new Promise((resolve) => setTimeout(resolve, 2500));
-        try {
-          await doPay();
-          return;
-        } catch (retryErr) {
-          toast.error(
-            retryErr.response?.data?.message ||
-            'Payment temporarily unavailable. Please try again in a moment.'
-          );
-          return;
-        }
-      }
-
-      toast.error(err.response?.data?.message || 'Payment initiation failed');
+      toast.error(err.response?.data?.message || 'Payment failed. Please ensure your wallet is funded.');
     } finally {
-      setInitiatingPay(false);
+      setPaying(false);
     }
   };
 
   const handleReserve = async () => {
     if (!isAuthenticated) { navigate('/login'); return; }
     setReserving(true);
-
-    const doReserve = async () => {
-      const { data } = await reservationAPI.reserve(property.id);
-      if (data.authorizationUrl) {
-        window.location.href = data.authorizationUrl;
-      } else {
-        toast.success('Property reserved!');
-      }
-    };
-
     try {
-      await doReserve();
+      await reservationAPI.reserve(property.id);
+      toast.success('Property reserved! ₦1,000 deducted from your wallet.');
+      setMyActiveReservation({ propertyId: property.id, status: 'ACTIVE' });
+      walletAPI.getBalance().then((r) => setWalletBalance(r.data?.balance ?? null)).catch(() => {});
     } catch (err) {
-      const httpStatus = err.response?.status;
-      const msg        = err.response?.data?.message;
-
-      // On a transient 503/502 (circuit breaker or gateway timeout) the reservation
-      // may have been created server-side even though the gateway timed out before
-      // forwarding the response.  Wait briefly and retry once — the second attempt
-      // will cancel the stale PENDING_PAYMENT reservation and issue a fresh Paystack URL.
-      if (httpStatus === 503 || httpStatus === 502) {
-        toast('Service is busy — retrying…', { icon: '⏳', duration: 2500 });
-        await new Promise((resolve) => setTimeout(resolve, 2500));
-        try {
-          await doReserve();
-          return; // success on retry — finally will clear reserving state
-        } catch (retryErr) {
-          toast.error(
-            retryErr.response?.data?.message ||
-            'Reservation temporarily unavailable. Please try again in a moment.'
-          );
-          return;
-        }
-      }
-
-      toast.error(msg || 'Reservation failed. Please try again.');
+      toast.error(err.response?.data?.message || 'Reservation failed. Please ensure your wallet has sufficient funds.');
     } finally {
       setReserving(false);
     }
