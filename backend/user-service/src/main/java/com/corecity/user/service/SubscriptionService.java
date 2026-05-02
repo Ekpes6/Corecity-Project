@@ -414,9 +414,9 @@ public class SubscriptionService {
         return toLoanResponse(loan);
     }
 
-    /** Record a loan repayment and advance the 13-trial cycle on full repayment. */
+    /** Record a loan repayment — always debits the agent's wallet. */
     @Transactional
-    public LoanRepayInitResponse initiateLoanRepayment(Long loanId, Long agentId, String agentEmail, boolean payWithWallet) {
+    public LoanRepayInitResponse initiateLoanRepayment(Long loanId, Long agentId, String agentEmail) {
         AgentLoan loan = loanRepo.findById(Objects.requireNonNull(loanId, "loanId must not be null"))
             .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Loan not found"));
 
@@ -425,48 +425,16 @@ public class SubscriptionService {
         if (loan.getStatus() != AgentLoan.LoanStatus.ACTIVE && loan.getStatus() != AgentLoan.LoanStatus.OVERDUE)
             throw new ResponseStatusException(BAD_REQUEST, "Loan is not repayable (status: " + loan.getStatus() + ")");
 
-        // ── WALLET PATH ────────────────────────────────────────────────────────
-        if (payWithWallet) {
-            String reference = "REP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
-            walletService.debitWallet(agentId, loan.getLoanAmount(), reference, "Loan repayment");
-            loan.setRepaymentReference(reference);
-            loan.setRepaymentStatus(AgentLoan.RepaymentStatus.SUCCESS);
-            loanRepo.save(loan);
-            confirmLoanRepayment(reference);
-            log.info("Wallet loan repayment {} completed for loan {} (agent {})", reference, loanId, agentId);
-            return LoanRepayInitResponse.builder()
-                .loanId(loan.getId())
-                .repaymentReference(reference)
-                .amount(loan.getLoanAmount())
-                .walletPaid(true)
-                .build();
-        }
-
-        // Idempotency: return existing Paystack URL if already initiated and not yet confirmed
-        if (loan.getRepaymentReference() != null && !loan.getRepaymentReference().isBlank()
-                && loan.getRepaymentStatus() == AgentLoan.RepaymentStatus.PENDING) {
-            return LoanRepayInitResponse.builder()
-                .loanId(loan.getId())
-                .repaymentReference(loan.getRepaymentReference())
-                .authorizationUrl(loan.getRepaymentAuthorizationUrl())
-                .amount(loan.getLoanAmount())
-                .build();
-        }
-
         String reference = "REP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
-        String authorizationUrl = initPaystackPayment(agentEmail, loan.getLoanAmount(), reference,
-            Map.of("loanId", loan.getId(), "agentId", agentId, "type", "LOAN_REPAYMENT"));
-
+        walletService.debitWallet(agentId, loan.getLoanAmount(), reference, "Loan repayment");
         loan.setRepaymentReference(reference);
-        loan.setRepaymentAuthorizationUrl(authorizationUrl);
-        loan.setRepaymentStatus(AgentLoan.RepaymentStatus.PENDING);
+        loan.setRepaymentStatus(AgentLoan.RepaymentStatus.SUCCESS);
         loanRepo.save(loan);
-
-        log.info("Loan repayment {} initiated for loan {} (agent {})", reference, loanId, agentId);
+        confirmLoanRepayment(reference);
+        log.info("Loan repayment {} completed for loan {} (agent {})", reference, loanId, agentId);
         return LoanRepayInitResponse.builder()
             .loanId(loan.getId())
             .repaymentReference(reference)
-            .authorizationUrl(authorizationUrl)
             .amount(loan.getLoanAmount())
             .build();
     }
