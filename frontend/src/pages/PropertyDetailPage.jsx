@@ -25,8 +25,10 @@ export default function PropertyDetailPage() {
   const [imgIdx, setImgIdx]       = useState(0);
   const [paying, setPaying] = useState(false);
   const [reserving, setReserving] = useState(false);
-
-  useEffect(() => {
+  const [agentRep, setAgentRep]   = useState(null);
+  const [myActiveReservation, setMyActiveReservation] = useState(null);
+  const [mySuccessTransaction, setMySuccessTransaction] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(null);
     propertyAPI.getOne(id)
       .then((r) => {
         setProperty(r.data);
