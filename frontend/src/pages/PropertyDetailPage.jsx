@@ -336,22 +336,16 @@ export default function PropertyDetailPage() {
                   </div>
                 ) : (
                   <>
-                    <button onClick={handlePay} disabled={initiatingPay || reserving || payingWithWallet || reservingWithWallet}
-                      className="btn-primary w-full mb-2">
-                      {initiatingPay ? 'Redirecting to Paystack…' :
-                        property.listingType === 'FOR_SALE' ? 'Initiate Purchase' :
-                        property.listingType === 'SHORT_LET' ? 'Book Now' : 'Pay Rent Now'}
+                    <button onClick={handlePay} disabled={paying || reserving}
+                      className="btn-primary w-full mb-2 flex items-center justify-center gap-2">
+                      <Wallet size={15} />
+                      {paying ? 'Processing…' :
+                        `${property.listingType === 'FOR_SALE' ? 'Purchase' :
+                           property.listingType === 'SHORT_LET' ? 'Book' : 'Pay Rent'}${walletBalance !== null ? ` (₦${Number(walletBalance).toLocaleString()} wallet)` : ''}`}
                     </button>
-                    {walletBalance !== null && (
-                      <button onClick={handlePayWithWallet} disabled={initiatingPay || reserving || payingWithWallet || reservingWithWallet}
-                        className="w-full mb-2 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-forest-700 text-forest-800 font-semibold text-sm hover:bg-forest-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-                        <Wallet size={15} />
-                        {payingWithWallet ? 'Processing…' : `Pay with Wallet (₦${Number(walletBalance).toLocaleString()})`}
-                      </button>
-                    )}
                   </>
                 )}
-                {/* Reserve button – lock in the property for 24 h with a reservation fee */}
+                {/* Reserve button – lock in the property for 24 h with a ₦1,000 wallet deduction */}
                 {(property.status === 'ACTIVE' || property.status === 'ON_NEGOTIATION') && (
                   myActiveReservation ? (
                     <div className="w-full mb-3">
@@ -367,19 +361,11 @@ export default function PropertyDetailPage() {
                       </p>
                     </div>
                   ) : (
-                    <>
-                      <button onClick={handleReserve} disabled={reserving || initiatingPay || payingWithWallet || reservingWithWallet}
-                        className="btn-secondary w-full flex items-center justify-center gap-2 mb-2">
-                        {reserving ? 'Reserving…' : <><BookMarked size={15} /> Reserve (Paystack)</>}
-                      </button>
-                      {walletBalance !== null && (
-                        <button onClick={handleReserveWithWallet} disabled={reserving || initiatingPay || payingWithWallet || reservingWithWallet}
-                          className="w-full mb-3 flex items-center justify-center gap-2 py-2 px-4 rounded-xl border border-forest-600 text-forest-700 text-sm hover:bg-forest-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-                          <Wallet size={14} />
-                          {reservingWithWallet ? 'Processing…' : 'Reserve with Wallet (₦1,000)'}
-                        </button>
-                      )}
-                    </>
+                    <button onClick={handleReserve} disabled={reserving || paying}
+                      className="btn-secondary w-full flex items-center justify-center gap-2 mb-3">
+                      <BookMarked size={15} />
+                      {reserving ? 'Reserving…' : 'Reserve (₦1,000 wallet)'}
+                    </button>
                   )
                 )}
               </>
@@ -410,7 +396,7 @@ export default function PropertyDetailPage() {
 
             <div className="mt-4 p-3 bg-forest-50 rounded-xl flex items-start gap-2">
               <Shield size={15} className="text-forest-800 mt-0.5 shrink-0" />
-              <p className="text-xs text-forest-800">Payments are secured by Paystack or your CoreCity wallet. Your money is protected.</p>
+              <p className="text-xs text-forest-800">All transactions are processed through your CoreCity wallet. Fund your wallet via Paystack to get started.</p>
             </div>
           </div>
 
