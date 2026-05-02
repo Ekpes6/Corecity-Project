@@ -2208,24 +2208,48 @@ function AccountPage() {
                       'bg-red-100 text-red-600'
                     }`}>{tx.status}</span>
                     {tx.status === 'PENDING' && tx.type === 'CREDIT' && (
-                      <button
-                        type="button"
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          try {
-                            const { data } = await walletAPI.resume(tx.reference);
-                            const win = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
-                            if (!win) {
-                              toast.error('Pop-up blocked. Please allow pop-ups for this site and try again.');
+                      <div className="flex gap-3 mt-1">
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                              const { data } = await walletAPI.resume(tx.reference);
+                              const win = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
+                              if (!win) {
+                                toast.error('Pop-up blocked. Please allow pop-ups for this site and try again.');
+                              }
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Could not resume payment');
                             }
-                          } catch (err) {
-                            toast.error(err.response?.data?.message || 'Could not resume payment');
-                          }
-                        }}
-                        className="text-xs text-forest-700 underline hover:text-forest-900">
-                        Resume Payment
-                      </button>
+                          }}
+                          className="text-xs text-forest-700 underline hover:text-forest-900">
+                          Resume Payment
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            try {
+                              const { data } = await walletAPI.verify(tx.reference);
+                              toast.success(data.message);
+                              // Reload wallet data to reflect updated balance
+                              const [walletRes, historyRes] = await Promise.all([
+                                walletAPI.getBalance(),
+                                walletAPI.getHistory(),
+                              ]);
+                              setWallet(walletRes.data);
+                              setTransactions(historyRes.data);
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Could not verify payment');
+                            }
+                          }}
+                          className="text-xs text-blue-600 underline hover:text-blue-800">
+                          Verify Payment
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
