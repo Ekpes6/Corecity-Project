@@ -57,131 +57,55 @@ public class TransactionService {
                 "A payment for this property has already been completed.");
         }
 
-        // Guard 2: if there is already a PENDING or INITIATED transaction for this
-        // buyer+property, return it with the stored Paystack URL rather than creating a duplicate.
-        // This handles the gateway-timeout race: transaction-service saved the record and stored
-        // the authorizationUrl, but the 503 returned to the frontend before the response arrived.
-        // On retry the frontend will receive the same URL and redirect correctly.
-        Optional<Transaction> existingOpt = transactionRepository
-            .findTopByPropertyIdAndBuyerIdAndStatusInOrderByCreatedAtDesc(
-                req.getPropertyId(), safeBuyerId,
-                List.of(Transaction.TransactionStatus.INITIATED, Transaction.TransactionStatus.PENDING));
-        if (existingOpt.isPresent()) {
-            Transaction existing = existingOpt.get();
-            if (existing.getAuthorizationUrl() != null) {
-                log.info("Returning existing {} transaction {} for buyer {} / property {} (idempotent retry)",
-                    existing.getStatus(), existing.getReference(), safeBuyerId, req.getPropertyId());
-                BigDecimal fee = paystackService.calculateFee(existing.getAmount());
-                return InitTransactionResponse.builder()
-                    .transactionId(existing.getId())
-                    .reference(existing.getReference())
-                    .authorizationUrl(existing.getAuthorizationUrl())
-                    .amount(existing.getAmount())
-                    .serviceFee(fee)
-                    .totalAmount(existing.getAmount()) // fee already baked into amount
-                    .build();
-            }
-            // authorizationUrl is null — Paystack call never completed; fall through to create fresh
-            log.info("Existing {} transaction {} has no authorizationUrl; cancelling and retrying Paystack call",
-                existing.getStatus(), existing.getReference());
-            existing.setStatus(Transaction.TransactionStatus.FAILED);
-            transactionRepository.save(existing);
-        }
-
-        BigDecimal fee = paystackService.calculateFee(req.getAmount());
         // UUID reference: globally unique, no millisecond-collision risk under concurrent load
         String reference = "HLK-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
 
-        // ── WALLET PATH: debit wallet and mark transaction SUCCESS immediately ─
-        if (req.isPayWithWallet()) {
-            userServiceClient.debitWallet(safeBuyerId, req.getAmount(), reference,
-                req.getType().name() + " payment: property " + req.getPropertyId());
+        // Debit wallet and mark transaction SUCCESS immediately
+        userServiceClient.debitWallet(safeBuyerId, req.getAmount(), reference,
+            req.getType().name() + " payment: property " + req.getPropertyId());
 
-            var walletTx = transactionRepository.save(
-                Transaction.builder()
-                    .reference(reference)
-                    .propertyId(req.getPropertyId())
-                    .buyerId(safeBuyerId)
-                    .sellerId(req.getSellerId())
-                    .amount(req.getAmount())
-                    .serviceFee(BigDecimal.ZERO)
-                    .type(req.getType())
-                    .leaseDays(req.getLeaseDays())
-                    .paymentChannel("wallet")
-                    .status(Transaction.TransactionStatus.SUCCESS)
-                    .build()
-            );
-
-            // Auto-create commission for PURCHASE / RENT
-            if (walletTx.getType() == Transaction.TransactionType.PURCHASE
-                    || walletTx.getType() == Transaction.TransactionType.RENT) {
-                createCommission(walletTx);
-                propertyServiceClient.completeReservation(
-                    walletTx.getPropertyId(), walletTx.getBuyerId(), walletTx.getType().name(), walletTx.getLeaseDays());
-            }
-
-            try {
-                rabbitTemplate.convertAndSend("corecity.exchange", "notification.payment_success", Map.of(
-                    "buyerId", walletTx.getBuyerId(), "sellerId", walletTx.getSellerId(),
-                    "amount", walletTx.getAmount(), "reference", reference,
-                    "propertyId", walletTx.getPropertyId(),
-                    "transactionId", walletTx.getId()
-                ));
-            } catch (Exception e) {
-                log.warn("Could not publish wallet payment notification for tx {}", walletTx.getId());
-            }
-
-            log.info("Wallet transaction {} SUCCESS for buyer {} / property {}", reference, safeBuyerId, req.getPropertyId());
-
-            return InitTransactionResponse.builder()
-                .transactionId(walletTx.getId())
-                .reference(reference)
-                .amount(req.getAmount())
-                .serviceFee(BigDecimal.ZERO)
-                .totalAmount(req.getAmount())
-                .walletPaid(true)
-                .build();
-        }
-
-        // ── PAYSTACK PATH ─────────────────────────────────────────────────────
-        // If Paystack fails (network error, timeout, bad response), an exception is thrown here
-        // and nothing is persisted. This guarantees no orphan transaction records in the DB.
-        // The meta omits transactionId because the DB record doesn't exist yet.
-        Map<String, Object> meta = Map.of(
-            "propertyId", req.getPropertyId(),
-            "type", req.getType().name()
-        );
-        // req.getAmount() is the total buyer price (base + 10% commission + Paystack fee).
-        // Pass it directly — do NOT add fee again or the buyer would be double-charged.
-        PaystackService.InitResult result =
-            paystackService.initializeTransaction(req.getBuyerEmail(), req.getAmount(), reference, meta);
-
-        // Paystack succeeded — now persist the transaction with the real authorization URL.
-        // Saved directly as PENDING (no intermediate INITIATED state needed).
-        var savedTransaction = transactionRepository.save(
+        var walletTx = transactionRepository.save(
             Transaction.builder()
                 .reference(reference)
                 .propertyId(req.getPropertyId())
                 .buyerId(safeBuyerId)
                 .sellerId(req.getSellerId())
                 .amount(req.getAmount())
-                .serviceFee(fee)
+                .serviceFee(BigDecimal.ZERO)
                 .type(req.getType())
                 .leaseDays(req.getLeaseDays())
-                .authorizationUrl(result.authorizationUrl())
-                .status(Transaction.TransactionStatus.PENDING)
+                .paymentChannel("wallet")
+                .status(Transaction.TransactionStatus.SUCCESS)
                 .build()
         );
-        log.info("Transaction {} persisted as PENDING for buyer {} / property {}",
-            reference, safeBuyerId, req.getPropertyId());
+
+        // Auto-create commission for PURCHASE / RENT
+        if (walletTx.getType() == Transaction.TransactionType.PURCHASE
+                || walletTx.getType() == Transaction.TransactionType.RENT) {
+            createCommission(walletTx);
+            propertyServiceClient.completeReservation(
+                walletTx.getPropertyId(), walletTx.getBuyerId(), walletTx.getType().name(), walletTx.getLeaseDays());
+        }
+
+        try {
+            rabbitTemplate.convertAndSend("corecity.exchange", "notification.payment_success", Map.of(
+                "buyerId", walletTx.getBuyerId(), "sellerId", walletTx.getSellerId(),
+                "amount", walletTx.getAmount(), "reference", reference,
+                "propertyId", walletTx.getPropertyId(),
+                "transactionId", walletTx.getId()
+            ));
+        } catch (Exception e) {
+            log.warn("Could not publish payment notification for tx {}", walletTx.getId());
+        }
+
+        log.info("Transaction {} SUCCESS for buyer {} / property {}", reference, safeBuyerId, req.getPropertyId());
 
         return InitTransactionResponse.builder()
-            .transactionId(savedTransaction.getId())
+            .transactionId(walletTx.getId())
             .reference(reference)
-            .authorizationUrl(result.authorizationUrl())
             .amount(req.getAmount())
-            .serviceFee(fee)
-            .totalAmount(req.getAmount()) // fee already baked in
+            .serviceFee(BigDecimal.ZERO)
+            .totalAmount(req.getAmount())
             .build();
     }
 
