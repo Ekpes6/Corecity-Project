@@ -25,6 +25,7 @@ paystack:
 
 services:
   property-service-url: ${PROPERTY_SERVICE_URL:http://property-service:8082}
+  user-service-url: ${USER_SERVICE_URL:http://user-service:8081}
 
 management:
   server:
