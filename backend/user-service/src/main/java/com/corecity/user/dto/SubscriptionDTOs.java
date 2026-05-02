@@ -27,6 +27,10 @@ public class SubscriptionDTOs {
         /** If true, the subscription is funded via the interest-free loan feature. */
         @Builder.Default
         private boolean useLoan = false;
+
+        /** If true, debit the user's wallet instead of going through Paystack. */
+        @Builder.Default
+        private boolean payWithWallet = false;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -38,6 +42,9 @@ public class SubscriptionDTOs {
         private String authorizationUrl;
         private boolean isLoan;
         private String status;
+        /** True when the payment was debited from the wallet (no Paystack redirect needed). */
+        @Builder.Default
+        private boolean walletPaid = false;
     }
 
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -98,6 +105,9 @@ public class SubscriptionDTOs {
         private String repaymentReference;
         private String authorizationUrl;
         private BigDecimal amount;
+        /** True when the payment was debited from the wallet (no Paystack redirect needed). */
+        @Builder.Default
+        private boolean walletPaid = false;
     }
 
     // ── Loan Program (13-cycle progression) ──────────────────────────────────
