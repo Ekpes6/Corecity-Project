@@ -774,6 +774,40 @@ function SubscriptionPage() {
     }
   };
 
+  const handleSubscribeWithWallet = async (planName) => {
+    setSubscribing(planName + '_wallet');
+    try {
+      const payload = { plan: planName, useLoan: false, payWithWallet: true };
+      if (planName === 'EXECUTIVE' && user?.executiveAgent && customAmount) {
+        payload.customAmount = parseFloat(customAmount);
+      }
+      const { data } = await subscriptionAPI.subscribe(payload);
+      if (data.walletPaid) {
+        toast.success(`${planName} subscription activated via wallet!`);
+        load();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Wallet subscription failed');
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
+  const handleRepayWithWallet = async (loanId) => {
+    setRepaying(loanId + '_wallet');
+    try {
+      const { data } = await subscriptionAPI.repayLoan(loanId, { payWithWallet: true });
+      if (data.walletPaid) {
+        toast.success('Loan repaid via wallet!');
+        load();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Wallet repayment failed');
+    } finally {
+      setRepaying(null);
+    }
+  };
+
   if (loading) return <div className="animate-pulse space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-gray-100 rounded-2xl" />)}</div>;
 
   // Loan-cycle level order for display
