@@ -3,9 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Bed, Bath, Maximize2, MapPin, Phone, Mail, Heart, Share2,
   ChevronLeft, ChevronRight, Shield, Eye, Calendar, CheckCircle2,
-  BookMarked, Star
+  BookMarked, Star, Wallet
 } from 'lucide-react';
-import { propertyAPI, transactionAPI, reservationAPI, reputationAPI } from '../services/api';
+import { propertyAPI, transactionAPI, reservationAPI, reputationAPI, walletAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   formatPricePeriod, listingLabel, listingBadgeClass, propertyTypeLabel,
@@ -28,6 +28,9 @@ export default function PropertyDetailPage() {
   const [agentRep, setAgentRep]   = useState(null);
   const [myActiveReservation, setMyActiveReservation] = useState(null);
   const [mySuccessTransaction, setMySuccessTransaction] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(null);
+  const [payingWithWallet, setPayingWithWallet] = useState(false);
+  const [reservingWithWallet, setReservingWithWallet] = useState(false);
 
   useEffect(() => {
     propertyAPI.getOne(id)
@@ -78,6 +81,14 @@ export default function PropertyDetailPage() {
       .catch(() => {});
   }, [id, isAuthenticated]);
 
+  // Load wallet balance so we can show it on the "Pay with Wallet" button
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    walletAPI.getBalance()
+      .then((r) => setWalletBalance(r.data?.balance ?? null))
+      .catch(() => {});
+  }, [isAuthenticated]);
+
   const images = property?.imageUrls?.length ? property.imageUrls : [PLACEHOLDER];
 
   const prevImg = () => setImgIdx((i) => (i - 1 + images.length) % images.length);
@@ -86,6 +97,48 @@ export default function PropertyDetailPage() {
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     toast.success('Link copied to clipboard!');
+  };
+
+  const handlePayWithWallet = async () => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    setPayingWithWallet(true);
+    try {
+      const { data } = await transactionAPI.initiate({
+        propertyId: property.id,
+        sellerId:   property.ownerId,
+        buyerEmail: user.email,
+        amount:     property.price,
+        type:       property.listingType === 'FOR_SALE' ? 'PURCHASE' : 'RENT',
+        payWithWallet: true,
+      });
+      if (data.walletPaid) {
+        toast.success('Payment successful! Property purchase/rent confirmed.');
+        setMySuccessTransaction({ propertyId: property.id, status: 'SUCCESS' });
+        // Refresh wallet balance
+        walletAPI.getBalance().then((r) => setWalletBalance(r.data?.balance ?? null)).catch(() => {});
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Wallet payment failed');
+    } finally {
+      setPayingWithWallet(false);
+    }
+  };
+
+  const handleReserveWithWallet = async () => {
+    if (!isAuthenticated) { navigate('/login'); return; }
+    setReservingWithWallet(true);
+    try {
+      const { data } = await reservationAPI.reserve(property.id, { payWithWallet: true });
+      if (data.walletPaid) {
+        toast.success('Property reserved! ₦1,000 deducted from your wallet.');
+        setMyActiveReservation({ propertyId: property.id, status: 'ACTIVE' });
+        walletAPI.getBalance().then((r) => setWalletBalance(r.data?.balance ?? null)).catch(() => {});
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Reservation with wallet failed');
+    } finally {
+      setReservingWithWallet(false);
+    }
   };
 
   const handlePay = async () => {
