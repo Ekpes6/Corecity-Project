@@ -116,4 +116,35 @@ public class UserServiceClient {
             return ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
         }
     }
+
+    /**
+     * Debit a user's wallet via the internal user-service endpoint.
+     * Called when a customer chooses "Pay with Wallet" for a reservation.
+     * Throws ResponseStatusException(400) if the wallet balance is insufficient.
+     */
+    public void debitWallet(Long userId, java.math.BigDecimal amount, String reference, String description) {
+        java.util.Map<String, Object> body = java.util.Map.of(
+            "userId", userId,
+            "amount", amount,
+            "reference", reference,
+            "description", description
+        );
+        try {
+            webClient.post()
+                .uri("/api/v1/users/internal/wallet/debit")
+                .bodyValue(body)
+                .retrieve()
+                .bodyToMono(Void.class)
+                .block();
+        } catch (WebClientResponseException e) {
+            // Propagate the error status (e.g. 400 Insufficient balance) to the caller
+            throw new org.springframework.web.server.ResponseStatusException(
+                e.getStatusCode(), e.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.error("wallet debit failed for user {}: {}", userId, e.getMessage());
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                "Wallet service unavailable — please try again");
+        }
+    }
 }
