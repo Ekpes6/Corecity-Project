@@ -79,6 +79,18 @@ public class WalletController {
         return ResponseEntity.ok(Map.of("authorizationUrl", url));
     }
 
+    /** Verifies a PENDING top-up with Paystack and credits the wallet if confirmed paid. */
+    @PostMapping("/transactions/{reference}/verify")
+    public ResponseEntity<Map<String, String>> verifyPayment(
+            @RequestHeader("X-User-Id") Long userId,
+            @PathVariable String reference) {
+        String result = walletService.verifyWalletFunding(userId, reference);
+        String message = "already_credited".equals(result)
+            ? "Wallet was already credited for this transaction."
+            : "Payment verified. Wallet has been credited.";
+        return ResponseEntity.ok(Map.of("status", result, "message", message));
+    }
+
     /**
      * Paystack webhook endpoint for wallet funding events.
      *
