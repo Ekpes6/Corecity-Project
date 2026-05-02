@@ -211,93 +211,33 @@ public class SubscriptionService {
                 .build();
         }
 
-        // ── STANDARD PATH: Paystack payment required ──────────────────────────
-
-        // Idempotency: return existing PENDING_PAYMENT sub rather than creating a duplicate.
-        // This handles the case where the gateway timed out returning the first response.
-        Optional<AgentSubscription> existingPending = subscriptionRepo
-            .findFirstByAgentIdAndPlanAndStatusAndLoan(agentId, plan, SubscriptionStatus.PENDING_PAYMENT, false);
-        if (existingPending.isPresent()) {
-            AgentSubscription ex = existingPending.get();
-            String url = ex.getAuthorizationUrl();
-            if (url == null || url.isBlank()) {
-                // URL was never stored (old row) — re-initialize Paystack
-                url = initPaystackPayment(agentEmail, ex.getAmountPaid(), ex.getPaymentReference(),
-                    Map.of("subscriptionId", ex.getId(), "plan", plan.name(), "agentId", agentId));
-                ex.setAuthorizationUrl(url);
-                subscriptionRepo.save(ex);
-            }
-            return SubscriptionInitResponse.builder()
-                .subscriptionId(ex.getId())
-                .plan(plan.name())
-                .amountDue(ex.getAmountPaid())
-                .paymentReference(ex.getPaymentReference())
-                .authorizationUrl(url)
-                .isLoan(false)
-                .status(ex.getStatus().name())
-                .build();
-        }
-
         String reference = "SUB-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         LocalDate today = LocalDate.now();
 
-        // ── WALLET PATH: debit wallet and activate immediately ────────────────
-        if (req.isPayWithWallet()) {
-            walletService.debitWallet(agentId, amount, reference, "Subscription: " + plan.name());
+        // Debit wallet and activate subscription immediately
+        walletService.debitWallet(agentId, amount, reference, "Subscription: " + plan.name());
 
-            AgentSubscription sub = AgentSubscription.builder()
-                .agentId(agentId)
-                .plan(plan)
-                .amountPaid(amount)
-                .startDate(today)
-                .endDate(today.plusMonths(1))
-                .status(SubscriptionStatus.ACTIVE)
-                .loan(false)
-                .paymentReference(reference)
-                .build();
-            subscriptionRepo.save(Objects.requireNonNull(sub));
-
-            log.info("Wallet subscription {} activated for agent {} on plan {}", reference, agentId, plan);
-
-            return SubscriptionInitResponse.builder()
-                .subscriptionId(sub.getId())
-                .plan(plan.name())
-                .amountDue(amount)
-                .paymentReference(reference)
-                .isLoan(false)
-                .walletPaid(true)
-                .status(SubscriptionStatus.ACTIVE.name())
-                .build();
-        }
-
-        // ── STANDARD PAYSTACK PATH ────────────────────────────────────────────
-        AgentSubscription subscription = AgentSubscription.builder()
+        AgentSubscription sub = AgentSubscription.builder()
             .agentId(agentId)
             .plan(plan)
             .amountPaid(amount)
             .startDate(today)
             .endDate(today.plusMonths(1))
-            .status(SubscriptionStatus.PENDING_PAYMENT)
+            .status(SubscriptionStatus.ACTIVE)
             .loan(false)
             .paymentReference(reference)
             .build();
-        subscriptionRepo.save(Objects.requireNonNull(subscription));
+        subscriptionRepo.save(Objects.requireNonNull(sub));
 
-        String authorizationUrl = initPaystackPayment(agentEmail, amount, reference,
-            Map.of("subscriptionId", subscription.getId(), "plan", plan.name(), "agentId", agentId));
-
-        // Store the URL so retries can recover it without calling Paystack again
-        subscription.setAuthorizationUrl(authorizationUrl);
-        subscriptionRepo.save(subscription);
+        log.info("Subscription {} activated for agent {} on plan {}", reference, agentId, plan);
 
         return SubscriptionInitResponse.builder()
-            .subscriptionId(subscription.getId())
+            .subscriptionId(sub.getId())
             .plan(plan.name())
             .amountDue(amount)
             .paymentReference(reference)
-            .authorizationUrl(authorizationUrl)
             .isLoan(false)
-            .status(subscription.getStatus().name())
+            .status(SubscriptionStatus.ACTIVE.name())
             .build();
     }
 
