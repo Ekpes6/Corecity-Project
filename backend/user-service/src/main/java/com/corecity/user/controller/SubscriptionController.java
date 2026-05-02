@@ -166,18 +166,14 @@ public class SubscriptionController {
     }
 
     /**
-     * POST /api/v1/subscriptions/loans/{loanId}/repay — initiate repayment.
-     * Accepts optional body: { "payWithWallet": true } to debit wallet instead of Paystack.
-     * On charge.success webhook (REP- reference), the loan is marked REPAID automatically.
+     * POST /api/v1/subscriptions/loans/{loanId}/repay — repay loan from wallet.
      */
     @PostMapping("/loans/{loanId}/repay")
     public ResponseEntity<LoanRepayInitResponse> repay(
             @PathVariable Long loanId,
             @RequestHeader("X-User-Id") Long userId,
-            @RequestHeader("X-User-Email") String userEmail,
-            @RequestBody(required = false) java.util.Map<String, Object> body) {
-        boolean payWithWallet = body != null && Boolean.TRUE.equals(body.get("payWithWallet"));
-        return ResponseEntity.ok(subscriptionService.initiateLoanRepayment(loanId, userId, userEmail, payWithWallet));
+            @RequestHeader("X-User-Email") String userEmail) {
+        return ResponseEntity.ok(subscriptionService.initiateLoanRepayment(loanId, userId, userEmail));
     }
 
     // ── Loan Program ──────────────────────────────────────────────────────────
