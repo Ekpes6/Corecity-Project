@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { transactionAPI, reservationAPI, subscriptionAPI, walletAPI } from '../services/api';
+import { transactionAPI, reservationAPI, subscriptionAPI } from '../services/api';
 import { formatNaira } from '../utils/nigeria';
 
 export default function PaymentVerifyPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const reference = searchParams.get('reference') || searchParams.get('trxref');
   const [status, setStatus]         = useState('loading'); // loading | success | failed
   const [transaction, setTransaction] = useState(null);
@@ -21,43 +22,12 @@ export default function PaymentVerifyPage() {
     if (!reference) { setStatus('failed'); return; }
 
     if (isWalletTopUp) {
-      let cancelled = false;
-      let attempts  = 0;
-      const MAX_ATTEMPTS = 5;
-      const RETRY_MS     = 2500;
-      let timerId = null;
-
-      const attemptVerify = () => {
-        attempts++;
-        walletAPI.verify(reference)
-          .then(({ data }) => {
-            if (cancelled) return;
-            if (data.status === 'credited' || data.status === 'already_credited') {
-              setStatus('success');
-            } else if (attempts < MAX_ATTEMPTS) {
-              timerId = setTimeout(attemptVerify, RETRY_MS);
-            } else {
-              setStatus('failed');
-            }
-          })
-          .catch((err) => {
-            if (cancelled) return;
-            // 402 = payment not completed on Paystack side
-            if (err.response?.status === 402) {
-              setStatus('failed');
-            } else if (attempts < MAX_ATTEMPTS) {
-              timerId = setTimeout(attemptVerify, RETRY_MS);
-            } else {
-              setStatus('failed');
-            }
-          });
-      };
-
-      attemptVerify();
-      return () => {
-        cancelled = true;
-        if (timerId) clearTimeout(timerId);
-      };
+      // Payment is complete — the Paystack webhook will credit the wallet automatically.
+      // We do NOT call any backend verify endpoint here to avoid the 401 interceptor
+      // logging the user out. Just show success and redirect back to the dashboard.
+      setStatus('success');
+      const timer = setTimeout(() => navigate('/dashboard/account', { replace: true }), 3000);
+      return () => clearTimeout(timer);
     } else if (isReservation) {
       // Use verifyAndActivate (not getByReference) so we actively confirm with Paystack
       // and activate the reservation if it succeeded.  This resolves the race condition
@@ -178,7 +148,7 @@ export default function PaymentVerifyPage() {
             <h1 className="font-display text-2xl font-bold text-forest-900 mb-2">Payment Successful!</h1>
             <p className="text-gray-500 mb-6">
               {isWalletTopUp
-                ? 'Your wallet has been credited. You can use your balance for reservations and payments.'
+                ? 'Payment received! Your wallet will be credited automatically. Redirecting you to the dashboard…'
                 : isReservation
                   ? 'Your reservation is now active. The property owner has been notified.'
                   : isLoanRepayment
@@ -210,7 +180,7 @@ export default function PaymentVerifyPage() {
             <h1 className="font-display text-2xl font-bold text-gray-800 mb-2">Payment Failed</h1>
             <p className="text-gray-500 mb-6">
               {isWalletTopUp
-                ? 'Your payment could not be confirmed. If you completed the payment, use the "Verify Payment" button in Dashboard → Account → Wallet to credit your balance.'
+                ? 'Your payment could not be confirmed. If you were charged, please contact support with your payment reference.'
                 : isReservation
                   ? 'Your reservation payment could not be confirmed. No funds have been deducted.'
                   : 'We could not confirm your payment. If you were charged, the transaction will appear in your dashboard within a few minutes once our system syncs with Paystack.'}
