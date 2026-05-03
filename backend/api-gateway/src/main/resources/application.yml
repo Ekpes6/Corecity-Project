@@ -27,6 +27,19 @@ spring:
               args:
                 name: user-service-cb
                 fallbackUri: forward:/fallback
+            # Retry once on connection errors and 502/503/504 before the circuit
+            # breaker counts the failure. Covers JVM cold-start where user-service
+            # isn't listening yet on the first request after a deploy/restart.
+            - name: Retry
+              args:
+                retries: 2
+                statuses: SERVICE_UNAVAILABLE,BAD_GATEWAY,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE,PATCH
+                backoff:
+                  firstBackoff: 1000ms
+                  maxBackoff: 3000ms
+                  factor: 2
+                  basedOnPreviousValue: false
 
         - id: property-service
           uri: ${PROPERTY_SERVICE_URI:http://localhost:8082}
