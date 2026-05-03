@@ -333,4 +333,53 @@ public class WalletService {
     }
 
     public record FundInitResult(String reference, String authorizationUrl) {}
+
+    /**
+     * Runs every 5 minutes. Finds PENDING wallet top-ups that are older than 15 minutes
+     * (i.e. the user never reached the Paystack checkout — usually because the API gateway
+     * timed out before user-service could return the authorization URL).
+     *
+     * For each stale PENDING record:
+     *  - If Paystack says "success"  → credit the wallet (idempotent via creditWalletFromWebhook)
+     *  - Otherwise                   → mark FAILED so the wallet history is clean
+     *
+     * This prevents orphan PENDING records that accumulate after cold-start 503s.
+     */
+    @Scheduled(fixedDelay = 300_000)
+    public void reconcilePendingTopUps() {
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(15);
+        List<WalletTransaction> stale = walletTransactionRepository
+            .findByTypeAndStatusAndCreatedAtBefore(Type.CREDIT, Status.PENDING, cutoff);
+
+        if (stale.isEmpty()) return;
+        log.info("Reconciliation: found {} stale PENDING top-up(s) older than 15 minutes", stale.size());
+
+        for (WalletTransaction txn : stale) {
+            try {
+                String response = webClientBuilder.build()
+                    .get()
+                    .uri(PAYSTACK_BASE + "/transaction/verify/" + txn.getReference())
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + paystackSecretKey)
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .timeout(Duration.ofSeconds(15))
+                    .block();
+
+                JsonNode root = objectMapper.readTree(response);
+                String paystackStatus = root.path("data").path("status").asText("");
+
+                if ("success".equals(paystackStatus)) {
+                    creditWalletFromWebhook(txn.getReference());
+                    log.info("Reconciliation: credited wallet for previously-stale ref {}", txn.getReference());
+                } else {
+                    txn.setStatus(Status.FAILED);
+                    walletTransactionRepository.save(txn);
+                    log.info("Reconciliation: marked ref {} FAILED (Paystack status: '{}')",
+                        txn.getReference(), paystackStatus);
+                }
+            } catch (Exception e) {
+                log.warn("Reconciliation: could not verify ref {}: {}", txn.getReference(), e.getMessage());
+            }
+        }
+    }
 }
