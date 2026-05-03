@@ -161,8 +161,6 @@ export const walletAPI = {
   getBalance:  ()          => api.get('/users/me/wallet'),
   fund:        (data)      => api.post('/users/me/wallet/fund', data),
   getHistory:  ()          => api.get('/users/me/wallet/transactions'),
-  resume:      (reference) => api.post(`/users/me/wallet/transactions/${reference}/resume`),
-  verify:      (reference) => api.post(`/users/me/wallet/transactions/${reference}/verify`),
 };
 
 export default api;

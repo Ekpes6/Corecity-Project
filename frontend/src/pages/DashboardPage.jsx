@@ -1871,6 +1871,8 @@ function AccountPage() {
   const [fundAmount, setFundAmount]       = useState('');
   const [fundLoading, setFundLoading]     = useState(false);
   const [showFundModal, setShowFundModal] = useState(false);
+  const [fundPolling, setFundPolling]     = useState(false);
+  const pollIntervalRef                   = useRef(null);
 
   const loadAccounts = useCallback(async () => {
     try {
@@ -1959,6 +1961,14 @@ function AccountPage() {
     }
   };
 
+  const stopWalletPoll = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+    setFundPolling(false);
+  }, []);
+
   const handleFundWallet = async (e) => {
     e.preventDefault();
     const amount = parseFloat(fundAmount);
@@ -1973,22 +1983,42 @@ function AccountPage() {
         toast.error('Payment gateway did not return a valid URL. Please try again.');
         return;
       }
-      // Open Paystack in a new tab so the user can return to the dashboard
       const win = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
       if (!win) {
         toast.error('Pop-up blocked. Please allow pop-ups for this site and try again.');
-      } else {
-        toast.success('Paystack payment page opened in a new tab');
-        setShowFundModal(false);
-        setFundAmount('');
+        return;
       }
+      // Close modal immediately and start polling for automatic credit
+      setShowFundModal(false);
+      setFundAmount('');
+      setFundPolling(true);
+      const prevBalance = Number(wallet?.balance ?? 0);
+      let elapsed = 0;
+      pollIntervalRef.current = setInterval(async () => {
+        elapsed += 3000;
+        if (elapsed > 600000) { // stop after 10 minutes
+          stopWalletPoll();
+          return;
+        }
+        try {
+          const [balRes, histRes] = await Promise.all([
+            walletAPI.getBalance(),
+            walletAPI.getHistory(),
+          ]);
+          const newBalance = Number(balRes.data?.balance ?? 0);
+          if (newBalance > prevBalance) {
+            setWallet(balRes.data);
+            setTxHistory(histRes.data);
+            stopWalletPoll();
+            toast.success(
+              `Wallet credited! New balance: ₦${newBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
+              { duration: 5000 }
+            );
+          }
+        } catch { /* silent during poll */ }
+      }, 3000);
     } catch (err) {
-      const status = err.response?.status;
-      const msg = err.response?.data?.message || 'Could not initiate wallet top-up';
-      toast.error(msg, { duration: status === 409 ? 6000 : 4000 });
-      // On conflict (pending top-up exists), close the modal so the user can see
-      // the existing transaction in the history and use Resume/Verify Payment.
-      if (status === 409) setShowFundModal(false);
+      toast.error(err.response?.data?.message || 'Could not initiate wallet top-up');
     } finally {
       setFundLoading(false);
     }
@@ -2137,15 +2167,24 @@ function AccountPage() {
                 type="number" min="100" step="100"
                 value={fundAmount} onChange={(e) => setFundAmount(e.target.value)}
                 placeholder="e.g. 5000" className="input-field" />
-              <p className="text-xs text-gray-400 mt-1">Minimum ₦100. You will be redirected to Paystack to complete payment.</p>
+              <p className="text-xs text-gray-400 mt-1">Minimum ₦100. Paystack checkout opens in a new tab — your wallet is credited automatically once payment succeeds.</p>
             </div>
             <div className="flex gap-3">
               <button type="button" onClick={() => setShowFundModal(false)} className="btn-secondary flex-1">Cancel</button>
               <button type="submit" disabled={fundLoading} className="btn-primary flex-1">
-                {fundLoading ? 'Redirecting…' : 'Proceed to Payment'}
+                {fundLoading ? 'Opening Paystack…' : 'Process Payment'}
               </button>
             </div>
           </form>
+        )}
+
+        {/* Polling indicator */}
+        {fundPolling && (
+          <div className="flex items-center gap-3 bg-forest-50 border border-forest-200 rounded-xl px-4 py-3 mb-4 text-sm text-forest-800">
+            <RefreshCw size={16} className="animate-spin text-forest-600 shrink-0" />
+            <span>Waiting for payment confirmation… your wallet will update automatically once Paystack confirms the payment.</span>
+            <button type="button" onClick={stopWalletPoll} className="ml-auto text-xs text-gray-500 hover:text-gray-700 underline shrink-0">Dismiss</button>
+          </div>
         )}
 
         {/* Transaction history */}
@@ -2181,50 +2220,7 @@ function AccountPage() {
                       tx.status === 'PENDING'    ? 'bg-yellow-100 text-yellow-700' :
                       'bg-red-100 text-red-600'
                     }`}>{tx.status}</span>
-                    {tx.status === 'PENDING' && tx.type === 'CREDIT' && (
-                      <div className="flex gap-3 mt-1">
-                        <button
-                          type="button"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            try {
-                              const { data } = await walletAPI.resume(tx.reference);
-                              const win = window.open(data.authorizationUrl, '_blank', 'noopener,noreferrer');
-                              if (!win) {
-                                toast.error('Pop-up blocked. Please allow pop-ups for this site and try again.');
-                              }
-                            } catch (err) {
-                              toast.error(err.response?.data?.message || 'Could not resume payment');
-                            }
-                          }}
-                          className="text-xs text-forest-700 underline hover:text-forest-900">
-                          Resume Payment
-                        </button>
-                        <button
-                          type="button"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            try {
-                              const { data } = await walletAPI.verify(tx.reference);
-                              toast.success(data.message);
-                              // Reload wallet data to reflect updated balance
-                              const [walletRes, historyRes] = await Promise.all([
-                                walletAPI.getBalance(),
-                                walletAPI.getHistory(),
-                              ]);
-                              setWallet(walletRes.data);
-                              setTxHistory(historyRes.data);
-                            } catch (err) {
-                              toast.error(err.response?.data?.message || 'Could not verify payment');
-                            }
-                          }}
-                          className="text-xs text-blue-600 underline hover:text-blue-800">
-                          Verify Payment
-                        </button>
-                      </div>
-                    )}
+
                   </div>
                 </div>
               ))}

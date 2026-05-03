@@ -70,16 +70,6 @@ public class WalletService {
 
         Wallet wallet = getOrCreateWallet(userId);
 
-        // Idempotency: if there is already a PENDING top-up for this wallet, block
-        // re-initiation. The user should resume or verify the existing transaction.
-        walletTransactionRepository
-            .findTopByWalletIdAndTypeAndStatusOrderByCreatedAtDesc(wallet.getId(), Type.CREDIT, Status.PENDING)
-            .ifPresent(existing -> {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "You already have a pending top-up of \u20a6" + existing.getAmount().toPlainString()
-                    + ". Use \"Resume Payment\" to continue or \"Verify Payment\" if you have already paid.");
-            });
-
         String reference = "WLT-" + userId + "-" + System.currentTimeMillis();
         long amountKobo = amountNgn.multiply(BigDecimal.valueOf(100)).longValue();
 
