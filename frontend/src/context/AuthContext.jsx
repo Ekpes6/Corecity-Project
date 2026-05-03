@@ -66,25 +66,11 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     setLoading(true);
     try {
-      let data;
-      try {
-        ({ data } = await authAPI.login(credentials));
-      } catch (firstErr) {
-        const status = firstErr.response?.status;
-        // On a 502/503/504 the service is cold-starting after a deploy/restart.
-        // Silently wait 2 s and retry once — the user just sees the spinner a
-        // little longer and never sees the "service unavailable" message.
-        if (status === 502 || status === 503 || status === 504) {
-          await new Promise((r) => setTimeout(r, 2000));
-          ({ data } = await authAPI.login(credentials)); // throws if retry also fails
-        } else {
-          throw firstErr;
-        }
-      }
+      const { data } = await authAPI.login(credentials);
       localStorage.setItem('hl_token', data.accessToken);
       localStorage.setItem('hl_user', JSON.stringify(data.user));
       setUser(data.user);
-      setRoleVerified(true);
+      setRoleVerified(true); // server just told us the role via the login response
       return { success: true, user: data.user };
     } catch (err) {
       const status = err.response?.status;

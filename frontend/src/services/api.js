@@ -13,11 +13,26 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 globally
+// Handle 502/503/504 (service cold-starting after a deploy/restart) and 401 globally.
+// On a gateway-unavailable response the interceptor waits 2 s and retries the original
+// request exactly once — the user just sees the spinner run a little longer and never
+// sees the "service temporarily unavailable" error. If the retry also fails the error
+// propagates normally. The _retried flag on the config prevents infinite retry loops.
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
+  async (err) => {
+    const status = err.response?.status;
+
+    if ((status === 502 || status === 503 || status === 504) && !err.config._retried) {
+      err.config._retried = true;
+      await new Promise((r) => setTimeout(r, 2000));
+      return api.request(err.config);
+      // If the retry succeeds  → response returned normally to the caller.
+      // If the retry also fails → error re-enters this interceptor with
+      //   _retried=true so we don't retry again, then falls through below.
+    }
+
+    if (status === 401) {
       const hadToken = localStorage.getItem('hl_token');
       localStorage.removeItem('hl_token');
       localStorage.removeItem('hl_user');
