@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Shield, Star, TrendingUp, Users, Building2, MapPin } from 'lucide-react';
 import { propertyAPI } from '../services/api';
-import { getDemoFeaturedProperties } from '../services/demoProperties';
 import PropertyCard from '../components/property/PropertyCard';
 import SearchBar from '../components/property/SearchBar';
 import { formatNaira } from '../utils/nigeria';
@@ -27,8 +26,8 @@ export default function HomePage() {
 
   useEffect(() => {
     propertyAPI.featured()
-      .then((r) => setFeatured(r.data))
-      .catch(() => setFeatured(getDemoFeaturedProperties()))
+      .then((r) => setFeatured(r.data ?? []))
+      .catch(() => setFeatured([]))
       .finally(() => setLoadingFeatured(false));
   }, []);
 
@@ -117,6 +116,12 @@ export default function HomePage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : featured.length === 0 ? (
+          <div className="text-center py-16 text-gray-400">
+            <Building2 size={48} className="mx-auto mb-4 opacity-30" />
+            <p className="text-lg font-medium">No featured listings yet</p>
+            <p className="text-sm mt-1">Check back soon — new properties are added daily.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
