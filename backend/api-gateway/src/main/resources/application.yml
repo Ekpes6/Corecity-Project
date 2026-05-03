@@ -53,6 +53,16 @@ spring:
               args:
                 name: property-service-cb
                 fallbackUri: forward:/fallback
+            - name: Retry
+              args:
+                retries: 2
+                statuses: SERVICE_UNAVAILABLE,BAD_GATEWAY,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE,PATCH
+                backoff:
+                  firstBackoff: 1000ms
+                  maxBackoff: 3000ms
+                  factor: 2
+                  basedOnPreviousValue: false
 
         - id: file-service
           uri: ${FILE_SERVICE_URI:http://localhost:8083}
@@ -64,6 +74,16 @@ spring:
               args:
                 name: file-service-cb
                 fallbackUri: forward:/fallback
+            - name: Retry
+              args:
+                retries: 2
+                statuses: SERVICE_UNAVAILABLE,BAD_GATEWAY,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE,PATCH
+                backoff:
+                  firstBackoff: 1000ms
+                  maxBackoff: 3000ms
+                  factor: 2
+                  basedOnPreviousValue: false
           # File uploads to R2 can take several minutes for large batches —
           # override the global 60s response-timeout for this route only.
           metadata:
@@ -81,6 +101,16 @@ spring:
               args:
                 name: transaction-service-cb
                 fallbackUri: forward:/fallback
+            - name: Retry
+              args:
+                retries: 2
+                statuses: SERVICE_UNAVAILABLE,BAD_GATEWAY,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE,PATCH
+                backoff:
+                  firstBackoff: 1000ms
+                  maxBackoff: 3000ms
+                  factor: 2
+                  basedOnPreviousValue: false
 
         - id: notification-service
           uri: ${NOTIFICATION_SERVICE_URI:http://localhost:8085}
@@ -92,6 +122,16 @@ spring:
               args:
                 name: notification-service-cb
                 fallbackUri: forward:/fallback
+            - name: Retry
+              args:
+                retries: 2
+                statuses: SERVICE_UNAVAILABLE,BAD_GATEWAY,GATEWAY_TIMEOUT
+                methods: GET,POST,PUT,DELETE,PATCH
+                backoff:
+                  firstBackoff: 1000ms
+                  maxBackoff: 3000ms
+                  factor: 2
+                  basedOnPreviousValue: false
 
       globalcors:
         cors-configurations:
