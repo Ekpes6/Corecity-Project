@@ -129,21 +129,18 @@ export default function ListPropertyPage() {
     loadLgas();
   }, [selectedStateId, setValue]);
 
-  // ── Live commission + fee breakdown ──────────────────────────
+  // ── Live commission breakdown ──────────────────────────────
   // Computed from the agent's entered price:
   //   CoreCity commission = 3%
   //   Agent commission    = 7%
-  //   Paystack fee        = 1.5% + ₦100, capped at ₦2,000
-  //   Final listed price  = base + corecity + agent + paystack
+  //   Final listed price  = base + corecity + agent
   const priceBreakdown = useMemo(() => {
     const base = parseFloat(watchedPrice);
     if (!base || base <= 0) return null;
-    const corecity  = +(base * 0.03).toFixed(2);
-    const agent     = +(base * 0.07).toFixed(2);
-    const rawPaystack = +(base * 0.015 + 100).toFixed(2);
-    const paystack  = Math.min(rawPaystack, 2000);
-    const total     = +(base + corecity + agent + paystack).toFixed(2);
-    return { base, corecity, agent, paystack, total };
+    const corecity = +(base * 0.03).toFixed(2);
+    const agent    = +(base * 0.07).toFixed(2);
+    const total    = +(base + corecity + agent).toFixed(2);
+    return { base, corecity, agent, total };
   }, [watchedPrice]);
 
 
@@ -184,7 +181,7 @@ export default function ListPropertyPage() {
         bedrooms:  parseInt(data.bedrooms)  || 0,
         bathrooms: parseInt(data.bathrooms) || 0,
         toilets:   parseInt(data.toilets)   || 0,
-        // Store the all-inclusive buyer price (base + 10% commission + Paystack fee).
+        // Store the all-inclusive buyer price (base + 10% commission).
         // The breakdown panel lets the agent see the split before submitting.
         price:     priceBreakdown ? priceBreakdown.total : parseFloat(data.price),
         sizeSqm:   data.sizeSqm ? parseFloat(data.sizeSqm) : null,
@@ -337,10 +334,6 @@ export default function ListPropertyPage() {
                     <div className="flex justify-between text-gray-600">
                       <span>Agent commission (7%)</span>
                       <span className="font-medium">₦{priceBreakdown.agent.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Paystack fee (1.5% + ₦100, max ₦2,000)</span>
-                      <span className="font-medium">₦{priceBreakdown.paystack.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-forest-900 font-bold border-t border-forest-200 pt-2 mt-1">
                       <span>Buyer pays (final listed price)</span>
