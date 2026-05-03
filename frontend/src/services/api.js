@@ -33,6 +33,11 @@ api.interceptors.response.use(
     }
 
     if (status === 401) {
+      // Requests made with _suppressGlobalLogout:true (e.g. background refreshUser)
+      // should NOT trigger an immediate redirect — let the caller handle it silently.
+      if (err.config?._suppressGlobalLogout) {
+        return Promise.reject(err);
+      }
       const hadToken = localStorage.getItem('hl_token');
       localStorage.removeItem('hl_token');
       localStorage.removeItem('hl_user');
@@ -51,7 +56,8 @@ api.interceptors.response.use(
 export const authAPI = {
   register:         (data)  => api.post('/auth/register', data),
   login:            (data)  => api.post('/auth/login', data),
-  getMe:            ()      => api.get('/users/me'),
+  // config is optional — pass { _suppressGlobalLogout: true } for background checks
+  getMe:            (config) => api.get('/users/me', config),
   updateMe:         (data)  => api.put('/users/me', data),
   changePassword:   (data)  => api.post('/users/me/change-password', data),
   verifyIdentity:   (data)  => api.post('/users/me/verify-identity', data),
