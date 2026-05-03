@@ -7,6 +7,10 @@ import {
 } from 'lucide-react';
 import { propertyAPI, transactionAPI, reservationAPI, reputationAPI, walletAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import {
+  formatPricePeriod, listingLabel, listingBadgeClass, propertyTypeLabel,
+  AMENITY_LABELS, timeAgo
+} from '../utils/nigeria';
 import toast from 'react-hot-toast';
 
 const PLACEHOLDER = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80';
