@@ -7,11 +7,6 @@ import {
 } from 'lucide-react';
 import { propertyAPI, transactionAPI, reservationAPI, reputationAPI, walletAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import {
-  formatPricePeriod, listingLabel, listingBadgeClass, propertyTypeLabel,
-  AMENITY_LABELS, timeAgo
-} from '../utils/nigeria';
-import { getDemoProperty } from '../services/demoProperties';
 import toast from 'react-hot-toast';
 
 const PLACEHOLDER = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&q=80';
@@ -42,11 +37,6 @@ export default function PropertyDetailPage() {
         }
       })
       .catch(() => {
-        const demoProperty = getDemoProperty(id);
-        if (demoProperty) {
-          setProperty(demoProperty);
-          return;
-        }
         toast.error('Property not found');
       })
       .finally(() => setLoading(false));

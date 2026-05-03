@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { LayoutGrid, List, SlidersHorizontal, ChevronLeft, ChevronRight } from 'lucide-react';
 import { propertyAPI } from '../services/api';
-import { searchDemoProperties } from '../services/demoProperties';
 import PropertyCard from '../components/property/PropertyCard';
 import SearchBar from '../components/property/SearchBar';
 
@@ -48,10 +47,9 @@ export default function PropertiesPage() {
       setTotalPages(data.totalPages || 0);
       setTotalElements(data.totalElements || 0);
     } catch {
-      const data = searchDemoProperties(buildFilters());
-      setProperties(data.content);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.totalElements);
+      setProperties([]);
+      setTotalPages(0);
+      setTotalElements(0);
     } finally {
       setLoading(false);
     }
