@@ -19,4 +19,8 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
     /** Used for idempotency: find the most recent pending top-up for a wallet. */
     Optional<WalletTransaction> findTopByWalletIdAndTypeAndStatusOrderByCreatedAtDesc(
         Long walletId, Type type, Status status);
+
+    /** Used by the reconciliation job: find stale PENDING top-ups older than a given timestamp. */
+    List<WalletTransaction> findByTypeAndStatusAndCreatedAtBefore(
+        Type type, Status status, java.time.LocalDateTime cutoff);
 }
