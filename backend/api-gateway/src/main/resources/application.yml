@@ -14,6 +14,11 @@ spring:
           uri: ${USER_SERVICE_URI:http://localhost:8081}
           predicates:
             - Path=/api/v1/auth/**, /api/v1/users/**, /api/v1/subscriptions/**, /api/v1/agents/**
+          # Give user-service up to 90 s — JVM cold-start + Paystack HTTP call can
+          # exceed the global 60 s, causing a gateway timeout that leaves an orphan
+          # PENDING wallet record in the DB while the user sees a 503.
+          metadata:
+            response-timeout: 90000
           filters:
             - name: AuthFilter
               args:
