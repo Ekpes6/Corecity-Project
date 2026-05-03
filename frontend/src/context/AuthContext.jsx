@@ -38,12 +38,18 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('hl_user', JSON.stringify(data));
       setUser(data);
       setRoleVerified(true);
-    } catch {
-      // Token is invalid or expired — clear the session
-      localStorage.removeItem('hl_token');
-      localStorage.removeItem('hl_user');
-      setUser(null);
-      setRoleVerified(false);
+    } catch (err) {
+      // Only clear the session on an explicit 401 (token rejected/expired).
+      // A 503 / 502 / network error means the service is temporarily down
+      // (e.g. cold start after a deploy) — do NOT log the user out in that case.
+      if (err.response?.status === 401) {
+        localStorage.removeItem('hl_token');
+        localStorage.removeItem('hl_user');
+        setUser(null);
+        setRoleVerified(false);
+      }
+      // For any other error keep the session alive; roleVerified stays false
+      // so the next eligible refresh attempt will try again.
     }
   }, []);
 
