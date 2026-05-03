@@ -1983,7 +1983,12 @@ function AccountPage() {
         setFundAmount('');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not initiate wallet top-up');
+      const status = err.response?.status;
+      const msg = err.response?.data?.message || 'Could not initiate wallet top-up';
+      toast.error(msg, { duration: status === 409 ? 6000 : 4000 });
+      // On conflict (pending top-up exists), close the modal so the user can see
+      // the existing transaction in the history and use Resume/Verify Payment.
+      if (status === 409) setShowFundModal(false);
     } finally {
       setFundLoading(false);
     }

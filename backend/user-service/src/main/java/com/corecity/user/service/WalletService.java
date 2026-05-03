@@ -19,6 +19,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
@@ -68,6 +69,17 @@ public class WalletService {
         }
 
         Wallet wallet = getOrCreateWallet(userId);
+
+        // Idempotency: if there is already a PENDING top-up for this wallet, block
+        // re-initiation. The user should resume or verify the existing transaction.
+        walletTransactionRepository
+            .findTopByWalletIdAndTypeAndStatusOrderByCreatedAtDesc(wallet.getId(), Type.CREDIT, Status.PENDING)
+            .ifPresent(existing -> {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "You already have a pending top-up of \u20a6" + existing.getAmount().toPlainString()
+                    + ". Use \"Resume Payment\" to continue or \"Verify Payment\" if you have already paid.");
+            });
+
         String reference = "WLT-" + userId + "-" + System.currentTimeMillis();
         long amountKobo = amountNgn.multiply(BigDecimal.valueOf(100)).longValue();
 
@@ -82,7 +94,8 @@ public class WalletService {
 
         // Call Paystack FIRST — only persist a PENDING record if the gateway
         // accepts the request and returns a valid authorization URL.
-        // This prevents orphan PENDING records when Paystack is down or rejects the call.
+        // The 25-second timeout ensures we fail fast before the API gateway's 60s
+        // deadline, so no orphan PENDING record is written on a slow Paystack call.
         String authorizationUrl;
         try {
             String response = webClientBuilder.build()
@@ -93,6 +106,7 @@ public class WalletService {
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(String.class)
+                .timeout(Duration.ofSeconds(25))
                 .block();
 
             log.info("Paystack initialize response for user {} ref {}: {}", userId, reference, response);
