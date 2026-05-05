@@ -23,7 +23,16 @@ api.interceptors.response.use(
   async (err) => {
     const status = err.response?.status;
 
-    if ((status === 502 || status === 503 || status === 504) && !err.config._retried) {
+    // Only auto-retry GET requests (idempotent). POSTs/PUTs/DELETEs must NOT be
+    // retried automatically — if the server processed the request but the gateway
+    // timed out before sending the response back, a blind retry would duplicate the
+    // operation (e.g. create two properties, two orders, etc.).
+    // Non-GET 503s are handled at the gateway level by its own Retry filter.
+    if (
+      (status === 502 || status === 503 || status === 504) &&
+      !err.config._retried &&
+      err.config.method?.toLowerCase() === 'get'
+    ) {
       err.config._retried = true;
       await new Promise((r) => setTimeout(r, 2000));
       return api.request(err.config);

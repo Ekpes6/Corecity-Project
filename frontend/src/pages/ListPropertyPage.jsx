@@ -195,38 +195,30 @@ export default function ListPropertyPage() {
       const { data: property } = await propertyAPI.create(payload);
       createdPropertyId = property.id;
 
-      // Upload images one-by-one so each request stays well under timeout limits
+      // Upload all images in a single batch request — avoids partial failures that
+      // occurred when uploading sequentially (if any one upload returned 503 on cold
+      // start, subsequent images were skipped, leaving only 1 image registered).
       if (images.length > 0) {
-        const uploadedUrls = [];
-        const uploadErrors = [];
-
-        for (let i = 0; i < images.length; i++) {
-          try {
-            const { data: result } = await fileAPI.uploadSingle(property.id, images[i]);
-            if (result.fileUrl) {
-              uploadedUrls.push(result.fileUrl);
-              uploadedToR2 = uploadedUrls; // keep rollback list current
-            }
-          } catch (e) {
-            uploadErrors.push(`Image ${i + 1}: ${e.response?.data?.error || e.message}`);
-          }
-        }
+        const { data: batchResult } = await fileAPI.uploadBatch(property.id, images);
+        const uploadedUrls = (batchResult.uploaded || []).map((r) => r.fileUrl).filter(Boolean);
+        uploadedToR2 = uploadedUrls;
 
         if (uploadedUrls.length === 0) {
-          // Every image failed — roll back
+          // Every image failed — roll back the property too
           await propertyAPI.remove(property.id).catch(() => {});
           uploadedToR2 = [];
-          toast.error(uploadErrors.length > 0
-            ? `Image upload failed: ${uploadErrors[0]}. Please try again.`
+          const firstErr = batchResult.errors?.[0];
+          toast.error(firstErr
+            ? `Image upload failed: ${firstErr}. Please try again.`
             : 'Image upload failed. Please check your files and try again.');
           return;
         }
 
-        // At least some images uploaded — register them
+        // Register all successfully uploaded images
         await propertyAPI.registerFiles(property.id, uploadedUrls);
 
-        if (uploadErrors.length > 0) {
-          toast(`${uploadedUrls.length} image(s) uploaded; ${uploadErrors.length} failed.`, { icon: '⚠️' });
+        if (batchResult.errors?.length > 0) {
+          toast(`${uploadedUrls.length} image(s) uploaded; ${batchResult.errors.length} failed.`, { icon: '⚠️' });
         }
       }
 
