@@ -195,30 +195,41 @@ export default function ListPropertyPage() {
       const { data: property } = await propertyAPI.create(payload);
       createdPropertyId = property.id;
 
-      // Upload all images in a single batch request — avoids partial failures that
-      // occurred when uploading sequentially (if any one upload returned 503 on cold
-      // start, subsequent images were skipped, leaving only 1 image registered).
+      // Upload images one-by-one. Sequential uploads tolerate large files better
+      // than a single batch request (no shared timeout across all files).
+      // The double-creation bug that previously affected this flow is now fixed at
+      // the interceptor level — POST retries are disabled, so each upload fires exactly once.
       if (images.length > 0) {
-        const { data: batchResult } = await fileAPI.uploadBatch(property.id, images);
-        const uploadedUrls = (batchResult.uploaded || []).map((r) => r.fileUrl).filter(Boolean);
-        uploadedToR2 = uploadedUrls;
+        const uploadedUrls = [];
+        const uploadErrors = [];
+
+        for (let i = 0; i < images.length; i++) {
+          try {
+            const { data: result } = await fileAPI.uploadSingle(property.id, images[i]);
+            if (result.fileUrl) {
+              uploadedUrls.push(result.fileUrl);
+              uploadedToR2 = [...uploadedUrls]; // keep rollback list current
+            }
+          } catch (e) {
+            uploadErrors.push(`Image ${i + 1}: ${e.response?.data?.error || e.message}`);
+          }
+        }
 
         if (uploadedUrls.length === 0) {
-          // Every image failed — roll back the property too
+          // Every image failed — roll back
           await propertyAPI.remove(property.id).catch(() => {});
           uploadedToR2 = [];
-          const firstErr = batchResult.errors?.[0];
-          toast.error(firstErr
-            ? `Image upload failed: ${firstErr}. Please try again.`
+          toast.error(uploadErrors.length > 0
+            ? `Image upload failed: ${uploadErrors[0]}. Please try again.`
             : 'Image upload failed. Please check your files and try again.');
           return;
         }
 
-        // Register all successfully uploaded images
+        // Register all successfully uploaded images in one call
         await propertyAPI.registerFiles(property.id, uploadedUrls);
 
-        if (batchResult.errors?.length > 0) {
-          toast(`${uploadedUrls.length} image(s) uploaded; ${batchResult.errors.length} failed.`, { icon: '⚠️' });
+        if (uploadErrors.length > 0) {
+          toast(`${uploadedUrls.length} image(s) uploaded; ${uploadErrors.length} failed.`, { icon: '⚠️' });
         }
       }
 
