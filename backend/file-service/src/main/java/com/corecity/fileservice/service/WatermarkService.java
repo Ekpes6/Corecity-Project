@@ -82,6 +82,19 @@ public class WatermarkService {
                 .size(wmWidth, wmHeight)
                 .asBufferedImage();
 
+            // Build a dark silhouette of the watermark so the white logo is visible on
+            // light backgrounds.  Strategy: fill a same-sized ARGB canvas with black, then
+            // apply DstIn with the watermark alpha — gives us a pure-black mask with the
+            // exact shape of the logo.
+            BufferedImage shadow = new BufferedImage(
+                scaledWm.getWidth(), scaledWm.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            Graphics2D sg = shadow.createGraphics();
+            sg.setColor(java.awt.Color.BLACK);
+            sg.fillRect(0, 0, shadow.getWidth(), shadow.getHeight());
+            sg.setComposite(java.awt.AlphaComposite.DstIn);   // keep dst where src has alpha
+            sg.drawImage(scaledWm, 0, 0, null);
+            sg.dispose();
+
             // Create a copy of the source image to draw on
             BufferedImage combined = new BufferedImage(
                 source.getWidth(), source.getHeight(),
@@ -93,7 +106,14 @@ public class WatermarkService {
             // Calculate position: bottom center, offset upward by BOTTOM_PADDING
             int x = (source.getWidth() - wmWidth) / 2;
             int y = source.getHeight() - wmHeight - BOTTOM_PADDING;
-            g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.5f));
+
+            // 1. Draw dark shadow slightly offset — creates contrast halo on bright areas
+            int shadowOff = Math.max(2, wmWidth / 120);
+            g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.65f));
+            g.drawImage(shadow, x + shadowOff, y + shadowOff, null);
+
+            // 2. Draw the white logo on top at high opacity
+            g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.85f));
             g.drawImage(scaledWm, x, y, null);
             g.dispose();
 
