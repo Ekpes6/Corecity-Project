@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: api-gateway
+  # Increase the WebFlux codec buffer limit from the default 256 KB to 200 MB.
+  # Without this, any filter (e.g. Retry on non-GET routes) that needs to buffer
+  # a large request body will hit DataBufferLimitException and may forward a
+  # truncated or empty body to the downstream service.
+  codec:
+    max-in-memory-size: 209715200   # 200 MB
   cloud:
     gateway:
       httpclient:
@@ -74,11 +80,17 @@ spring:
               args:
                 name: file-service-cb
                 fallbackUri: forward:/fallback
+            # Only retry GET requests for file-service.
+            # POST (upload) and DELETE cannot be safely retried: the Retry filter
+            # caches the entire request body in memory to replay it, which (a) fails
+            # silently for files larger than spring.codec.max-in-memory-size, causing
+            # Tomcat to receive an empty body and throw MultipartException, and (b)
+            # would re-upload the same file if a retry succeeds after a partial write.
             - name: Retry
               args:
                 retries: 2
                 statuses: SERVICE_UNAVAILABLE,BAD_GATEWAY,GATEWAY_TIMEOUT
-                methods: GET,POST,PUT,DELETE,PATCH
+                methods: GET
                 backoff:
                   firstBackoff: 1000ms
                   maxBackoff: 3000ms
