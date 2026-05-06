@@ -45,7 +45,12 @@ public class WatermarkService {
                 log.warn("watermark.png not found in classpath — watermarking disabled");
                 return;
             }
-            watermarkImage = ImageIO.read(is);
+            BufferedImage loaded = ImageIO.read(is);
+            if (loaded == null) {
+                log.warn("watermark.png could not be decoded by ImageIO — watermarking disabled");
+                return;
+            }
+            watermarkImage = loaded;
             log.info("Watermark loaded ({}×{})", watermarkImage.getWidth(), watermarkImage.getHeight());
         } catch (IOException e) {
             log.warn("Could not load watermark.png — watermarking disabled: {}", e.getMessage());
@@ -100,7 +105,10 @@ public class WatermarkService {
             ImageIO.write(combined, format, out);
             return out.toByteArray();
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
+            // Catch Throwable (not just Exception) so that native errors such as
+            // UnsatisfiedLinkError thrown by Java2D on misconfigured Docker images
+            // never propagate to the HTTP layer — the original image is uploaded instead.
             log.warn("Watermarking failed — uploading original image: {}", e.getMessage());
             return imageBytes;
         }

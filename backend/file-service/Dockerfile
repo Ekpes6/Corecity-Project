@@ -7,5 +7,9 @@ RUN mvn -B -ntp -Dstyle.color=never -f file-service/pom.xml package -Dmaven.test
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
+# fontconfig + freetype are required by Java2D (used for watermarking) on Alpine.
+# Without them, Graphics2D rendering throws native UnsatisfiedLinkError at runtime.
+RUN apk add --no-cache fontconfig freetype
 COPY --from=build /app/file-service/target/*.jar app.jar
-ENTRYPOINT ["java","-jar","app.jar"]
+# -Djava.awt.headless=true is required for AWT/Java2D in Docker (no display available).
+ENTRYPOINT ["java", "-Djava.awt.headless=true", "-jar", "app.jar"]
