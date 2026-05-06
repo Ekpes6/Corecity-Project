@@ -99,14 +99,13 @@ export const fileAPI = {
     // Do NOT set Content-Type manually — axios must set it automatically so the
     // multipart boundary is included. Without the boundary, Spring's parser throws
     // and drops the connection, causing a 502 at the gateway.
-    return api.post(`/files/upload/property/${propertyId}`, fd, {
-    });
+    return api.post(`/files/upload/property/${propertyId}`, fd);
   },
   uploadBatch: (propertyId, files) => {
     const fd = new FormData();
     files.forEach((f) => fd.append('files', f));
+    // Same as uploadSingle — do NOT set Content-Type; let axios set it with the boundary.
     return api.post(`/files/upload/property/${propertyId}/batch`, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 180000, // 3 minutes — large batches can take a while to reach R2
     });
   },

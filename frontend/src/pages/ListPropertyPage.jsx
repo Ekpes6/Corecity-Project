@@ -19,7 +19,14 @@ export default function ListPropertyPage() {
   const [geocoding, setGeocoding] = useState(false);
   const [coordsAutoFilled, setCoordsAutoFilled] = useState(false);
   const [showOwnerFields, setShowOwnerFields] = useState(false);
-  const geocodeTimer = useRef(null);
+  const geocodeTimer  = useRef(null);
+  // Ref-based guard: prevents double-submission on rapid clicks (state updates
+  // are async so the button re-render disabling arrives too late to stop a
+  // second click that lands before the first re-render).
+  const submittingRef = useRef(false);
+  // Mirrors images state so onDrop can read the current length without a
+  // stale closure — avoids recreating the dropzone on every images change.
+  const imagesRef     = useRef([]);
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
     defaultValues: { listingType: 'FOR_RENT', propertyType: 'APARTMENT', pricePeriod: 'PER_YEAR', negotiable: true }
@@ -145,14 +152,19 @@ export default function ListPropertyPage() {
 
 
   const onDrop = useCallback((accepted) => {
-    const newFiles = accepted.slice(0, 10 - images.length);
-    setImages((prev) => [...prev, ...newFiles]);
+    const newFiles = accepted.slice(0, 10 - imagesRef.current.length);
+    if (newFiles.length === 0) return;
+    setImages((prev) => {
+      const next = [...prev, ...newFiles];
+      imagesRef.current = next;   // keep ref in sync
+      return next;
+    });
     newFiles.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (e) => setPreviews((prev) => [...prev, e.target.result]);
       reader.readAsDataURL(file);
     });
-  }, [images]);
+  }, []); // no deps — reads images count from ref, not closure
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -162,7 +174,11 @@ export default function ListPropertyPage() {
   });
 
   const removeImage = (idx) => {
-    setImages((p) => p.filter((_, i) => i !== idx));
+    setImages((p) => {
+      const next = p.filter((_, i) => i !== idx);
+      imagesRef.current = next;   // keep ref in sync
+      return next;
+    });
     setPreviews((p) => p.filter((_, i) => i !== idx));
   };
 
@@ -171,8 +187,10 @@ export default function ListPropertyPage() {
   );
 
   // ── Submit ─────────────────────────────────────────────────
-  const onSubmit = async (data) => {
-    setSubmitting(true);
+  const onSubmit = async (data) => {    // Synchronous guard — prevents a second submission racing in before React
+    // re-renders the button as disabled (state update is async, ref is instant).
+    if (submittingRef.current) return;
+    submittingRef.current = true;    setSubmitting(true);
     let createdPropertyId = null;
     let uploadedToR2 = [];
     try {
@@ -197,28 +215,19 @@ export default function ListPropertyPage() {
         const uploadedUrls = [];
         const uploadErrors = [];
 
+        // Upload images sequentially — one request per image, no frontend retry.
+        // The API gateway's Retry filter handles cold-start 502/503/504 server-side,
+        // so a frontend retry loop is redundant and causes double requests in DevTools.
         for (let i = 0; i < images.length; i++) {
-          let uploaded = false;
-          for (let attempt = 0; attempt < 2; attempt++) {
-            try {
-              const { data: result } = await fileAPI.uploadSingle(property.id, images[i]);
-              if (result.fileUrl) {
-                uploadedUrls.push(result.fileUrl);
-                uploadedToR2 = [...uploadedUrls];
-              }
-              uploaded = true;
-              break;
-            } catch (e) {
-              const status = e.response?.status;
-              if ((status === 502 || status === 503 || status === 504) && attempt === 0) {
-                await new Promise((r) => setTimeout(r, 3000));
-                continue;
-              }
-              uploadErrors.push(`Image ${i + 1}: ${e.response?.data?.error || e.message}`);
-              break;
+          try {
+            const { data: result } = await fileAPI.uploadSingle(property.id, images[i]);
+            if (result.fileUrl) {
+              uploadedUrls.push(result.fileUrl);
+              uploadedToR2 = [...uploadedUrls];
             }
+          } catch (e) {
+            uploadErrors.push(`Image ${i + 1}: ${e.response?.data?.error || e.message}`);
           }
-          void uploaded;
         }
 
         if (uploadedUrls.length === 0) {
@@ -247,6 +256,7 @@ export default function ListPropertyPage() {
       await Promise.allSettled(uploadedToR2.map((url) => fileAPI.remove(url)));
       toast.error(err.response?.data?.message || 'Failed to create listing. Please try again.');
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
