@@ -254,15 +254,13 @@ export default function ListPropertyPage() {
         // stays DRAFT (invisible to admin) until cleaned up by the rollback below.
         setSubmitting(true);
         let createdPropertyId = null;
-        let uploadedToR2 = []; // track R2 URLs so rollback can clean them up
+        let uploadedToR2 = [];
         try {
           const payload = {
             ...data,
             bedrooms:  parseInt(data.bedrooms)  || 0,
             bathrooms: parseInt(data.bathrooms) || 0,
             toilets:   parseInt(data.toilets)   || 0,
-            // Store the all-inclusive buyer price (base + 10% commission).
-            // The breakdown panel lets the agent see the split before submitting.
             price:     priceBreakdown ? priceBreakdown.total : parseFloat(data.price),
             sizeSqm:   data.sizeSqm ? parseFloat(data.sizeSqm) : null,
             stateId:   data.stateId ? parseInt(data.stateId, 10) : null,
@@ -295,7 +293,6 @@ export default function ListPropertyPage() {
                 } catch (e) {
                   const status = e.response?.status;
                   if ((status === 502 || status === 503 || status === 504) && attempt === 0) {
-                    // Wait 3 s then retry once — file-service may still be warming up
                     await new Promise((r) => setTimeout(r, 3000));
                     continue;
                   }
@@ -303,11 +300,10 @@ export default function ListPropertyPage() {
                   break;
                 }
               }
-              void uploaded; // suppress unused-var lint
+              void uploaded;
             }
 
             if (uploadedUrls.length === 0) {
-              // Every image failed — roll back
               await propertyAPI.remove(property.id).catch(() => {});
               uploadedToR2 = [];
               toast.error(uploadErrors.length > 0
@@ -316,7 +312,6 @@ export default function ListPropertyPage() {
               return;
             }
 
-            // Register all successfully uploaded images in one call
             await propertyAPI.registerFiles(property.id, uploadedUrls);
 
             if (uploadErrors.length > 0) {
@@ -324,15 +319,10 @@ export default function ListPropertyPage() {
             }
           }
 
-          // Transition DRAFT → PENDING so the property is visible to admins for review.
-          // This only fires if all prior steps succeeded; on any failure the property
-          // stays DRAFT (invisible to admin) until cleaned up by the rollback below.
           await propertyAPI.publish(property.id);
-
           toast.success('Property listed successfully! Pending review.');
           navigate(`/properties/${property.id}`);
         } catch (err) {
-          // Roll back: delete the DB record and any files already uploaded to R2
           if (createdPropertyId) {
             await propertyAPI.remove(createdPropertyId).catch(() => {});
           }
