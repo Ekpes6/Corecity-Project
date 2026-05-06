@@ -167,6 +167,26 @@ jwt:
   expiration: 86400000  # 24 hours
 
 resilience4j:
+  # Spring Cloud wraps every CircuitBreaker filter call with a TimeLimiter as well as
+  # a circuit breaker.  The default timeoutDuration is 4 s — far too short for file
+  # uploads that must watermark an image then transfer it to Cloudflare R2.
+  # Configure per-instance timeouts so that each service gets an appropriate limit.
+  timelimiter:
+    configs:
+      default:
+        # 30 s is generous for normal API calls (login, property CRUD, etc.)
+        timeoutDuration: 30s
+        cancelRunningFuture: true
+    instances:
+      file-service-cb:
+        # 5 minutes — matches the Netty response-timeout on the file-service route.
+        # Watermarking + R2 upload for a 10 MB image can easily take > 30 s.
+        timeoutDuration: 300s
+        cancelRunningFuture: true
+      user-service-cb:
+        # Paystack HTTP call on wallet top-up can take 15–20 s
+        timeoutDuration: 90s
+        cancelRunningFuture: true
   circuitbreaker:
     configs:
       default:

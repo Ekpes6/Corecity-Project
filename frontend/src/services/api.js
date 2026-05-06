@@ -107,7 +107,10 @@ export const fileAPI = {
     // Do NOT set Content-Type manually — axios must set it automatically so the
     // multipart boundary is included. Without the boundary, Spring's parser throws
     // and drops the connection, causing a 502 at the gateway.
-    return api.post(`/files/upload/property/${propertyId}`, fd);
+    // Timeout: 5 minutes — must exceed the gateway's TimeLimiter (300 s) so that
+    // the client never drops the connection before the server finishes watermarking
+    // the image and uploading it to Cloudflare R2.
+    return api.post(`/files/upload/property/${propertyId}`, fd, { timeout: 300000 });
   },
   uploadBatch: (propertyId, files) => {
     const fd = new FormData();
