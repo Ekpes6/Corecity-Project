@@ -331,7 +331,7 @@ export default function ListPropertyPage() {
         } finally {
           setSubmitting(false);
         }
-      };
+      }
                       <span className="font-medium">₦{priceBreakdown.base.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
