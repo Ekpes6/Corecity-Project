@@ -240,21 +240,22 @@ export default function ListPropertyPage() {
           return;
         }
 
-        // Register all successfully uploaded images in one call
-        await propertyAPI.registerFiles(property.id, uploadedUrls);
+        try {
+          // Register all successfully uploaded images in one call
+          await propertyAPI.registerFiles(property.id, uploadedUrls);
 
-        if (uploadErrors.length > 0) {
-          toast(`${uploadedUrls.length} image(s) uploaded; ${uploadErrors.length} failed.`, { icon: '⚠️' });
+          if (uploadErrors.length > 0) {
+            toast(`${uploadedUrls.length} image(s) uploaded; ${uploadErrors.length} failed.`, { icon: '⚠️' });
+          }
         }
-      }
 
-      // Transition DRAFT → PENDING so the property is visible to admins for review.
-      // This only fires if all prior steps succeeded; on any failure the property
-      // stays DRAFT (invisible to admin) until cleaned up by the rollback below.
-      await propertyAPI.publish(property.id);
+        // Transition DRAFT → PENDING so the property is visible to admins for review.
+        // This only fires if all prior steps succeeded; on any failure the property
+        // stays DRAFT (invisible to admin) until cleaned up by the rollback below.
+        await propertyAPI.publish(property.id);
 
-      toast.success('Property listed successfully! Pending review.');
-      navigate(`/properties/${property.id}`);
+        toast.success('Property listed successfully! Pending review.');
+        navigate(`/properties/${property.id}`);
     } catch (err) {
       // Roll back: delete the DB record and any files already uploaded to R2
       if (createdPropertyId) {
