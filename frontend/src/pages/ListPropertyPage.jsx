@@ -197,22 +197,37 @@ export default function ListPropertyPage() {
 
       // Upload images one-by-one. Sequential uploads tolerate large files better
       // than a single batch request (no shared timeout across all files).
-      // The double-creation bug that previously affected this flow is now fixed at
-      // the interceptor level — POST retries are disabled, so each upload fires exactly once.
+      // Each upload gets one automatic retry on gateway errors (502/503/504) — safe
+      // because a duplicate R2 upload would just be overwritten; we only register
+      // the URL list once after the loop.
       if (images.length > 0) {
         const uploadedUrls = [];
         const uploadErrors = [];
 
         for (let i = 0; i < images.length; i++) {
-          try {
-            const { data: result } = await fileAPI.uploadSingle(property.id, images[i]);
-            if (result.fileUrl) {
-              uploadedUrls.push(result.fileUrl);
-              uploadedToR2 = [...uploadedUrls]; // keep rollback list current
+          let uploaded = false;
+          for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+              const { data: result } = await fileAPI.uploadSingle(property.id, images[i]);
+              if (result.fileUrl) {
+                uploadedUrls.push(result.fileUrl);
+                uploadedToR2 = [...uploadedUrls];
+              }
+              uploaded = true;
+              break;
+            } catch (e) {
+              const status = e.response?.status;
+              if ((status === 502 || status === 503 || status === 504) && attempt === 0) {
+                // Wait 3 s then retry once — file-service may still be warming up
+                await new Promise((r) => setTimeout(r, 3000));
+                continue;
+              }
+              uploadErrors.push(`Image ${i + 1}: ${e.response?.data?.error || e.message}`);
+              break;
             }
-          } catch (e) {
-            uploadErrors.push(`Image ${i + 1}: ${e.response?.data?.error || e.message}`);
           }
+          void uploaded; // suppress unused-var lint
+        }
         }
 
         if (uploadedUrls.length === 0) {

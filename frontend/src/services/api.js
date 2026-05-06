@@ -96,8 +96,10 @@ export const fileAPI = {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('category', category);
+    // Do NOT set Content-Type manually — axios must set it automatically so the
+    // multipart boundary is included. Without the boundary, Spring's parser throws
+    // and drops the connection, causing a 502 at the gateway.
     return api.post(`/files/upload/property/${propertyId}`, fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
   uploadBatch: (propertyId, files) => {
