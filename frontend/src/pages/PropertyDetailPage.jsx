@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Bed, Bath, Maximize2, MapPin, Phone, Mail, Heart, Share2,
   ChevronLeft, ChevronRight, Shield, Eye, Calendar, CheckCircle2,
-  BookMarked, Star, Wallet
+  BookMarked, Star, Wallet, Lock
 } from 'lucide-react';
 import { propertyAPI, transactionAPI, reservationAPI, reputationAPI, walletAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -232,10 +232,28 @@ export default function PropertyDetailPage() {
                   <Eye size={13} /> {property.viewsCount}
                 </div>
               </div>
-              <div className="flex items-center gap-2 mt-2 text-gray-500 text-sm">
-                <MapPin size={14} className="text-clay-500 shrink-0" />
-                {property.address}
-              </div>
+              {/* Address — only revealed after reservation/payment or for the owner */}
+              {(() => {
+                const addressVisible =
+                  (user && String(user.id) === String(property.ownerId)) ||
+                  myActiveReservation ||
+                  mySuccessTransaction;
+                const area = [property.lgaName, property.stateName].filter(Boolean).join(', ') || 'Nigeria';
+                return addressVisible ? (
+                  <div className="flex items-center gap-2 mt-2 text-gray-500 text-sm">
+                    <MapPin size={14} className="text-clay-500 shrink-0" />
+                    {property.address}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mt-2 text-sm">
+                    <MapPin size={14} className="text-clay-500 shrink-0" />
+                    <span className="text-gray-500">{area}</span>
+                    <span className="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full ml-1">
+                      <Lock size={10} /> Full address revealed after reservation
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Key stats */}

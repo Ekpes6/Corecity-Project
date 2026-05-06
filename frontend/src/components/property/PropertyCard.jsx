@@ -7,9 +7,13 @@ const PLACEHOLDER = 'https://images.unsplash.com/photo-1568605114967-8130f3a3699
 
 export default function PropertyCard({ property, onSave, saved = false }) {
   const {
-    id, title, address, price, pricePeriod, listingType, propertyType,
+    id, title, address, lgaName, stateName, price, pricePeriod, listingType, propertyType,
     bedrooms, bathrooms, sizeSqm, primaryImageUrl, imageUrls, viewsCount, createdAt,
   } = property;
+
+  // Show only the area (LGA / state) — the exact street address is private until
+  // the buyer reserves or pays for the property.
+  const displayLocation = [lgaName, stateName].filter(Boolean).join(', ') || 'Nigeria';
 
   const image = primaryImageUrl || imageUrls?.[0] || PLACEHOLDER;
 
@@ -58,10 +62,10 @@ export default function PropertyCard({ property, onSave, saved = false }) {
           </h3>
         </Link>
 
-        {/* Location */}
+        {/* Location — area only; full address revealed after reservation */}
         <div className="flex items-center gap-1 text-xs text-gray-400 mb-3">
           <MapPin size={11} className="shrink-0" />
-          <span className="truncate">{address}</span>
+          <span className="truncate">{displayLocation}</span>
         </div>
 
         {/* Stats */}
