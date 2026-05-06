@@ -252,98 +252,96 @@ export default function ListPropertyPage() {
         // Transition DRAFT → PENDING so the property is visible to admins for review.
         // This only fires if all prior steps succeeded; on any failure the property
         // stays DRAFT (invisible to admin) until cleaned up by the rollback below.
-        await propertyAPI.publish(property.id);
+        setSubmitting(true);
+        let createdPropertyId = null;
+        let uploadedToR2 = []; // track R2 URLs so rollback can clean them up
+        try {
+          const payload = {
+            ...data,
+            bedrooms:  parseInt(data.bedrooms)  || 0,
+            bathrooms: parseInt(data.bathrooms) || 0,
+            toilets:   parseInt(data.toilets)   || 0,
+            // Store the all-inclusive buyer price (base + 10% commission).
+            // The breakdown panel lets the agent see the split before submitting.
+            price:     priceBreakdown ? priceBreakdown.total : parseFloat(data.price),
+            sizeSqm:   data.sizeSqm ? parseFloat(data.sizeSqm) : null,
+            stateId:   data.stateId ? parseInt(data.stateId, 10) : null,
+            lgaId:     data.lgaId ? parseInt(data.lgaId, 10) : null,
+            latitude:  data.latitude ? parseFloat(data.latitude) : null,
+            longitude: data.longitude ? parseFloat(data.longitude) : null,
+            amenities,
+          };
 
-        toast.success('Property listed successfully! Pending review.');
-        navigate(`/properties/${property.id}`);
-    } catch (err) {
-      // Roll back: delete the DB record and any files already uploaded to R2
-      if (createdPropertyId) {
-        await propertyAPI.remove(createdPropertyId).catch(() => {});
-      }
-      await Promise.allSettled(uploadedToR2.map((url) => fileAPI.remove(url)));
-      toast.error(err.response?.data?.message || 'Failed to create listing. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+          const { data: property } = await propertyAPI.create(payload);
+          createdPropertyId = property.id;
 
-  const STEPS = ['Basic Info', 'Location', 'Photos', 'Review'];
+          // Upload images one-by-one. Sequential uploads tolerate large files better
+          // than a single batch request (no shared timeout across all files).
+          if (images.length > 0) {
+            const uploadedUrls = [];
+            const uploadErrors = [];
 
-  return (
-    <div className="max-w-2xl mx-auto page-enter">
-      <div className="mb-8">
-        <h2 className="font-display text-2xl font-bold text-forest-900">List a Property</h2>
-        <p className="text-gray-500 text-sm mt-1">Fill in the details to list your property on Corecity</p>
-      </div>
+            for (let i = 0; i < images.length; i++) {
+              let uploaded = false;
+              for (let attempt = 0; attempt < 2; attempt++) {
+                try {
+                  const { data: result } = await fileAPI.uploadSingle(property.id, images[i]);
+                  if (result.fileUrl) {
+                    uploadedUrls.push(result.fileUrl);
+                    uploadedToR2 = [...uploadedUrls];
+                  }
+                  uploaded = true;
+                  break;
+                } catch (e) {
+                  const status = e.response?.status;
+                  if ((status === 502 || status === 503 || status === 504) && attempt === 0) {
+                    // Wait 3 s then retry once — file-service may still be warming up
+                    await new Promise((r) => setTimeout(r, 3000));
+                    continue;
+                  }
+                  uploadErrors.push(`Image ${i + 1}: ${e.response?.data?.error || e.message}`);
+                  break;
+                }
+              }
+              void uploaded; // suppress unused-var lint
+            }
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-8">
-        {STEPS.map((s, i) => (
-          <React.Fragment key={s}>
-            <div className={`flex items-center gap-2 cursor-pointer ${i + 1 <= step ? 'text-forest-800' : 'text-gray-300'}`}
-              onClick={() => i + 1 < step && setStep(i + 1)}>
-              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
-                i + 1 < step  ? 'bg-forest-800 border-forest-800 text-white' :
-                i + 1 === step ? 'border-forest-800 text-forest-800' :
-                'border-gray-200 text-gray-300'
-              }`}>
-                {i + 1 < step ? <CheckCircle2 size={14} /> : i + 1}
-              </div>
-              <span className="text-xs font-medium hidden sm:block">{s}</span>
-            </div>
-            {i < STEPS.length - 1 && <div className={`flex-1 h-0.5 ${i + 1 < step ? 'bg-forest-800' : 'bg-gray-100'}`} />}
-          </React.Fragment>
-        ))}
-      </div>
+            if (uploadedUrls.length === 0) {
+              // Every image failed — roll back
+              await propertyAPI.remove(property.id).catch(() => {});
+              uploadedToR2 = [];
+              toast.error(uploadErrors.length > 0
+                ? `Image upload failed: ${uploadErrors[0]}. Please try again.`
+                : 'Image upload failed. Please check your files and try again.');
+              return;
+            }
 
-      <form onSubmit={handleSubmit(onSubmit)}>
-        {/* Step 1: Basic Info */}
-        {step === 1 && (
-          <div className="card p-6 space-y-5">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Property Title *</label>
-              <input {...register('title', { required: 'Title is required' })}
-                placeholder="e.g. Spacious 3-Bedroom Duplex in Lekki Phase 1"
-                className="input-field" />
-              {errors.title && <p className="text-red-500 text-xs mt-1">{errors.title.message}</p>}
-            </div>
+            // Register all successfully uploaded images in one call
+            await propertyAPI.registerFiles(property.id, uploadedUrls);
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
-              <textarea {...register('description')} rows={4}
-                placeholder="Describe the property — neighbourhood, features, access roads, proximity to landmarks…"
-                className="input-field resize-none" />
-            </div>
+            if (uploadErrors.length > 0) {
+              toast(`${uploadedUrls.length} image(s) uploaded; ${uploadErrors.length} failed.`, { icon: '⚠️' });
+            }
+          }
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Listing Type *</label>
-                <select {...register('listingType')} className="input-field">
-                  {LISTING_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Property Type *</label>
-                <select {...register('propertyType')} className="input-field">
-                  {PROPERTY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </div>
-            </div>
+          // Transition DRAFT → PENDING so the property is visible to admins for review.
+          // This only fires if all prior steps succeeded; on any failure the property
+          // stays DRAFT (invisible to admin) until cleaned up by the rollback below.
+          await propertyAPI.publish(property.id);
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Price (₦) *</label>
-                <input type="number" {...register('price', { required: 'Price is required', min: 1 })}
-                  placeholder="e.g. 2500000" className="input-field" />
-                {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price.message}</p>}
-
-                {/* Live commission + fee breakdown */}
-                {priceBreakdown && (
-                  <div className="mt-3 bg-forest-50 border border-forest-100 rounded-xl p-4 space-y-1.5 text-xs">
-                    <p className="font-semibold text-forest-900 mb-2">Price breakdown (auto-generated)</p>
-                    <div className="flex justify-between text-gray-600">
-                      <span>Your base price</span>
+          toast.success('Property listed successfully! Pending review.');
+          navigate(`/properties/${property.id}`);
+        } catch (err) {
+          // Roll back: delete the DB record and any files already uploaded to R2
+          if (createdPropertyId) {
+            await propertyAPI.remove(createdPropertyId).catch(() => {});
+          }
+          await Promise.allSettled(uploadedToR2.map((url) => fileAPI.remove(url)));
+          toast.error(err.response?.data?.message || 'Failed to create listing. Please try again.');
+        } finally {
+          setSubmitting(false);
+        }
+      };
                       <span className="font-medium">₦{priceBreakdown.base.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
