@@ -28,9 +28,12 @@ api.interceptors.response.use(
     // timed out before sending the response back, a blind retry would duplicate the
     // operation (e.g. create two properties, two orders, etc.).
     // Non-GET 503s are handled at the gateway level by its own Retry filter.
+    // Pass _noRetry: true in the request config to suppress this retry for
+    // background polling requests whose errors are already silently ignored.
     if (
       (status === 502 || status === 503 || status === 504) &&
       !err.config._retried &&
+      !err.config._noRetry &&
       err.config.method?.toLowerCase() === 'get'
     ) {
       err.config._retried = true;
@@ -168,7 +171,9 @@ export const locationAPI = {
 // ─── Notifications ───────────────────────────────────────────
 export const notificationAPI = {
   getAll:         ()     => api.get('/notifications'),
-  getUnreadCount: ()     => api.get('/notifications/unread-count'),
+  // _noRetry: true — polling errors are already silently swallowed in Navbar;
+  // retrying only creates duplicate requests in DevTools with no benefit.
+  getUnreadCount: ()     => api.get('/notifications/unread-count', { _noRetry: true }),
   markRead:       (id)   => api.post(`/notifications/${id}/read`),
   markAllRead:    ()     => api.post('/notifications/mark-all-read'),
   adminSend:      (data) => api.post('/notifications/admin/send', data),
