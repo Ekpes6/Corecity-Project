@@ -3,7 +3,12 @@ import axios from 'axios';
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || '/api/v1',
   timeout: 15000,
-  headers: { 'Content-Type': 'application/json' },
+  // Do NOT set a global Content-Type here.
+  // Axios sets it automatically based on the body type:
+  //   plain object  → 'application/json'
+  //   FormData      → 'multipart/form-data; boundary=...'
+  // A hardcoded 'application/json' default overrides the FormData detection and
+  // strips the multipart boundary — causing Spring to throw MultipartException.
 });
 
 // Attach JWT on every request
