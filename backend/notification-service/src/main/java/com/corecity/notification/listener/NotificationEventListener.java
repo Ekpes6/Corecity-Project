@@ -25,18 +25,18 @@ public class NotificationEventListener {
 
     @RabbitListener(queues = "notification.queue")
     public void handleNotificationEvent(Map<String, Object> event,
-            @Header(name = "type", required = false) String eventType) {
-        if (eventType == null || eventType.isBlank()) {
-            log.warn("Skipping notification event with missing or empty type header: {}", event);
+            @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
+        if (routingKey == null || routingKey.isBlank()) {
+            log.warn("Skipping notification event with missing routing key: {}", event);
             return;
         }
 
-        switch (eventType) {
-            case "WELCOME" -> handleWelcomeEvent(event);
-            case "PAYMENT_SUCCESS" -> handlePaymentSuccessEvent(event);
-            case "NEW_ENQUIRY" -> handleNewEnquiryEvent(event);
-            case "LISTING_APPROVED" -> handleListingApprovedEvent(event);
-            default -> log.warn("Skipping unknown notification event type: {}", eventType);
+        switch (routingKey) {
+            case "notification.welcome" -> handleWelcomeEvent(event);
+            case "notification.payment_success" -> handlePaymentSuccessEvent(event);
+            case "notification.new_enquiry" -> handleNewEnquiryEvent(event);
+            case "notification.listing_approved" -> handleListingApprovedEvent(event);
+            default -> log.debug("Skipping unhandled notification routing key: {}", routingKey);
         }
     }
 
