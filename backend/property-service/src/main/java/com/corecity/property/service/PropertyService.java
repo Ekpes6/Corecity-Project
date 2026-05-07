@@ -12,8 +12,11 @@ import com.corecity.property.entity.Reservation;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -36,6 +39,9 @@ public class PropertyService {
     private final ObjectMapper objectMapper;
     private final ReservationRepository reservationRepository;
     private final UserServiceClient userServiceClient;
+
+    /** Self-reference so Spring AOP proxies the REQUIRES_NEW incrementViewsNow() call. */
+    @Autowired @Lazy private PropertyService self;
 
     @Transactional
     public PropertyResponse createProperty(CreatePropertyRequest req, Long ownerId, String userRole) {
@@ -153,12 +159,22 @@ public class PropertyService {
         );
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public PropertyResponse getProperty(Long id) {
         return getProperty(id, null, null);
     }
 
-    @Transactional
+    /**
+     * Fetch a property detail page.
+     * <p>
+     * Uses a READ-ONLY transaction so that no row locks are held on the {@code properties}
+     * table.  The HTTP call to user-service (access-level check) happens INSIDE the
+     * read-only transaction which is safe — read-only transactions never hold write locks.
+     * The view counter is incremented AFTER this transaction closes, in its own short
+     * REQUIRES_NEW write transaction, so it can never block or be blocked by concurrent
+     * writes (e.g. reservation completion, status changes).
+     */
+    @Transactional(readOnly = true)
     public PropertyResponse getProperty(Long id, Long requesterId, String requesterRole) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Property property = propertyRepository.findById(safeId)
@@ -181,9 +197,26 @@ public class PropertyService {
             }
         }
 
-        propertyRepository.incrementViews(safeId);
-        property.setViewsCount(property.getViewsCount() + 1);
-        return toResponse(property, requesterId, requesterRole);
+        PropertyResponse response = toResponse(property, requesterId, requesterRole);
+
+        // Increment view counter AFTER the read-only transaction returns, in its own
+        // narrow write transaction.  Best-effort: a failure here must not fail the page load.
+        try {
+            self.incrementViewsNow(safeId);
+        } catch (Exception e) {
+            log.warn("Could not increment view counter for property {}: {}", safeId, e.getMessage());
+        }
+
+        return response;
+    }
+
+    /**
+     * Fires a single-row UPDATE in its own short transaction so it never holds locks
+     * long enough to starve concurrent writes.
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void incrementViewsNow(Long propertyId) {
+        propertyRepository.incrementViews(propertyId);
     }
 
     @Transactional(readOnly = true)
