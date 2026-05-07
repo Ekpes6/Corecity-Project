@@ -100,7 +100,7 @@ public class AppNotificationService {
             try {
                 var response = webClientBuilder.build()
                         .get()
-                        .uri(userServiceUri + "/internal/users/id-by-email?email="
+                        .uri(userServiceUri + "/api/v1/users/internal/id-by-email?email="
                                 + java.net.URLEncoder.encode(req.getUserEmail().trim(),
                                         java.nio.charset.StandardCharsets.UTF_8))
                         .retrieve()
@@ -122,7 +122,7 @@ public class AppNotificationService {
         try {
             List<Long> ids = webClientBuilder.build()
                     .get()
-                    .uri(userServiceUri + "/internal/users/ids-by-role?role=" + role)
+                    .uri(userServiceUri + "/api/v1/users/internal/ids-by-role?role=" + role)
                     .retrieve()
                     .bodyToFlux(Long.class)
                     .collectList()
