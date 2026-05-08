@@ -187,6 +187,11 @@ resilience4j:
         # Paystack HTTP call on wallet top-up can take 15–20 s
         timeoutDuration: 90s
         cancelRunningFuture: true
+      transaction-service-cb:
+        # Wallet payment calls property-service internally with a 15 s timeout,
+        # so the full initiate request can take up to ~16 s.  Give it 35 s headroom.
+        timeoutDuration: 35s
+        cancelRunningFuture: true
   circuitbreaker:
     configs:
       default:
