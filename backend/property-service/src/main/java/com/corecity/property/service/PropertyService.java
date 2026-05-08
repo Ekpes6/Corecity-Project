@@ -159,7 +159,6 @@ public class PropertyService {
         );
     }
 
-    @Transactional(readOnly = true)
     public PropertyResponse getProperty(Long id) {
         return getProperty(id, null, null);
     }
@@ -167,14 +166,12 @@ public class PropertyService {
     /**
      * Fetch a property detail page.
      * <p>
-     * Uses a READ-ONLY transaction so that no row locks are held on the {@code properties}
-     * table.  The HTTP call to user-service (access-level check) happens INSIDE the
-     * read-only transaction which is safe — read-only transactions never hold write locks.
-     * The view counter is incremented AFTER this transaction closes, in its own short
-     * REQUIRES_NEW write transaction, so it can never block or be blocked by concurrent
-     * writes (e.g. reservation completion, status changes).
+     * Intentionally NOT wrapped in a transaction: each repository call uses its own
+     * short-lived transaction automatically (Spring Data default).  This avoids holding
+     * a HikariCP connection open across the HTTP call to user-service and across the
+     * REQUIRES_NEW incrementViewsNow call — both of which would require a second
+     * simultaneous connection and can exhaust the pool under concurrent load.
      */
-    @Transactional(readOnly = true)
     public PropertyResponse getProperty(Long id, Long requesterId, String requesterRole) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Property property = propertyRepository.findById(safeId)
