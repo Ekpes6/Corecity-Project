@@ -12,6 +12,13 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:corecity_user}
     password: ${SPRING_DATASOURCE_PASSWORD:corecity_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 10000
+      validation-timeout: 5000
+      max-lifetime: 240000
+      keepalive-time: 120000
+      minimum-idle: 2
+      maximum-pool-size: 20
   jpa:
     hibernate:
       ddl-auto: validate
