@@ -20,6 +20,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -113,16 +114,11 @@ public class ReservationService {
         });
 
         // Publish event so notification-service can email the customer
-        try {
-            rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_activated",
-                Map.of(
-                    "propertyId", propertyId,
-                    "customerId", customerId,
-                    "expiresAt", reservation.getExpiresAt().toString()
-                ));
-        } catch (Exception e) {
-            log.warn("Could not publish reservation notification", e);
-        }
+        publishAsync("notification.reservation_activated", Map.of(
+            "propertyId", propertyId,
+            "customerId", customerId,
+            "expiresAt", reservation.getExpiresAt().toString()
+        ));
 
         log.info("Reservation {} activated for property {} by customer {}", reference, propertyId, customerId);
 
@@ -162,17 +158,12 @@ public class ReservationService {
         });
 
         // Publish event so notification-service can email the customer with full property details
-        try {
-            rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_activated",
-                Map.of(
-                    "reservationId", reservation.getId(),
-                    "propertyId", reservation.getPropertyId(),
-                    "customerId", reservation.getCustomerId(),
-                    "expiresAt", reservation.getExpiresAt().toString()
-                ));
-        } catch (Exception e) {
-            log.warn("Could not publish reservation activation notification", e);
-        }
+        publishAsync("notification.reservation_activated", Map.of(
+            "reservationId", reservation.getId(),
+            "propertyId", reservation.getPropertyId(),
+            "customerId", reservation.getCustomerId(),
+            "expiresAt", reservation.getExpiresAt().toString()
+        ));
 
         log.info("Reservation {} activated – property {} is now ON_NEGOTIATION until {}",
             reference, reservation.getPropertyId(), reservation.getExpiresAt());
@@ -271,16 +262,11 @@ public class ReservationService {
                 }
             });
 
-            try {
-                rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_expired",
-                    Map.of(
-                        "reservationId", r.getId(),
-                        "propertyId", r.getPropertyId(),
-                        "customerId", r.getCustomerId()
-                    ));
-            } catch (Exception e) {
-                log.warn("Could not publish reservation expiry notification for reservation {}", r.getId());
-            }
+            publishAsync("notification.reservation_expired", Map.of(
+                "reservationId", r.getId(),
+                "propertyId", r.getPropertyId(),
+                "customerId", r.getCustomerId()
+            ));
         }
     }
 
@@ -331,17 +317,12 @@ public class ReservationService {
                 propertyRepository.save(p);
             });
 
-            try {
-                rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_activated",
-                    Map.of(
-                        "reservationId", r.getId(),
-                        "propertyId",    r.getPropertyId(),
-                        "customerId",    r.getCustomerId(),
-                        "expiresAt",     r.getExpiresAt().toString()
-                    ));
-            } catch (Exception e) {
-                log.warn("Could not publish reservation activation notification", e);
-            }
+            publishAsync("notification.reservation_activated", Map.of(
+                "reservationId", r.getId(),
+                "propertyId",    r.getPropertyId(),
+                "customerId",    r.getCustomerId(),
+                "expiresAt",     r.getExpiresAt().toString()
+            ));
         } else {
             log.info("verifyAndActivate: Paystack returned status='{}' for {} — payment not confirmed", result.status(), reference);
         }
@@ -418,13 +399,9 @@ public class ReservationService {
         lifecycleRepository.save(lifecycle);
         log.info("PropertyLifecycle created: type={} property={} endTime={}", lifecycleType, propertyId, endTime);
 
-        // 4. Publish notification event (best-effort)
-        try {
-            rabbitTemplate.convertAndSend("corecity.exchange", "notification.reservation_completed",
-                Map.of("propertyId", propertyId, "buyerId", buyerId, "type", lifecycleType));
-        } catch (Exception e) {
-            log.warn("Could not publish reservation_completed notification", e);
-        }
+        // 4. Publish notification event (best-effort, async — must not block the HTTP response)
+        publishAsync("notification.reservation_completed",
+            Map.of("propertyId", propertyId, "buyerId", buyerId, "type", lifecycleType));
     }
 
     /**
@@ -453,12 +430,8 @@ public class ReservationService {
                 }
             });
 
-            try {
-                rabbitTemplate.convertAndSend("corecity.exchange", "notification.lifecycle_expired",
-                    Map.of("propertyId", lc.getPropertyId(), "userId", lc.getUserId(), "type", lc.getType()));
-            } catch (Exception e) {
-                log.warn("Could not publish lifecycle_expired notification for lifecycle {}", lc.getId());
-            }
+            publishAsync("notification.lifecycle_expired",
+                Map.of("propertyId", lc.getPropertyId(), "userId", lc.getUserId(), "type", lc.getType()));
         }
     }
 
@@ -537,5 +510,20 @@ public class ReservationService {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Fire-and-forget RabbitMQ publish. Runs on a separate thread so it never
+     * blocks the calling {@code @Transactional} method or delays the HTTP response
+     * back to transaction-service.
+     */
+    private void publishAsync(String routingKey, Object payload) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                rabbitTemplate.convertAndSend("corecity.exchange", routingKey, payload);
+            } catch (Exception e) {
+                log.warn("Could not publish {} event: {}", routingKey, e.getMessage());
+            }
+        });
     }
 }
