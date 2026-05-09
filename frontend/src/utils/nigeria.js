@@ -97,7 +97,10 @@ export const normalizePhone = (phone) => {
 
 // ─── Date ─────────────────────────────────────────────────────
 export const timeAgo = (dateStr) => {
-  const diff = Date.now() - new Date(dateStr).getTime();
+  // Append 'Z' if no timezone info present so the browser treats it as UTC,
+  // not local time — prevents e.g. Africa/Lagos (UTC+1) showing "1h ago" for "just now".
+  const normalized = dateStr && !dateStr.endsWith('Z') && !dateStr.includes('+') ? dateStr + 'Z' : dateStr;
+  const diff = Date.now() - new Date(normalized).getTime();
   const mins  = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days  = Math.floor(diff / 86400000);
@@ -110,7 +113,8 @@ export const timeAgo = (dateStr) => {
 /** Format a date/time in 12-hour clock, e.g. "29 Apr 2026, 7:09 PM" */
 export const formatDateTime = (dateStr) => {
   if (!dateStr) return '';
-  return new Date(dateStr).toLocaleString('en-NG', {
+  const normalized = !dateStr.endsWith('Z') && !dateStr.includes('+') ? dateStr + 'Z' : dateStr;
+  return new Date(normalized).toLocaleString('en-NG', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: 'numeric', minute: '2-digit', hour12: true,
   });
