@@ -260,4 +260,18 @@ public class TransactionService {
             .authorizationUrl(tx.getAuthorizationUrl())
             .createdAt(tx.getCreatedAt()).build();
     }
+
+    /**
+     * Fire-and-forget RabbitMQ publish. Runs on a separate thread so it never
+     * blocks the calling @Transactional method or delays the HTTP response.
+     */
+    private void publishAsync(String routingKey, Object payload) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                rabbitTemplate.convertAndSend("corecity.exchange", routingKey, payload);
+            } catch (Exception e) {
+                log.warn("Could not publish {} event: {}", routingKey, e.getMessage());
+            }
+        });
+    }
 }
