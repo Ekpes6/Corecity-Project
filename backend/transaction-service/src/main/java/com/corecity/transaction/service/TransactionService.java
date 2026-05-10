@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 @Service
@@ -87,7 +88,7 @@ public class TransactionService {
         }
 
         try {
-            rabbitTemplate.convertAndSend("corecity.exchange", "notification.payment_success", Map.of(
+            publishAsync("notification.payment_success", Map.of(
                 "buyerId", walletTx.getBuyerId(), "sellerId", walletTx.getSellerId(),
                 "amount", walletTx.getAmount(), "reference", reference,
                 "propertyId", walletTx.getPropertyId(),
@@ -144,8 +145,8 @@ public class TransactionService {
                     tx.getPropertyId(), tx.getBuyerId(), tx.getType().name(), tx.getLeaseDays());
             }
 
-            // Notify both parties
-            rabbitTemplate.convertAndSend("corecity.exchange", "notification.payment_success", Map.of(
+            // Notify both parties (async — must not block the HTTP response or the @Transactional commit)
+            publishAsync("notification.payment_success", Map.of(
                 "buyerId", tx.getBuyerId(), "sellerId", tx.getSellerId(),
                 "amount", tx.getAmount(), "reference", reference,
                 "propertyId", tx.getPropertyId(),
