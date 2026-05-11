@@ -53,7 +53,7 @@ public class PropertyServiceClient {
                 .header("X-User-Id", String.valueOf(buyerId))
                 .bodyValue(body)
                 .retrieve()
-                .bodyToMono(Void.class)
+                .toBodilessEntity()
                 .timeout(Duration.ofSeconds(15))
                 .block();
 
