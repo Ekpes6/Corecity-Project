@@ -16,7 +16,7 @@ B  mysql:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      # Bind to localhost only â€” not reachable from outside the host machine
+      # Bind to localhost only - not reachable from outside the host machine
       - "127.0.0.1:3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
@@ -72,7 +72,7 @@ B  mysql:
     container_name: corecity-gateway
     restart: on-failure
     ports:
-      # Bound to localhost only — all external traffic enters via ssl-proxy
+      # Bound to localhost only - all external traffic enters via ssl-proxy
       - "127.0.0.1:8080:8080"
     environment:
       - SPRING_PROFILES_ACTIVE=docker
@@ -316,7 +316,7 @@ B  mysql:
     container_name: corecity-frontend
     restart: on-failure
     ports:
-      # Bound to localhost — external traffic enters via ssl-proxy on 443
+      # Bound to localhost - external traffic enters via ssl-proxy on 443
       - "127.0.0.1:3000:80"
     depends_on:
       api-gateway:
