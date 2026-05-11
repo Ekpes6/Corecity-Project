@@ -1,6 +1,6 @@
 ﻿version: '3.8'
 services:
-  # --- Database ---
+  # --- Database ------
   mysql:
     image: mysql:8.0
     #command: --max_allowed_packet=256M --net_read_timeout=600 --net_write_timeout=600
