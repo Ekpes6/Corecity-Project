@@ -107,7 +107,7 @@ services:
     networks:
       - corecity-network
 
-  # --- Microservices ---
+  # --- Microservices ------
   user-service:
     build:
       context: ./backend
