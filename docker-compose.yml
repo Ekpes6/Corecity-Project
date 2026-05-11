@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 ﻿services:
 <<<<<<< HEAD
   # â”€â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 B  mysql:
 =======
+=======
+﻿version: '3.8'
+services:
+>>>>>>> dd7275f5fc5f1ad3206cbec5bb4366027e800269
   # --- Database ---
   mysql:
 >>>>>>> 7f86f83067d11385bb098133fd3242ebf3d72227
@@ -36,7 +41,7 @@ B  mysql:
     networks:
       - corecity-network
 
-  # --- Message Broker ---
+# --- Message Broker ---
   rabbitmq:
     image: rabbitmq:3-management
     container_name: corecity-rabbitmq
@@ -111,7 +116,7 @@ B  mysql:
     networks:
       - corecity-network
 
-  # --- Microservices ---
+  # --- Microservices ------
   user-service:
     build:
       context: ./backend
