@@ -50,6 +50,7 @@ public class PropertyServiceClient {
 
             webClient.post()
                 .uri("/api/v1/reservations/internal/complete")
+                .header("X-User-Id", String.valueOf(buyerId))
                 .bodyValue(body)
                 .retrieve()
                 .bodyToMono(Void.class)
