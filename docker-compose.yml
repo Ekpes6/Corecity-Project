@@ -31,6 +31,8 @@
     networks:
       - corecity-network
 
+version: '3.8'
+services:
   # --- Message Broker ---
   rabbitmq:
     image: rabbitmq:3-management
