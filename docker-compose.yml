@@ -1,4 +1,5 @@
-﻿services:
+﻿version: '3.8'
+services:
   # --- Database ---
   mysql:
     image: mysql:8.0
@@ -31,9 +32,7 @@
     networks:
       - corecity-network
 
-version: '3.8'
-services:
-  # --- Message Broker ---
+# --- Message Broker ---
   rabbitmq:
     image: rabbitmq:3-management
     container_name: corecity-rabbitmq
