@@ -1,16 +1,7 @@
-<<<<<<< HEAD
-﻿services:
-<<<<<<< HEAD
-  # â”€â”€â”€ Database â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-B  mysql:
-=======
-=======
 ﻿version: '3.8'
 services:
->>>>>>> dd7275f5fc5f1ad3206cbec5bb4366027e800269
   # --- Database ---
   mysql:
->>>>>>> 7f86f83067d11385bb098133fd3242ebf3d72227
     image: mysql:8.0
     #command: --max_allowed_packet=256M --net_read_timeout=600 --net_write_timeout=600
     container_name: corecity-mysql
