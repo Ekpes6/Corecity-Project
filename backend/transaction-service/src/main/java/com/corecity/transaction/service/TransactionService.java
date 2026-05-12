@@ -97,8 +97,8 @@ public class TransactionService {
         if (walletTx.getType() == Transaction.TransactionType.PURCHASE
                 || walletTx.getType() == Transaction.TransactionType.RENT) {
             createCommission(walletTx);
-            propertyServiceClient.completeReservation(
-                walletTx.getPropertyId(), walletTx.getBuyerId(), walletTx.getType().name(), walletTx.getLeaseDays());
+            notifyPropertyServiceAsync(walletTx.getPropertyId(), walletTx.getBuyerId(),
+                walletTx.getType().name(), walletTx.getLeaseDays());
         }
 
         try {
@@ -152,11 +152,11 @@ public class TransactionService {
             }
 
             // Notify property-service to complete the reservation and start lifecycle countdown.
-            // This is best-effort: failures are logged but don't affect the transaction result.
+            // This is best-effort and async — must not delay the HTTP response or the @Transactional commit.
             if (tx.getType() == Transaction.TransactionType.PURCHASE
                     || tx.getType() == Transaction.TransactionType.RENT) {
-                propertyServiceClient.completeReservation(
-                    tx.getPropertyId(), tx.getBuyerId(), tx.getType().name(), tx.getLeaseDays());
+                notifyPropertyServiceAsync(tx.getPropertyId(), tx.getBuyerId(),
+                    tx.getType().name(), tx.getLeaseDays());
             }
 
             // Notify both parties (async — must not block the HTTP response or the @Transactional commit)
@@ -273,6 +273,15 @@ public class TransactionService {
             .paymentChannel(tx.getPaymentChannel())
             .authorizationUrl(tx.getAuthorizationUrl())
             .createdAt(tx.getCreatedAt()).build();
+    }
+
+    /**
+     * Fire-and-forget property-service notification. Runs on a separate thread so it never
+     * blocks the calling @Transactional method or delays the HTTP response.
+     */
+    private void notifyPropertyServiceAsync(Long propertyId, Long buyerId, String type, Integer leaseDays) {
+        CompletableFuture.runAsync(() ->
+            propertyServiceClient.completeReservation(propertyId, buyerId, type, leaseDays));
     }
 
     /**
