@@ -101,7 +101,7 @@ class TransactionServiceTest {
 
     @Test
     @SuppressWarnings("null")
-    void verifyTransaction_successfulPayment_setsStatusAndPublishesEvent() {
+    void verifyTransaction_successfulPayment_setsStatusAndPublishesEvent() throws InterruptedException {
         var tx = buildTransaction(1L, Transaction.TransactionStatus.PENDING);
         when(transactionRepository.findByReference("REF-001")).thenReturn(Optional.of(tx));
         when(paystackService.verifyTransaction("REF-001"))
@@ -110,6 +110,9 @@ class TransactionServiceTest {
         when(commissionRepository.findByTransactionId(anyLong())).thenReturn(Optional.empty());
 
         var response = transactionService.verifyTransaction("REF-001");
+
+        // publishAsync fires on a separate thread — give it time to complete
+        Thread.sleep(500);
 
         assertThat(response.getStatus()).isEqualTo("SUCCESS");
         verify(rabbitTemplate).convertAndSend(eq("corecity.exchange"),
