@@ -335,7 +335,7 @@ export default function PropertyDetailPage() {
 
             {user?.id !== property.ownerId && (
               <>
-                {mySuccessTransaction ? (
+                {mySuccessTransaction && ['SHORTLET', 'RENTED', 'SOLD'].includes(property.status) ? (
                   <div className="w-full mb-2">
                     <button disabled
                       className="btn-primary w-full opacity-60 cursor-not-allowed">
