@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,15 +30,24 @@ public class PropertyServiceClient {
     }
 
     /**
-     * Notify property-service that a PURCHASE or RENT transaction succeeded.
-     * Property-service will mark the reservation COMPLETED, update property status,
-     * and create a lifecycle record.
-     *
-     * @param propertyId      the property involved in the transaction
-     * @param buyerId         the buyer who made the payment
-     * @param transactionType "PURCHASE" or "RENT"
-     * @param leaseDays       optional rental duration (null → property-service defaults apply)
+     * Fetch the current status of a property from property-service.
+     * Returns null if the property cannot be reached (treat as non-blocking).
      */
+    public String getPropertyStatus(Long propertyId) {
+        try {
+            return webClient.get()
+                .uri("/api/v1/properties/" + propertyId)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(5))
+                .map(node -> node.path("status").asText(null))
+                .block();
+        } catch (Exception e) {
+            log.warn("Could not fetch property {} status: {}", propertyId, e.getMessage());
+            return null;
+        }
+    }
+
     public void completeReservation(Long propertyId, Long buyerId, String transactionType, Integer leaseDays) {
         try {
             Map<String, Object> body = new HashMap<>();

@@ -42,20 +42,34 @@ public class TransactionService {
     public InitTransactionResponse initTransaction(InitTransactionRequest req, Long buyerId) {
         Long safeBuyerId = Objects.requireNonNull(buyerId, "buyer id must not be null");
 
-        // Guard 1: block if a successful transaction already exists for this buyer+property.
-        // This prevents a second Paystack charge if the buyer uses browser-back and clicks again.
-        boolean alreadyPaid = transactionRepository
+        // Guard 1: block duplicate payment only when the property is still occupied.
+        // For SHORTLET/RENT, once the lifecycle expires the property returns to ACTIVE
+        // and the buyer must be able to book again. For PURCHASE (SOLD), block forever.
+        transactionRepository
             .findTopByPropertyIdAndBuyerIdAndStatusInOrderByCreatedAtDesc(
                 req.getPropertyId(), safeBuyerId,
                 List.of(Transaction.TransactionStatus.SUCCESS))
-            .isPresent();
-        if (alreadyPaid) {
-            log.warn("Duplicate initTransaction blocked: buyer {} already has a SUCCESS transaction for property {}",
-                safeBuyerId, req.getPropertyId());
-            throw new org.springframework.web.server.ResponseStatusException(
-                org.springframework.http.HttpStatus.CONFLICT,
-                "A payment for this property has already been completed.");
-        }
+            .ifPresent(prev -> {
+                boolean isPurchase = prev.getType() == Transaction.TransactionType.PURCHASE;
+                if (isPurchase) {
+                    log.warn("Duplicate PURCHASE blocked: buyer {} already owns property {}",
+                        safeBuyerId, req.getPropertyId());
+                    throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "A payment for this property has already been completed.");
+                }
+                // For RENT/SHORTLET, only block if the property is still occupied
+                String currentStatus = propertyServiceClient.getPropertyStatus(req.getPropertyId());
+                boolean stillOccupied = currentStatus != null
+                    && (currentStatus.equals("SHORTLET") || currentStatus.equals("RENTED"));
+                if (stillOccupied) {
+                    log.warn("Duplicate RENT/SHORTLET blocked: property {} still occupied (status={})",
+                        req.getPropertyId(), currentStatus);
+                    throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "A payment for this property has already been completed.");
+                }
+            });
 
         // UUID reference: globally unique, no millisecond-collision risk under concurrent load
         String reference = "HLK-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
