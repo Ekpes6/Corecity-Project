@@ -407,9 +407,9 @@ public class ReservationService {
     /**
      * Scheduled task: expire ACTIVE lifecycle records whose end_time has passed.
      * Reverts RENTED / SHORTLET properties back to ACTIVE so new reservations can be made.
-     * Runs every hour, same cadence as the other scheduled tasks.
+     * Runs every 5 minutes for responsive status updates.
      */
-    @Scheduled(fixedDelay = 3_600_000)
+    @Scheduled(fixedDelay = 300_000)
     @Transactional
     public void expireLifecycles() {
         List<PropertyLifecycle> expired = lifecycleRepository.findExpiredActive(LocalDateTime.now());
