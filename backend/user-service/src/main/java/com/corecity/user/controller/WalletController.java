@@ -135,6 +135,33 @@ public class WalletController {
     }
 
     /**
+     * PATCH /api/v1/users/me/wallet/withdrawals/{id}/process
+     * Admin: mark a PENDING withdrawal as PROCESSED (bank transfer sent) or REJECTED (refund wallet).
+     * Body: { "status": "PROCESSED"|"REJECTED", "adminNote": "optional note" }
+     */
+    @PatchMapping("/withdrawals/{id}/process")
+    public ResponseEntity<WithdrawalRequest> processWithdrawal(
+            @RequestHeader(value = "X-User-Role", defaultValue = "") String role,
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        Object statusRaw = body.get("status");
+        if (statusRaw == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        WithdrawalRequest.Status newStatus;
+        try {
+            newStatus = WithdrawalRequest.Status.valueOf(statusRaw.toString().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        String adminNote = body.get("adminNote") != null ? body.get("adminNote").toString() : null;
+        return ResponseEntity.ok(walletService.processWithdrawal(id, newStatus, adminNote));
+    }
+
+    /**
      * Paystack webhook endpoint for wallet funding events.
      *
      * Security: every request is verified using HMAC-SHA512 of the raw request body

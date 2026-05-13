@@ -202,12 +202,14 @@ export const bankAccountAPI = {
 
 // ─── Wallet ──────────────────────────────────────────────────
 export const walletAPI = {
-  getBalance:    ()          => api.get('/users/me/wallet'),
-  fund:          (data)      => api.post('/users/me/wallet/fund', data),
-  getHistory:    ()          => api.get('/users/me/wallet/transactions'),
-  verify:        (reference) => api.post(`/users/me/wallet/transactions/${reference}/verify`),
-  withdraw:      (data)      => api.post('/users/me/wallet/withdraw', data),
-  getWithdrawals:()          => api.get('/users/me/wallet/withdrawals'),
+  getBalance:      ()               => api.get('/users/me/wallet'),
+  fund:            (data)           => api.post('/users/me/wallet/fund', data),
+  getHistory:      ()               => api.get('/users/me/wallet/transactions'),
+  verify:          (reference)      => api.post(`/users/me/wallet/transactions/${reference}/verify`),
+  withdraw:        (data)           => api.post('/users/me/wallet/withdraw', data),
+  getWithdrawals:  ()               => api.get('/users/me/wallet/withdrawals'),
+  getAllWithdrawals:()               => api.get('/users/me/wallet/withdrawals/all'),
+  processWithdrawal:(id, data)      => api.patch(`/users/me/wallet/withdrawals/${id}/process`, data),
 };
 
 export default api;

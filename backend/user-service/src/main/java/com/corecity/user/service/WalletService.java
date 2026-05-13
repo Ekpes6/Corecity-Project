@@ -439,6 +439,54 @@ public class WalletService {
     }
 
     /**
+     * Admin: mark a withdrawal request as PROCESSED or REJECTED.
+     * If REJECTED, the debited amount is refunded to the user's wallet.
+     */
+    @Transactional
+    public WithdrawalRequest processWithdrawal(Long requestId, WithdrawalRequest.Status newStatus, String adminNote) {
+        WithdrawalRequest request = withdrawalRequestRepository.findById(requestId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Withdrawal request not found"));
+
+        if (request.getStatus() != WithdrawalRequest.Status.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Request is already " + request.getStatus() + " and cannot be updated");
+        }
+        if (newStatus == WithdrawalRequest.Status.PENDING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New status must be PROCESSED or REJECTED");
+        }
+
+        request.setStatus(newStatus);
+        request.setAdminNote(adminNote);
+
+        if (newStatus == WithdrawalRequest.Status.REJECTED) {
+            // Refund the amount back to the user's wallet
+            Wallet wallet = walletRepository.findByUserId(request.getUserId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User wallet not found"));
+            wallet.setBalance(wallet.getBalance().add(request.getAmount()));
+            walletRepository.save(wallet);
+
+            // Record a credit transaction for the reversal
+            WalletTransaction refund = WalletTransaction.builder()
+                .walletId(wallet.getId())
+                .type(WalletTransaction.Type.CREDIT)
+                .amount(request.getAmount())
+                .reference("REF-" + request.getReference())
+                .description("Withdrawal rejected — refund for " + request.getReference())
+                .status(WalletTransaction.Status.SUCCESSFUL)
+                .build();
+            walletTransactionRepository.save(refund);
+            log.info("Withdrawal rejected and refunded: ref={} userId={} amount=₦{}",
+                request.getReference(), request.getUserId(), request.getAmount());
+        } else {
+            log.info("Withdrawal processed: ref={} userId={} amount=₦{} → {} {}",
+                request.getReference(), request.getUserId(), request.getAmount(),
+                request.getBankName(), request.getAccountName());
+        }
+
+        return withdrawalRequestRepository.save(request);
+    }
+
+    /**
      * Runs every 5 minutes. Finds PENDING wallet top-ups that are older than 15 minutes
      * (i.e. the user never reached the Paystack checkout — usually because the API gateway
      * timed out before user-service could return the authorization URL).

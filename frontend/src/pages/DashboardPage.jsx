@@ -1345,6 +1345,131 @@ function ReputationPage() {
   );
 }
 
+// ── Admin Withdrawals Page ──────────────────────────────────────────────────
+function WithdrawalsAdminPage() {
+  const { isAdmin } = useAuth();
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [processing, setProcessing] = useState(null); // id being actioned
+  const [noteMap, setNoteMap]   = useState({});        // id -> note text
+
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { data } = await walletAPI.getAllWithdrawals();
+      setRequests(data);
+    } catch {
+      toast.error('Could not load withdrawal requests');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { if (isAdmin) load(); }, [isAdmin, load]);
+
+  const handleAction = async (id, status) => {
+    const note = noteMap[id] || '';
+    if (!window.confirm(`Mark this withdrawal as ${status}?${status === 'REJECTED' ? '\nThe amount will be refunded to the user\'s wallet.' : ''}`)) return;
+    try {
+      setProcessing(id);
+      await walletAPI.processWithdrawal(id, { status, adminNote: note });
+      toast.success(`Withdrawal marked as ${status}`);
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Action failed');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const STATUS_STYLE = {
+    PENDING:   'bg-yellow-100 text-yellow-800',
+    PROCESSED: 'bg-green-100 text-green-700',
+    REJECTED:  'bg-red-100 text-red-600',
+  };
+
+  if (!isAdmin) return <p className="text-gray-500">Access denied.</p>;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl font-bold text-forest-900">Withdrawal Requests</h2>
+        <button onClick={load} className="btn-secondary flex items-center gap-2 text-sm">
+          <RefreshCw size={15} /> Refresh
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 text-gray-400 py-10">
+          <RefreshCw size={18} className="animate-spin" /> Loading…
+        </div>
+      ) : requests.length === 0 ? (
+        <div className="card text-center py-16">
+          <Banknote size={36} className="mx-auto mb-3 text-gray-200" />
+          <p className="text-gray-400">No withdrawal requests yet.</p>
+        </div>
+      ) : (
+        <div className="card divide-y divide-gray-50">
+          {requests.map((r) => (
+            <div key={r.id} className="px-5 py-5 space-y-3">
+              {/* Header row */}
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">{r.reference}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">User #{r.userId} · {r.createdAt ? new Date(r.createdAt).toLocaleString('en-NG') : '—'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-gray-800 naira">
+                    ₦{Number(r.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                  </p>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLE[r.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                    {r.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bank details */}
+              <div className="bg-gray-50 rounded-xl px-4 py-3 text-sm">
+                <p className="font-medium text-gray-700">{r.bankName}</p>
+                <p className="text-gray-500">{r.accountName} · {r.accountNumber}</p>
+              </div>
+
+              {r.adminNote && (
+                <p className="text-xs text-gray-500 italic">Note: {r.adminNote}</p>
+              )}
+
+              {/* Actions — only for PENDING */}
+              {r.status === 'PENDING' && (
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <input
+                    type="text"
+                    placeholder="Optional admin note…"
+                    value={noteMap[r.id] || ''}
+                    onChange={(e) => setNoteMap((m) => ({ ...m, [r.id]: e.target.value }))}
+                    className="input-field flex-1 text-sm"
+                  />
+                  <button
+                    disabled={processing === r.id}
+                    onClick={() => handleAction(r.id, 'PROCESSED')}
+                    className="btn-primary text-sm whitespace-nowrap flex items-center gap-1.5">
+                    <CheckCircle size={14} /> Mark Processed
+                  </button>
+                  <button
+                    disabled={processing === r.id}
+                    onClick={() => handleAction(r.id, 'REJECTED')}
+                    className="btn-secondary text-sm whitespace-nowrap text-red-600 border-red-200 hover:bg-red-50 flex items-center gap-1.5">
+                    <XCircle size={14} /> Reject & Refund
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main dashboard shell ────────────────────────────────────────
 export default function DashboardPage() {
   const { user, logout, isSeller, isAdmin, isAgent } = useAuth();
@@ -1355,6 +1480,7 @@ export default function DashboardPage() {
     { to: '/dashboard/listings',      label: 'My Listings',    icon: Home },
     { to: '/dashboard/list',          label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
     { to: '/dashboard/moderation',    label: 'Moderation',     icon: ShieldCheck, adminOnly: true },
+    { to: '/dashboard/withdrawals',   label: 'Withdrawals',    icon: Banknote,    adminOnly: true },
     { to: '/dashboard/payments',      label: 'Payments',       icon: CreditCard },
     { to: '/dashboard/commissions',   label: 'Commissions',    icon: Landmark,    agentAdminOrSeller: true },
     { to: '/dashboard/reservations',  label: 'Reservations',   icon: CalendarCheck },
@@ -1441,6 +1567,7 @@ export default function DashboardPage() {
             <Route path="reputation"   element={<ReputationPage />} />
             <Route path="messages"     element={<MessagesPage />} />
             <Route path="account"      element={<AccountPage />} />
+            <Route path="withdrawals"  element={<WithdrawalsAdminPage />} />
             <Route path="settings"     element={<SettingsPage />} />
           </Routes>
         </main>
