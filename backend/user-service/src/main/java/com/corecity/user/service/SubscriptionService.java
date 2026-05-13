@@ -386,6 +386,30 @@ public class SubscriptionService {
     }
 
     /**
+     * One-time admin backfill: credit loan repayment income to the admin wallet
+     * for every REPAID loan that existed before the creditWallet code was deployed.
+     * Safe to call multiple times — duplicate references are rejected by wallet service.
+     */
+    public Map<String, Integer> backfillLoanRepaymentIncome() {
+        List<AgentLoan> repaid = loanRepo.findByStatus(AgentLoan.LoanStatus.REPAID);
+        int processed = 0;
+        for (AgentLoan loan : repaid) {
+            if (loan.getRepaymentReference() == null) continue;
+            try {
+                walletService.creditWallet(adminUserId, loan.getLoanAmount(),
+                    "REP-INCOME-" + loan.getRepaymentReference(),
+                    "Backfill loan repayment income: loan " + loan.getId());
+                log.info("Backfill loan repayment income: loanId={} ref={}", loan.getId(), loan.getRepaymentReference());
+            } catch (Exception e) {
+                log.warn("Backfill loan credit failed for loan={}: {}", loan.getId(), e.getMessage());
+            }
+            processed++;
+        }
+        log.info("Backfill loan repayment income complete: {} loans processed", processed);
+        return Map.of("processed", processed);
+    }
+
+    /**
      * Verify a loan repayment by REP- reference.
      * If the repayment is still PENDING, calls Paystack live and confirms if successful.
      * Used by the payment verify page as a fallback when the webhook hasn't fired yet.

@@ -109,6 +109,20 @@ public class ReservationController {
     }
 
     /**
+     * POST /api/v1/reservations/backfill-income — ADMIN only.
+     * Credits ₦1,000 reservation fee income to admin wallet for all historical paid reservations.
+     * Safe to call multiple times (duplicate references rejected by user-service).
+     */
+    @PostMapping("/api/v1/reservations/backfill-income")
+    public ResponseEntity<Map<String, Integer>> backfillIncome(
+            @RequestHeader(value = "X-User-Role", defaultValue = "") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(reservationService.backfillReservationIncome());
+    }
+
+    /**
      * Get the active reservation for a property (owner or admin only).
      *
      * GET /api/v1/properties/{id}/reservation

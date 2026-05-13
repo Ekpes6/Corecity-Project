@@ -154,6 +154,21 @@ public class SubscriptionController {
     }
 
     /**
+     * POST /api/v1/subscriptions/loans/backfill-income — ADMIN only.
+     * Credits loan repayment income to admin wallet for all historical REPAID loans.
+     * Safe to call multiple times (duplicate references rejected by wallet service).
+     */
+    @PostMapping("/loans/backfill-income")
+    public ResponseEntity<Map<String, Integer>> backfillLoanIncome(
+            @RequestHeader("X-User-Role") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.FORBIDDEN, "Admin only");
+        }
+        return ResponseEntity.ok(subscriptionService.backfillLoanRepaymentIncome());
+    }
+
+    /**
      * GET /api/v1/subscriptions/loans/verify-repayment/{reference}
      * Called by the payment verify page after Paystack redirects back for REP- references.
      * Falls back to a live Paystack call if the webhook hasn't fired yet.

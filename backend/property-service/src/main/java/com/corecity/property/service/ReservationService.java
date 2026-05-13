@@ -178,6 +178,31 @@ public class ReservationService {
             reference, reservation.getPropertyId(), reservation.getExpiresAt());
     }
 
+    /**
+     * One-time admin backfill: credit ₦1,000 reservation fee income to the admin wallet
+     * for every reservation that was paid before the creditWallet code was deployed.
+     * Safe to call multiple times — duplicate references are rejected by user-service.
+     */
+    public Map<String, Integer> backfillReservationIncome() {
+        List<Reservation> paid = reservationRepository.findByStatusNotIn(
+            List.of(Reservation.ReservationStatus.PENDING_PAYMENT, Reservation.ReservationStatus.EXPIRED));
+        int processed = 0;
+        for (Reservation r : paid) {
+            if (r.getPaymentReference() == null) continue;
+            try {
+                userServiceClient.creditWallet(adminUserId, reservationFee,
+                    "RSV-INCOME-" + r.getPaymentReference(),
+                    "Backfill reservation fee income: property " + r.getPropertyId());
+                log.info("Backfill reservation income: ref={}", r.getPaymentReference());
+            } catch (Exception e) {
+                log.warn("Backfill reservation credit failed for ref={}: {}", r.getPaymentReference(), e.getMessage());
+            }
+            processed++;
+        }
+        log.info("Backfill reservation income complete: {} reservations processed", processed);
+        return Map.of("processed", processed);
+    }
+
     /** Admin-only: all reservations across all customers. */
     @Transactional(readOnly = true)
     public List<ReservationResponse> getAllReservations() {

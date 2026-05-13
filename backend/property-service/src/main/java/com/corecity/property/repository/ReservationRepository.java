@@ -32,4 +32,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             Long propertyId, Long customerId, List<Reservation.ReservationStatus> statuses);
     /** Admin: all reservations, newest first. */
     List<Reservation> findAllByOrderByCreatedAtDesc();
+
+    /** All paid reservations (not PENDING_PAYMENT or EXPIRED) — used for backfill. */
+    List<Reservation> findByStatusNotIn(List<Reservation.ReservationStatus> statuses);
 }
