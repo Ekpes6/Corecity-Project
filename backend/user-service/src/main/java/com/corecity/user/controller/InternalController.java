@@ -45,6 +45,22 @@ public class InternalController {
     }
 
     /**
+     * Credit a user's wallet on behalf of another service (e.g., transaction-service disbursing commissions).
+     * Body: { "userId": Long, "amount": BigDecimal, "reference": String, "description": String }
+     */
+    @PostMapping("/wallet/credit")
+    public ResponseEntity<Void> internalCredit(@RequestBody Map<String, Object> body) {
+        Long userId       = Long.valueOf(body.get("userId").toString());
+        BigDecimal amount  = new BigDecimal(body.get("amount").toString());
+        String reference   = body.get("reference").toString();
+        String description = body.get("description").toString();
+
+        log.info("Internal wallet credit: userId={} amount={} ref={}", userId, amount, reference);
+        walletService.creditWallet(userId, amount, reference, description);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * Returns a list of user IDs matching the given role (e.g. AGENT, BUYER).
      * Pass role=ALL to return every user ID.
      */

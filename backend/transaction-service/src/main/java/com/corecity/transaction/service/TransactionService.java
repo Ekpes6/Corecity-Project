@@ -20,6 +20,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +37,10 @@ public class TransactionService {
     private final ObjectMapper objectMapper;
     private final PropertyServiceClient propertyServiceClient;
     private final UserServiceClient userServiceClient;
+
+    /** The user ID of the CoreCity platform admin account — receives the 3% platform fee. */
+    @Value("${corecity.admin.user-id:1}")
+    private Long adminUserId;
 
     @Transactional
     @SuppressWarnings("null") // Lombok builder returns unannotated Transaction; Spring Data save() is @NonNull — safe at runtime
@@ -230,6 +235,19 @@ public class TransactionService {
             .build();
         commissionRepository.save(Objects.requireNonNull(commission));
         log.info("Commission created for tx={}: CoreCity={} Agent={}", tx.getId(), coreCityC, agentC);
+
+        // Disburse immediately: credit agent's wallet (7%) and admin's wallet (3%).
+        // Run on a background thread — disbursement failures must not roll back the transaction.
+        final Long agentId    = tx.getSellerId();
+        final String txRef    = tx.getReference();
+        CompletableFuture.runAsync(() -> {
+            userServiceClient.creditWallet(agentId, agentC,
+                "CMM-AGENT-" + txRef, "Commission (agent 7%): tx " + txRef);
+            userServiceClient.creditWallet(adminUserId, coreCityC,
+                "CMM-ADMIN-" + txRef, "Commission (platform 3%): tx " + txRef);
+            commission.setStatus(Commission.CommissionStatus.DISBURSED);
+            commissionRepository.save(commission);
+        });
     }
 
     public List<CommissionResponse> getMyCommissions(Long agentId) {

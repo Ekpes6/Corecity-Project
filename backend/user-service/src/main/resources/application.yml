@@ -58,6 +58,10 @@ paystack:
   secret-key: ${PAYSTACK_SECRET_KEY}
   callback-url: ${PAYSTACK_CALLBACK_URL:https://corecity.com.ng/payment/verify}
 
+corecity:
+  admin:
+    user-id: ${CORECITY_ADMIN_USER_ID:1}
+
 management:
   server:
     port: 9091

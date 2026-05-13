@@ -42,6 +42,10 @@ public class ReservationService {
     @Value("${reservation.negotiation-days:5}")
     private int negotiationDays;
 
+    /** The CoreCity admin user ID — reservation fees are credited to this wallet. */
+    @Value("${corecity.admin.user-id:1}")
+    private Long adminUserId;
+
     /**
      * Initiate a reservation for an ACTIVE property.
      * Debits ₦1,000 from the customer's wallet and activates the reservation immediately.
@@ -95,6 +99,11 @@ public class ReservationService {
         // Debit wallet and activate reservation immediately
         userServiceClient.debitWallet(customerId, reservationFee, reference,
             "Reservation fee: property " + propertyId);
+
+        // Credit the reservation fee to the admin wallet asynchronously (best-effort).
+        CompletableFuture.runAsync(() ->
+            userServiceClient.creditWallet(adminUserId, reservationFee,
+                "RSV-INCOME-" + reference, "Reservation fee income: property " + propertyId));
 
         LocalDateTime now = LocalDateTime.now();
         Reservation reservation = Reservation.builder()

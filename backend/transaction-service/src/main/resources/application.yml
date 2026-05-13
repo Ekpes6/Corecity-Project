@@ -34,6 +34,10 @@ services:
   property-service-url: ${PROPERTY_SERVICE_URL:http://property-service:8082}
   user-service-url: ${USER_SERVICE_URL:http://user-service:8081}
 
+corecity:
+  admin:
+    user-id: ${CORECITY_ADMIN_USER_ID:1}
+
 management:
   server:
     port: 9091

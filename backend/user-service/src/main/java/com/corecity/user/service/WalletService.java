@@ -201,6 +201,28 @@ public class WalletService {
         walletTransactionRepository.save(txn);
     }
 
+    /**
+     * Credits a wallet directly — used for commission disbursements, reservation fee routing,
+     * and loan repayment income.  Creates the wallet if it does not yet exist.
+     */
+    @Transactional
+    @SuppressWarnings("null")
+    public void creditWallet(Long userId, BigDecimal amount, String reference, String description) {
+        Wallet wallet = getOrCreateWallet(userId);
+        wallet.setBalance(wallet.getBalance().add(amount));
+        walletRepository.save(wallet);
+        WalletTransaction txn = WalletTransaction.builder()
+            .walletId(wallet.getId())
+            .type(Type.CREDIT)
+            .amount(amount)
+            .reference(reference)
+            .description(description)
+            .status(Status.SUCCESSFUL)
+            .build();
+        walletTransactionRepository.save(txn);
+        log.info("Wallet userId={} credited ₦{} ref={} ({})", userId, amount, reference, description);
+    }
+
     public List<WalletTransaction> getTransactionHistory(Long userId) {
         Wallet wallet = getOrCreateWallet(userId);
         return walletTransactionRepository.findByWalletIdOrderByCreatedAtDesc(wallet.getId());

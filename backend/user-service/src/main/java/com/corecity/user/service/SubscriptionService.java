@@ -49,6 +49,10 @@ public class SubscriptionService {
     @Value("${paystack.callback-url:https://corecity.com.ng/payment/verify}")
     private String paystackCallbackUrl;
 
+    /** The CoreCity admin user ID — loan repayments and subscription fees are credited here. */
+    @Value("${corecity.admin.user-id:1}")
+    private Long adminUserId;
+
     private static final String PAYSTACK_BASE = "https://api.paystack.co";
     private static final BigDecimal EXECUTIVE_AGENT_MIN_AMOUNT = new BigDecimal("10000");
 
@@ -427,6 +431,9 @@ public class SubscriptionService {
 
         String reference = "REP-" + UUID.randomUUID().toString().replace("-", "").toUpperCase();
         walletService.debitWallet(agentId, loan.getLoanAmount(), reference, "Loan repayment");
+        // Credit the repaid amount to the admin wallet — this is CoreCity's income from the loan programme
+        walletService.creditWallet(adminUserId, loan.getLoanAmount(),
+            "REP-INCOME-" + reference, "Loan repayment income: loan " + loanId);
         loan.setRepaymentReference(reference);
         loan.setRepaymentStatus(AgentLoan.RepaymentStatus.SUCCESS);
         loanRepo.save(loan);

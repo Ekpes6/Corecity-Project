@@ -148,4 +148,30 @@ public class UserServiceClient {
                 "Wallet service unavailable — please try again");
         }
     }
+
+    /**
+     * Credit a user's wallet via the internal user-service endpoint.
+     * Failures are swallowed and logged — reservation fee routing must not block the reservation flow.
+     */
+    public void creditWallet(Long userId, java.math.BigDecimal amount, String reference, String description) {
+        java.util.Map<String, Object> body = java.util.Map.of(
+            "userId", userId,
+            "amount", amount,
+            "reference", reference,
+            "description", description
+        );
+        try {
+            webClient.post()
+                .uri("/api/v1/users/internal/wallet/credit")
+                .contentType(java.util.Objects.requireNonNull(org.springframework.http.MediaType.APPLICATION_JSON))
+                .bodyValue(java.util.Objects.requireNonNull((Object) body))
+                .retrieve()
+                .toBodilessEntity()
+                .timeout(java.time.Duration.ofSeconds(10))
+                .block();
+            log.info("Wallet credited for user={} amount={} ref={}", userId, amount, reference);
+        } catch (Exception e) {
+            log.warn("wallet credit call failed for user={} ref={}: {}", userId, reference, e.getMessage());
+        }
+    }
 }

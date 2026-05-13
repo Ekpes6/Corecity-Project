@@ -42,3 +42,7 @@ services:
 reservation:
   fee: 1000
   negotiation-days: 5
+
+corecity:
+  admin:
+    user-id: ${CORECITY_ADMIN_USER_ID:1}
