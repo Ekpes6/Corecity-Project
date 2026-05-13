@@ -110,17 +110,16 @@ function DashboardHome() {
   const totalReservationLoanIncome = totalReservationIncome + totalLoanRepaymentIncome;
 
   // Earnings stat:
-  // Admin  = wallet balance + platform commissions (3%) + reservation/loan income
-  // Agent  = wallet balance + agent commissions (7%)
+  // Admin  = platform commissions (3%) + reservation fee income + loan repayment income
+  //          (all sourced from DB tables — wallet balance already contains these after backfill,
+  //           so adding wallet would double-count)
+  // Agent  = agent commissions (7%) from source table
   // Others = sum of successful sale transactions
   let totalEarnings = 0;
   if (isAdmin) {
-    totalEarnings = (walletBalance !== null ? Number(walletBalance) : 0)
-      + totalCorecityCommission
-      + totalReservationLoanIncome;
+    totalEarnings = totalCorecityCommission + totalReservationLoanIncome;
   } else if (isAgent) {
-    totalEarnings = (walletBalance !== null ? Number(walletBalance) : 0)
-      + totalAgentCommission;
+    totalEarnings = totalAgentCommission;
   } else {
     totalEarnings = transactions
       .filter((t) => t.status === 'SUCCESS' && t.sellerId === user?.id)
