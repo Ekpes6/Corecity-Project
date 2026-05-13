@@ -280,10 +280,15 @@ public class TransactionService {
         int processed = 0;
         for (Commission c : pending) {
             final Commission comm = c;
+            if (c.getTransactionId() == null) { processed++; continue; }
             // Look up the original transaction to get its reference string
-            transactionRepository.findById(c.getTransactionId()).ifPresent(tx -> {
+            transactionRepository.findById(Objects.requireNonNull(c.getTransactionId())).ifPresent(tx -> {
                 final String txRef = tx.getReference();
                 try {
+                    if (comm.getAgentId() == null) {
+                        log.warn("Backfill skipped for commission id={}: agentId is null", comm.getId());
+                        return;
+                    }
                     userServiceClient.creditWallet(comm.getAgentId(), comm.getAgentCommission(),
                         "CMM-AGENT-" + txRef, "Backfill commission (agent 7%): tx " + txRef);
                 } catch (Exception e) {
