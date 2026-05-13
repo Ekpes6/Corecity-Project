@@ -55,7 +55,8 @@ function DashboardHome() {
   const [transactions, setTransactions] = useState([]);
   const [commissions, setCommissions] = useState([]);
   const [walletBalance, setWalletBalance] = useState(null);
-  const [walletHistory, setWalletHistory] = useState([]);
+  const [allReservations, setAllReservations] = useState([]);
+  const [allLoans, setAllLoans] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,7 +64,6 @@ function DashboardHome() {
       propertyAPI.getMyList().catch(() => ({ data: [] })),
       transactionAPI.getMine().catch(() => ({ data: [] })),
     ];
-    // Agents and admins load commissions, wallet balance, and wallet history
     if (isAgent || isAdmin) {
       fetches.push(
         isAdmin
@@ -71,14 +71,19 @@ function DashboardHome() {
           : commissionAPI.getMine().catch(() => ({ data: [] }))
       );
       fetches.push(walletAPI.getBalance().catch(() => ({ data: null })));
-      fetches.push(walletAPI.getHistory().catch(() => ({ data: [] })));
     }
-    Promise.all(fetches).then(([p, t, c, w, h]) => {
+    // Admin: also load reservations and loans to compute income from source data
+    if (isAdmin) {
+      fetches.push(reservationAPI.getAll().catch(() => ({ data: [] })));
+      fetches.push(subscriptionAPI.getAllLoans().catch(() => ({ data: [] })));
+    }
+    Promise.all(fetches).then(([p, t, c, w, r, l]) => {
       setMyProperties(p.data);
       setTransactions(t.data);
       if (c) setCommissions(c.data || []);
       if (w) setWalletBalance(w.data?.balance ?? null);
-      if (h) setWalletHistory(h.data || []);
+      if (r) setAllReservations(r.data || []);
+      if (l) setAllLoans(l.data || []);
     }).finally(() => setLoading(false));
   }, [isAgent, isAdmin]);
 
@@ -90,16 +95,21 @@ function DashboardHome() {
   const totalAgentCommission    = commissions.reduce((s, c) => s + Number(c.agentCommission    || 0), 0);
   const totalCorecityCommission = commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0);
 
-  // Reservation + loan repayment income = wallet credits whose reference starts with RSV-INCOME- or REP-INCOME-
-  const totalReservationLoanIncome = walletHistory
-    .filter((tx) => tx.type === 'CREDIT' && tx.status === 'SUCCESSFUL' &&
-      (tx.reference?.startsWith('RSV-INCOME-') || tx.reference?.startsWith('REP-INCOME-')))
-    .reduce((s, tx) => s + Number(tx.amount || 0), 0);
+  // Reservation fee income: every paid reservation (not PENDING_PAYMENT) = ₦1,000 fee
+  const RESERVATION_FEE = 1000;
+  const paidReservationCount = allReservations.filter(
+    (r) => r.status && r.status !== 'PENDING_PAYMENT'
+  ).length;
+  const totalReservationIncome = paidReservationCount * RESERVATION_FEE;
 
-  // Earnings logic:
-  // - ADMIN / AGENT: show live wallet balance (current spendable amount)
-  // - SELLER (non-agent): sum of successful sale transaction amounts
-  // - BUYER: not shown
+  // Loan repayment income: sum loanAmount for all REPAID loans
+  const totalLoanRepaymentIncome = allLoans
+    .filter((l) => l.status === 'REPAID')
+    .reduce((s, l) => s + Number(l.loanAmount || 0), 0);
+
+  const totalReservationLoanIncome = totalReservationIncome + totalLoanRepaymentIncome;
+
+  // Earnings stat: admin/agent show live wallet balance (current spendable amount)
   let totalEarnings = 0;
   if (isAdmin || isAgent) {
     totalEarnings = walletBalance !== null ? Number(walletBalance) : 0;
@@ -165,7 +175,10 @@ function DashboardHome() {
                 <p className="naira text-lg font-bold text-amber-700">
                   {formatNaira(totalReservationLoanIncome)}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">Reservation fees + loan repayments</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {paidReservationCount} reservation{paidReservationCount !== 1 ? 's' : ''}
+                  {totalLoanRepaymentIncome > 0 && ` · ${allLoans.filter(l => l.status === 'REPAID').length} loan repayment${allLoans.filter(l => l.status === 'REPAID').length !== 1 ? 's' : ''}`}
+                </p>
               </div>
             )}
             {/* Link to full wallet history */}
