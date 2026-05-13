@@ -128,6 +128,7 @@ services:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL}
+      - CORECITY_ADMIN_USER_ID=${CORECITY_ADMIN_USER_ID}
     depends_on:
       mysql:
         condition: service_healthy
@@ -166,6 +167,7 @@ services:
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL}
       - USER_SERVICE_URL=http://user-service:8081
+      - CORECITY_ADMIN_USER_ID=${CORECITY_ADMIN_USER_ID}
     depends_on:
       mysql:
         condition: service_healthy
@@ -242,6 +244,8 @@ services:
       - PAYSTACK_SECRET_KEY=${PAYSTACK_SECRET_KEY}
       - PAYSTACK_CALLBACK_URL=${PAYSTACK_CALLBACK_URL}
       - PROPERTY_SERVICE_URL=http://property-service:8082
+      - USER_SERVICE_URL=http://user-service:8081
+      - CORECITY_ADMIN_USER_ID=${CORECITY_ADMIN_USER_ID}
     depends_on:
       mysql:
         condition: service_healthy
