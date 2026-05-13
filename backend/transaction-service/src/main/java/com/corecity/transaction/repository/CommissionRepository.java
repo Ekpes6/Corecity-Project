@@ -13,4 +13,6 @@ public interface CommissionRepository extends JpaRepository<Commission, Long> {
     List<Commission> findByAgentIdOrderByCreatedAtDesc(Long agentId);
 
     List<Commission> findAllByOrderByCreatedAtDesc();
+
+    List<Commission> findByStatus(Commission.CommissionStatus status);
 }

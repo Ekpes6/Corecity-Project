@@ -137,6 +137,21 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.getAllCommissions());
     }
 
+    /**
+     * POST /api/v1/transactions/commissions/backfill — ADMIN only.
+     * One-time operation: finds all PENDING commissions (before creditWallet was deployed)
+     * and fires wallet credit calls for them. Safe to call multiple times — duplicate
+     * references are rejected by the user-service unique constraint.
+     */
+    @PostMapping("/commissions/backfill")
+    public ResponseEntity<Map<String, Integer>> backfillCommissions(
+            @RequestHeader(value = "X-User-Role", defaultValue = "") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(transactionService.backfillDisbursements());
+    }
+
     // ─── Private helpers ────────────────────────────────────────────────────
 
     /**

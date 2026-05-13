@@ -267,6 +267,44 @@ public class TransactionService {
             .stream().map(this::toCommissionResponse).collect(Collectors.toList());
     }
 
+    /**
+     * One-time admin backfill: find every PENDING commission (created before the
+     * creditWallet code was deployed) and fire the wallet credit calls for them.
+     * Safe to call multiple times — each credit uses a unique reference so
+     * user-service will reject duplicates (unique constraint on reference column).
+     *
+     * Returns a summary: { "processed": N, "alreadyDisbursed": M }
+     */
+    public Map<String, Integer> backfillDisbursements() {
+        List<Commission> pending = commissionRepository.findByStatus(Commission.CommissionStatus.PENDING);
+        int processed = 0;
+        for (Commission c : pending) {
+            final Commission comm = c;
+            // Look up the original transaction to get its reference string
+            transactionRepository.findById(c.getTransactionId()).ifPresent(tx -> {
+                final String txRef = tx.getReference();
+                try {
+                    userServiceClient.creditWallet(comm.getAgentId(), comm.getAgentCommission(),
+                        "CMM-AGENT-" + txRef, "Backfill commission (agent 7%): tx " + txRef);
+                } catch (Exception e) {
+                    log.warn("Backfill agent credit failed for tx={}: {}", txRef, e.getMessage());
+                }
+                try {
+                    userServiceClient.creditWallet(adminUserId, comm.getCorecityCommission(),
+                        "CMM-ADMIN-" + txRef, "Backfill commission (platform 3%): tx " + txRef);
+                } catch (Exception e) {
+                    log.warn("Backfill admin credit failed for tx={}: {}", txRef, e.getMessage());
+                }
+                comm.setStatus(Commission.CommissionStatus.DISBURSED);
+                commissionRepository.save(comm);
+                log.info("Backfill disbursed commission id={} tx={}", comm.getId(), txRef);
+            });
+            processed++;
+        }
+        log.info("Backfill complete: {} PENDING commissions processed", processed);
+        return Map.of("processed", processed);
+    }
+
     private CommissionResponse toCommissionResponse(Commission c) {
         return CommissionResponse.builder()
             .id(c.getId()).transactionId(c.getTransactionId())
