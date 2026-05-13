@@ -109,17 +109,25 @@ function DashboardHome() {
 
   const totalReservationLoanIncome = totalReservationIncome + totalLoanRepaymentIncome;
 
-  // Earnings stat: admin/agent show live wallet balance (current spendable amount)
+  // Earnings stat:
+  // Admin  = wallet balance + platform commissions (3%) + reservation/loan income
+  // Agent  = wallet balance + agent commissions (7%)
+  // Others = sum of successful sale transactions
   let totalEarnings = 0;
-  if (isAdmin || isAgent) {
-    totalEarnings = walletBalance !== null ? Number(walletBalance) : 0;
+  if (isAdmin) {
+    totalEarnings = (walletBalance !== null ? Number(walletBalance) : 0)
+      + totalCorecityCommission
+      + totalReservationLoanIncome;
+  } else if (isAgent) {
+    totalEarnings = (walletBalance !== null ? Number(walletBalance) : 0)
+      + totalAgentCommission;
   } else {
     totalEarnings = transactions
       .filter((t) => t.status === 'SUCCESS' && t.sellerId === user?.id)
       .reduce((s, t) => s + Number(t.amount), 0);
   }
 
-  const earningsLabel = isAdmin ? 'Wallet Balance' : isAgent ? 'Wallet Balance' : 'Total Earnings';
+  const earningsLabel = isAdmin ? 'Total Income' : isAgent ? 'Total Income' : 'Total Earnings';
 
   const stats = [
     { icon: Home,       label: 'My Listings',   value: myProperties.length, color: 'forest' },
