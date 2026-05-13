@@ -247,6 +247,22 @@ CREATE TABLE IF NOT EXISTS app_notifications (
     INDEX idx_an_unread (user_id, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- ─── Withdrawal Requests ─────────────────────────────────────────────────
+-- Wallet is debited immediately; admin processes the bank transfer externally.
+CREATE TABLE IF NOT EXISTS withdrawal_requests (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id        BIGINT NOT NULL,
+    reference      VARCHAR(100) NOT NULL UNIQUE,
+    amount         DECIMAL(15,2) NOT NULL,
+    bank_name      VARCHAR(100) NOT NULL,
+    account_number VARCHAR(50)  NOT NULL,
+    account_name   VARCHAR(200) NOT NULL,
+    status         ENUM('PENDING','PROCESSED','REJECTED') NOT NULL DEFAULT 'PENDING',
+    admin_note     VARCHAR(500),
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_wr_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ─── Seed: Nigerian States ───────────────────────────────────────────────
 INSERT INTO states (name) VALUES
 ('Abia'),('Adamawa'),('Akwa Ibom'),('Anambra'),('Bauchi'),('Bayelsa'),

@@ -1358,8 +1358,12 @@ function WithdrawalsAdminPage() {
       setLoading(true);
       const { data } = await walletAPI.getAllWithdrawals();
       setRequests(data);
-    } catch {
-      toast.error('Could not load withdrawal requests');
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg = status === 403 ? 'Access denied — admin only'
+                : status === 404 ? 'Endpoint not found (backend may need redeployment)'
+                : err?.response?.data?.message || err?.message || 'Could not load withdrawal requests';
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
