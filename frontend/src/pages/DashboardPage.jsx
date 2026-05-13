@@ -1916,6 +1916,7 @@ function AccountPage() {
   const [walletLoading, setWalletLoading] = useState(true);
   const [txHistory, setTxHistory]         = useState([]);
   const [txLoading, setTxLoading]         = useState(true);
+  const [txPage, setTxPage]               = useState(1);
   const [fundAmount, setFundAmount]       = useState('');
   const [fundLoading, setFundLoading]     = useState(false);
   const [showFundModal, setShowFundModal] = useState(false);
@@ -1951,6 +1952,7 @@ function AccountPage() {
       setTxLoading(true);
       const { data } = await walletAPI.getHistory();
       setTxHistory(data);
+      setTxPage(1);
     } catch {
       /* silent */
     } finally {
@@ -2057,6 +2059,7 @@ function AccountPage() {
           if (newBalance > prevBalance) {
             setWallet(balRes.data);
             setTxHistory(histRes.data);
+            setTxPage(1);
             stopWalletPoll();
             toast.success(
               `Wallet credited! New balance: ₦${newBalance.toLocaleString('en-NG', { minimumFractionDigits: 2 })}`,
@@ -2245,34 +2248,36 @@ function AccountPage() {
           ) : txHistory.length === 0 ? (
             <p className="text-sm text-gray-400 py-4 text-center">No wallet transactions yet.</p>
           ) : (
-            <div className="space-y-2">
-              {txHistory.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      tx.type === 'CREDIT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
-                    }`}>
-                      {tx.type === 'CREDIT' ? <ArrowUpRight size={14} /> : <ArrowUpRight size={14} className="rotate-180" />}
+            <>
+              <div className="space-y-2">
+                {txHistory.slice((txPage - 1) * PAGE_SIZE, txPage * PAGE_SIZE).map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        tx.type === 'CREDIT' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'
+                      }`}>
+                        {tx.type === 'CREDIT' ? <ArrowUpRight size={14} /> : <ArrowUpRight size={14} className="rotate-180" />}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{tx.description || (tx.type === 'CREDIT' ? 'Wallet Top-up' : 'Debit')}</p>
+                        <p className="text-xs text-gray-400">{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800">{tx.description || (tx.type === 'CREDIT' ? 'Wallet Top-up' : 'Debit')}</p>
-                      <p className="text-xs text-gray-400">{tx.createdAt ? new Date(tx.createdAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}</p>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <p className={`text-sm font-semibold ${tx.type === 'CREDIT' ? 'text-green-700' : 'text-red-600'}`}>
+                        {tx.type === 'CREDIT' ? '+' : '-'}₦{Number(tx.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                      </p>
+                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                        tx.status === 'SUCCESSFUL' ? 'bg-green-100 text-green-700' :
+                        tx.status === 'PENDING'    ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-600'
+                      }`}>{tx.status}</span>
                     </div>
                   </div>
-                  <div className="text-right flex flex-col items-end gap-1">
-                    <p className={`text-sm font-semibold ${tx.type === 'CREDIT' ? 'text-green-700' : 'text-red-600'}`}>
-                      {tx.type === 'CREDIT' ? '+' : '-'}₦{Number(tx.amount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
-                    </p>
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                      tx.status === 'SUCCESSFUL' ? 'bg-green-100 text-green-700' :
-                      tx.status === 'PENDING'    ? 'bg-yellow-100 text-yellow-700' :
-                      'bg-red-100 text-red-600'
-                    }`}>{tx.status}</span>
-
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              <Pagination page={txPage} total={txHistory.length} onChange={setTxPage} />
+            </>
           )}
         </div>
       </div>
