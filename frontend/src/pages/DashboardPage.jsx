@@ -109,24 +109,20 @@ function DashboardHome() {
 
   const totalReservationLoanIncome = totalReservationIncome + totalLoanRepaymentIncome;
 
-  // Earnings stat:
-  // Admin  = platform commissions (3%) + reservation fee income + loan repayment income
-  //          (all sourced from DB tables — wallet balance already contains these after backfill,
-  //           so adding wallet would double-count)
-  // Agent  = agent commissions (7%) from source table
-  // Others = sum of successful sale transactions
+  // Stat card shows wallet balance for admin/agent — this is the canonical spendable figure.
+  // It naturally decreases when money is transferred out or used to rent a property.
+  // The Income Breakdown cards below show gross earned per category (informational only).
+  // For regular users: sum of their successful sale transactions (no wallet).
   let totalEarnings = 0;
-  if (isAdmin) {
-    totalEarnings = totalCorecityCommission + totalReservationLoanIncome;
-  } else if (isAgent) {
-    totalEarnings = totalAgentCommission;
+  if (isAdmin || isAgent) {
+    totalEarnings = walletBalance !== null ? Number(walletBalance) : 0;
   } else {
     totalEarnings = transactions
       .filter((t) => t.status === 'SUCCESS' && t.sellerId === user?.id)
       .reduce((s, t) => s + Number(t.amount), 0);
   }
 
-  const earningsLabel = isAdmin ? 'Total Income' : isAgent ? 'Total Income' : 'Total Earnings';
+  const earningsLabel = isAdmin ? 'Wallet Balance' : isAgent ? 'Wallet Balance' : 'Total Earnings';
 
   const stats = [
     { icon: Home,       label: 'My Listings',   value: myProperties.length, color: 'forest' },
