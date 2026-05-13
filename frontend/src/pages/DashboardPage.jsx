@@ -54,6 +54,7 @@ function DashboardHome() {
   const [myProperties, setMyProperties] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [commissions, setCommissions] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,18 +62,20 @@ function DashboardHome() {
       propertyAPI.getMyList().catch(() => ({ data: [] })),
       transactionAPI.getMine().catch(() => ({ data: [] })),
     ];
-    // Agents and admins also load their commission records for the earnings figure
+    // Agents and admins load commissions AND wallet balance (wallet reflects all credited income)
     if (isAgent || isAdmin) {
       fetches.push(
         isAdmin
           ? commissionAPI.getAll().catch(() => ({ data: [] }))
           : commissionAPI.getMine().catch(() => ({ data: [] }))
       );
+      fetches.push(walletAPI.getBalance().catch(() => ({ data: null })));
     }
-    Promise.all(fetches).then(([p, t, c]) => {
+    Promise.all(fetches).then(([p, t, c, w]) => {
       setMyProperties(p.data);
       setTransactions(t.data);
       if (c) setCommissions(c.data || []);
+      if (w) setWalletBalance(w.data?.balance ?? null);
     }).finally(() => setLoading(false));
   }, [isAgent, isAdmin]);
 
@@ -80,29 +83,33 @@ function DashboardHome() {
   const totalViews    = activeProperties.reduce((s, p) => s + (p.viewsCount || 0), 0);
   const activeListings = activeProperties.length;
 
+  // Commission totals (used for income breakdown cards)
+  const totalAgentCommission    = commissions.reduce((s, c) => s + Number(c.agentCommission    || 0), 0);
+  const totalCorecityCommission = commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0);
+
   // Earnings logic:
-  // - ADMIN: sum of all corecityCommission across all commissions
-  // - AGENT: sum of agentCommission from their commissions
+  // - ADMIN / AGENT: show live wallet balance (includes commissions + reservation fees + loan repayments)
   // - SELLER (non-agent): sum of transaction amounts where they are the seller
   // - BUYER: sum of successful purchases they made
   let totalEarnings = 0;
-  if (isAdmin) {
-    totalEarnings = commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0);
-  } else if (isAgent) {
-    totalEarnings = commissions.reduce((s, c) => s + Number(c.agentCommission || 0), 0);
+  if (isAdmin || isAgent) {
+    totalEarnings = walletBalance !== null ? Number(walletBalance) :
+      isAdmin
+        ? commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0)
+        : commissions.reduce((s, c) => s + Number(c.agentCommission || 0), 0);
   } else {
     totalEarnings = transactions
       .filter((t) => t.status === 'SUCCESS' && t.sellerId === user?.id)
       .reduce((s, t) => s + Number(t.amount), 0);
   }
 
-  const earningsLabel = isAdmin ? 'CoreCity Earnings' : isAgent ? 'My Commission' : 'Total Earnings';
+  const earningsLabel = isAdmin ? 'Wallet Balance' : isAgent ? 'Wallet Balance' : 'Total Earnings';
 
   const stats = [
     { icon: Home,       label: 'My Listings',   value: myProperties.length, color: 'forest' },
     { icon: Eye,        label: 'Total Views',    value: totalViews.toLocaleString(), color: 'blue' },
     { icon: TrendingUp, label: 'Active Listings',value: activeListings, color: 'green' },
-    { icon: CreditCard, label: earningsLabel,    value: formatNaira(totalEarnings, true), color: 'clay' },
+    { icon: Wallet,     label: earningsLabel,    value: formatNaira(totalEarnings, true), color: 'clay' },
   ];
 
   return (
@@ -131,6 +138,47 @@ function DashboardHome() {
           </div>
         ))}
       </div>
+
+      {/* Income breakdown — visible to admin and agents */}
+      {(isAdmin || isAgent) && commissions.length > 0 && (
+        <div>
+          <h3 className="font-semibold text-gray-700 text-sm mb-3">Income Breakdown</h3>
+          <div className={`grid gap-3 ${isAdmin ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
+            {/* Commission income */}
+            <div className="card p-4 border-l-4 border-blue-400">
+              <p className="text-xs text-gray-500 mb-1">{isAdmin ? 'Platform Commissions (3%)' : 'Agent Commissions (7%)'}</p>
+              <p className="naira text-lg font-bold text-blue-700">
+                {formatNaira(isAdmin ? totalCorecityCommission : totalAgentCommission)}
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">{commissions.length} commission{commissions.length !== 1 ? 's' : ''}</p>
+            </div>
+            {/* Reservation fee income — admin only */}
+            {isAdmin && (
+              <div className="card p-4 border-l-4 border-amber-400">
+                <p className="text-xs text-gray-500 mb-1">Reservation Fees</p>
+                <p className="naira text-lg font-bold text-amber-700">
+                  {walletBalance !== null
+                    ? formatNaira(Math.max(0, Number(walletBalance) - totalCorecityCommission))
+                    : '—'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">Reservations + loan repayments</p>
+              </div>
+            )}
+            {/* Link to full wallet history */}
+            <div className="card p-4 border-l-4 border-forest-400 flex flex-col justify-between">
+              <div>
+                <p className="text-xs text-gray-500 mb-1">Full breakdown</p>
+                <p className="text-sm font-medium text-gray-700">Wallet transaction history</p>
+              </div>
+              <Link
+                to="/dashboard/account"
+                className="text-xs text-forest-700 hover:underline flex items-center gap-1 mt-2">
+                View all credits &rarr;
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* My listings preview — only ACTIVE properties */}
       {activeProperties.length > 0 && (
