@@ -1920,7 +1920,7 @@ function MessagesPage() {
 // Account Page — Bank Accounts + Wallet
 // ─────────────────────────────────────────────────────────────────────────────
 function AccountPage() {
-  const { user } = useAuth();
+  const { user, isAdmin, isAgent } = useAuth();
 
   // ── Bank Accounts ─────────────────────────────────────────────────────────
   const [accounts, setAccounts]           = useState([]);
