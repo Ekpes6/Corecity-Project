@@ -444,6 +444,7 @@ public class WalletService {
      */
     @Transactional
     public WithdrawalRequest processWithdrawal(Long requestId, WithdrawalRequest.Status newStatus, String adminNote) {
+        if (requestId == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Request ID must not be null");
         WithdrawalRequest request = withdrawalRequestRepository.findById(requestId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Withdrawal request not found"));
 
@@ -474,7 +475,7 @@ public class WalletService {
                 .description("Withdrawal rejected — refund for " + request.getReference())
                 .status(WalletTransaction.Status.SUCCESSFUL)
                 .build();
-            walletTransactionRepository.save(refund);
+            walletTransactionRepository.save(java.util.Objects.requireNonNull(refund));
             log.info("Withdrawal rejected and refunded: ref={} userId={} amount=₦{}",
                 request.getReference(), request.getUserId(), request.getAmount());
         } else {
