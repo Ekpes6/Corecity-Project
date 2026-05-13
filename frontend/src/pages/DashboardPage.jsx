@@ -55,6 +55,7 @@ function DashboardHome() {
   const [transactions, setTransactions] = useState([]);
   const [commissions, setCommissions] = useState([]);
   const [walletBalance, setWalletBalance] = useState(null);
+  const [walletHistory, setWalletHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ function DashboardHome() {
       propertyAPI.getMyList().catch(() => ({ data: [] })),
       transactionAPI.getMine().catch(() => ({ data: [] })),
     ];
-    // Agents and admins load commissions AND wallet balance (wallet reflects all credited income)
+    // Agents and admins load commissions, wallet balance, and wallet history
     if (isAgent || isAdmin) {
       fetches.push(
         isAdmin
@@ -70,12 +71,14 @@ function DashboardHome() {
           : commissionAPI.getMine().catch(() => ({ data: [] }))
       );
       fetches.push(walletAPI.getBalance().catch(() => ({ data: null })));
+      fetches.push(walletAPI.getHistory().catch(() => ({ data: [] })));
     }
-    Promise.all(fetches).then(([p, t, c, w]) => {
+    Promise.all(fetches).then(([p, t, c, w, h]) => {
       setMyProperties(p.data);
       setTransactions(t.data);
       if (c) setCommissions(c.data || []);
       if (w) setWalletBalance(w.data?.balance ?? null);
+      if (h) setWalletHistory(h.data || []);
     }).finally(() => setLoading(false));
   }, [isAgent, isAdmin]);
 
@@ -83,20 +86,23 @@ function DashboardHome() {
   const totalViews    = activeProperties.reduce((s, p) => s + (p.viewsCount || 0), 0);
   const activeListings = activeProperties.length;
 
-  // Commission totals (used for income breakdown cards)
+  // Commission totals from the commissions table
   const totalAgentCommission    = commissions.reduce((s, c) => s + Number(c.agentCommission    || 0), 0);
   const totalCorecityCommission = commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0);
 
+  // Reservation + loan repayment income = wallet credits whose reference starts with RSV-INCOME- or REP-INCOME-
+  const totalReservationLoanIncome = walletHistory
+    .filter((tx) => tx.type === 'CREDIT' && tx.status === 'SUCCESSFUL' &&
+      (tx.reference?.startsWith('RSV-INCOME-') || tx.reference?.startsWith('REP-INCOME-')))
+    .reduce((s, tx) => s + Number(tx.amount || 0), 0);
+
   // Earnings logic:
-  // - ADMIN / AGENT: show live wallet balance (includes commissions + reservation fees + loan repayments)
-  // - SELLER (non-agent): sum of transaction amounts where they are the seller
-  // - BUYER: sum of successful purchases they made
+  // - ADMIN / AGENT: show live wallet balance (current spendable amount)
+  // - SELLER (non-agent): sum of successful sale transaction amounts
+  // - BUYER: not shown
   let totalEarnings = 0;
   if (isAdmin || isAgent) {
-    totalEarnings = walletBalance !== null ? Number(walletBalance) :
-      isAdmin
-        ? commissions.reduce((s, c) => s + Number(c.corecityCommission || 0), 0)
-        : commissions.reduce((s, c) => s + Number(c.agentCommission || 0), 0);
+    totalEarnings = walletBalance !== null ? Number(walletBalance) : 0;
   } else {
     totalEarnings = transactions
       .filter((t) => t.status === 'SUCCESS' && t.sellerId === user?.id)
@@ -152,16 +158,14 @@ function DashboardHome() {
               </p>
               <p className="text-xs text-gray-400 mt-0.5">{commissions.length} commission{commissions.length !== 1 ? 's' : ''}</p>
             </div>
-            {/* Reservation fee income — admin only */}
+            {/* Reservation fee + loan repayment income — admin only */}
             {isAdmin && (
               <div className="card p-4 border-l-4 border-amber-400">
-                <p className="text-xs text-gray-500 mb-1">Reservation Fees</p>
+                <p className="text-xs text-gray-500 mb-1">Reservations & Loan Repayments</p>
                 <p className="naira text-lg font-bold text-amber-700">
-                  {walletBalance !== null
-                    ? formatNaira(Math.max(0, Number(walletBalance) - totalCorecityCommission))
-                    : '—'}
+                  {formatNaira(totalReservationLoanIncome)}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">Reservations + loan repayments</p>
+                <p className="text-xs text-gray-400 mt-0.5">Reservation fees + loan repayments</p>
               </div>
             )}
             {/* Link to full wallet history */}
