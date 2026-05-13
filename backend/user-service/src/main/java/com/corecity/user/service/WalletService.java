@@ -1,11 +1,15 @@
 package com.corecity.user.service;
 
+import com.corecity.user.entity.BankAccount;
 import com.corecity.user.entity.Wallet;
 import com.corecity.user.entity.WalletTransaction;
 import com.corecity.user.entity.WalletTransaction.Status;
 import com.corecity.user.entity.WalletTransaction.Type;
+import com.corecity.user.entity.WithdrawalRequest;
+import com.corecity.user.repository.BankAccountRepository;
 import com.corecity.user.repository.WalletRepository;
 import com.corecity.user.repository.WalletTransactionRepository;
+import com.corecity.user.repository.WithdrawalRequestRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +36,8 @@ public class WalletService {
 
     private final WalletRepository walletRepository;
     private final WalletTransactionRepository walletTransactionRepository;
+    private final WithdrawalRequestRepository withdrawalRequestRepository;
+    private final BankAccountRepository bankAccountRepository;
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
 
@@ -355,6 +361,82 @@ public class WalletService {
     }
 
     public record FundInitResult(String reference, String authorizationUrl) {}
+
+    // ── Withdrawal ────────────────────────────────────────────────────────────
+
+    /**
+     * Initiates a wallet withdrawal to the user's primary bank account.
+     * The wallet is debited immediately; the withdrawal_requests record is created
+     * with status PENDING for admin processing.
+     *
+     * @param userId  caller's user ID
+     * @param amount  amount in Naira (must be ≥ ₦100 and ≤ wallet balance)
+     * @return the saved WithdrawalRequest
+     */
+    @Transactional
+    @SuppressWarnings("null")
+    public WithdrawalRequest initiateWithdrawal(Long userId, BigDecimal amount) {
+        if (amount == null || amount.compareTo(BigDecimal.valueOf(100)) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Minimum withdrawal is ₦100");
+        }
+
+        BankAccount primary = bankAccountRepository.findByUserIdOrderByCreatedAtDesc(userId)
+            .stream().filter(BankAccount::isPrimary).findFirst()
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "No primary bank account found. Please add and set a primary bank account before withdrawing."));
+
+        Wallet wallet = walletRepository.findByUserId(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found"));
+
+        if (wallet.getBalance().compareTo(amount) < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Insufficient wallet balance. Available: ₦" +
+                wallet.getBalance().toPlainString());
+        }
+
+        // Debit wallet immediately
+        String reference = "WDR-" + userId + "-" + System.currentTimeMillis();
+        wallet.setBalance(wallet.getBalance().subtract(amount));
+        walletRepository.save(wallet);
+
+        WalletTransaction txn = WalletTransaction.builder()
+            .walletId(wallet.getId())
+            .type(Type.DEBIT)
+            .amount(amount)
+            .reference(reference)
+            .description("Withdrawal to " + primary.getBankName() + " ••••" + primary.getAccountNumber().replaceAll(".(?=.{4})", "*").substring(Math.max(0, primary.getAccountNumber().length() - 4)))
+            .status(Status.SUCCESSFUL)
+            .build();
+        walletTransactionRepository.save(txn);
+
+        // Record withdrawal request for admin processing
+        WithdrawalRequest request = WithdrawalRequest.builder()
+            .userId(userId)
+            .reference(reference)
+            .amount(amount)
+            .bankName(primary.getBankName())
+            .accountNumber(primary.getAccountNumber())
+            .accountName(primary.getAccountName())
+            .status(WithdrawalRequest.Status.PENDING)
+            .build();
+        withdrawalRequestRepository.save(request);
+
+        log.info("Withdrawal initiated: userId={} amount=₦{} ref={} → {} {}", userId, amount, reference,
+            primary.getBankName(), primary.getAccountName());
+        return request;
+    }
+
+    /** Returns all withdrawal requests for a user, newest first. */
+    @Transactional(readOnly = true)
+    public List<WithdrawalRequest> getWithdrawals(Long userId) {
+        return withdrawalRequestRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    /** Admin: all withdrawal requests across all users, newest first. */
+    @Transactional(readOnly = true)
+    public List<WithdrawalRequest> getAllWithdrawals() {
+        return withdrawalRequestRepository.findAllByOrderByCreatedAtDesc();
+    }
 
     /**
      * Runs every 5 minutes. Finds PENDING wallet top-ups that are older than 15 minutes

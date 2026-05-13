@@ -7,7 +7,7 @@ import {
   Bed, Bath, MapPin, Building2, AlertCircle, ShieldCheck,
   Crown, BookMarked, BadgeCheck, Landmark, Zap, ArrowUpRight,
   CalendarCheck, Lock, Unlock, RotateCcw, Phone, User, Save,
-  Wallet, Banknote, PlusCircle, Trash2, Star as StarIcon,
+  Wallet, Banknote, PlusCircle, Trash2, Star as StarIcon, ArrowDownCircle,
 } from 'lucide-react';
 import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI, notificationAPI, adminAPI, authAPI, bankAccountAPI, walletAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -1942,7 +1942,11 @@ function AccountPage() {
   const [showFundModal, setShowFundModal] = useState(false);
   const [fundPolling, setFundPolling]     = useState(false);
   const [verifyingRef, setVerifyingRef]   = useState(null);
-  const pollIntervalRef                   = useRef(null);
+  // Withdrawal
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount]       = useState('');
+  const [withdrawLoading, setWithdrawLoading]     = useState(false);
+  const pollIntervalRef = useRef(null);
 
   const loadAccounts = useCallback(async () => {
     try {
@@ -1993,6 +1997,35 @@ function AccountPage() {
       toast.error(msg);
     } finally {
       setVerifyingRef(null);
+    }
+  };
+
+  const handleWithdraw = async (e) => {
+    e.preventDefault();
+    const amount = parseFloat(withdrawAmount);
+    if (!withdrawAmount || isNaN(amount) || amount < 100) {
+      toast.error('Minimum withdrawal is ₦100');
+      return;
+    }
+    const primaryAcct = accounts.find((a) => a.primary);
+    if (!primaryAcct) {
+      toast.error('Please add and set a primary bank account first');
+      return;
+    }
+    if (!window.confirm(
+      `Withdraw ₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2 })} to ${primaryAcct.bankName} — ${primaryAcct.accountName}?`
+    )) return;
+    try {
+      setWithdrawLoading(true);
+      await walletAPI.withdraw({ amount });
+      toast.success('Withdrawal request submitted! Your bank transfer will be processed within 1–2 business days.');
+      setShowWithdrawModal(false);
+      setWithdrawAmount('');
+      await Promise.all([loadWallet(), loadTxHistory()]);
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Could not process withdrawal');
+    } finally {
+      setWithdrawLoading(false);
     }
   };
 
@@ -2228,6 +2261,13 @@ function AccountPage() {
             className="btn-primary flex items-center gap-2 text-sm">
             <PlusCircle size={16} /> Top Up
           </button>
+          {(isAgent || isAdmin) && (
+            <button
+              onClick={() => setShowWithdrawModal((v) => !v)}
+              className="btn-secondary flex items-center gap-2 text-sm">
+              <ArrowDownCircle size={16} /> Withdraw
+            </button>
+          )}
         </div>
 
         {/* Balance */}
@@ -2260,6 +2300,35 @@ function AccountPage() {
               <button type="button" onClick={() => setShowFundModal(false)} className="btn-secondary flex-1">Cancel</button>
               <button type="submit" disabled={fundLoading} className="btn-primary flex-1">
                 {fundLoading ? 'Opening Paystack…' : 'Process Payment'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* Withdraw modal */}
+        {showWithdrawModal && (
+          <form onSubmit={handleWithdraw} className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6 space-y-4">
+            <h4 className="font-semibold text-gray-800">Withdraw to Bank Account</h4>
+            {accounts.find((a) => a.primary) ? (
+              <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 text-sm text-gray-700">
+                <p className="font-medium">{accounts.find((a) => a.primary).bankName}</p>
+                <p className="text-gray-500">{accounts.find((a) => a.primary).accountName} — {accounts.find((a) => a.primary).accountNumber}</p>
+              </div>
+            ) : (
+              <p className="text-sm text-red-600">No primary bank account set. Add one in the Bank Accounts section below.</p>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Amount (₦) *</label>
+              <input
+                type="number" min="100" step="1"
+                value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)}
+                placeholder="e.g. 10000" className="input-field" />
+              <p className="text-xs text-gray-400 mt-1">Minimum ₦100. Funds are deducted immediately; bank transfer processed within 1–2 business days.</p>
+            </div>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => { setShowWithdrawModal(false); setWithdrawAmount(''); }} className="btn-secondary flex-1">Cancel</button>
+              <button type="submit" disabled={withdrawLoading || !accounts.find((a) => a.primary)} className="btn-primary flex-1">
+                {withdrawLoading ? 'Processing…' : 'Request Withdrawal'}
               </button>
             </div>
           </form>

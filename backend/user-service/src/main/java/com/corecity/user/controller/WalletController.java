@@ -2,12 +2,14 @@ package com.corecity.user.controller;
 
 import com.corecity.user.entity.Wallet;
 import com.corecity.user.entity.WalletTransaction;
+import com.corecity.user.entity.WithdrawalRequest;
 import com.corecity.user.service.WalletService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -89,6 +91,47 @@ public class WalletController {
             ? "Wallet was already credited for this transaction."
             : "Payment verified. Wallet has been credited.";
         return ResponseEntity.ok(Map.of("status", result, "message", message));
+    }
+
+    // ── Withdrawal endpoints ──────────────────────────────────────────────────
+
+    /**
+     * POST /api/v1/users/me/wallet/withdraw
+     * Initiates a withdrawal from the wallet to the user's primary bank account.
+     * The wallet is debited immediately; admin processes the bank transfer.
+     */
+    @PostMapping("/withdraw")
+    public ResponseEntity<WithdrawalRequest> withdraw(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody Map<String, Object> body) {
+        Object amountRaw = body.get("amount");
+        if (amountRaw == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        java.math.BigDecimal amount;
+        try {
+            amount = new java.math.BigDecimal(amountRaw.toString());
+        } catch (NumberFormatException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(walletService.initiateWithdrawal(userId, amount));
+    }
+
+    /** GET /api/v1/users/me/wallet/withdrawals — caller's withdrawal history. */
+    @GetMapping("/withdrawals")
+    public ResponseEntity<List<WithdrawalRequest>> getWithdrawals(
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(walletService.getWithdrawals(userId));
+    }
+
+    /** GET /api/v1/users/me/wallet/withdrawals/all — admin: all withdrawal requests. */
+    @GetMapping("/withdrawals/all")
+    public ResponseEntity<List<WithdrawalRequest>> getAllWithdrawals(
+            @RequestHeader(value = "X-User-Role", defaultValue = "") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(walletService.getAllWithdrawals());
     }
 
     /**
