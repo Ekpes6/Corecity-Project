@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-import { transactionAPI, reservationAPI, subscriptionAPI } from '../services/api';
+import { transactionAPI, reservationAPI, subscriptionAPI, walletAPI } from '../services/api';
 import { formatNaira } from '../utils/nigeria';
 
 export default function PaymentVerifyPage() {
@@ -22,12 +22,42 @@ export default function PaymentVerifyPage() {
     if (!reference) { setStatus('failed'); return; }
 
     if (isWalletTopUp) {
-      // Payment is complete — the Paystack webhook will credit the wallet automatically.
-      // We do NOT call any backend verify endpoint here to avoid the 401 interceptor
-      // logging the user out. Just show success and redirect back to the dashboard.
-      setStatus('success');
-      const timer = setTimeout(() => navigate('/dashboard/account', { replace: true }), 3000);
-      return () => clearTimeout(timer);
+      // Actively verify with Paystack via the backend so the wallet is credited
+      // even when the webhook is delayed or missed.
+      let cancelled = false;
+      let attempts  = 0;
+      const MAX_ATTEMPTS = 5;
+      const RETRY_MS     = 2500;
+      let timerId = null;
+
+      const attemptVerify = () => {
+        attempts++;
+        walletAPI.verify(reference)
+          .then(() => {
+            if (cancelled) return;
+            setStatus('success');
+            timerId = setTimeout(() => navigate('/dashboard/account', { replace: true }), 3000);
+          })
+          .catch((err) => {
+            if (cancelled) return;
+            const httpStatus = err?.response?.status;
+            const alreadyCredited = err?.response?.data?.status === 'already_credited';
+            if (alreadyCredited || httpStatus === 409) {
+              setStatus('success');
+              timerId = setTimeout(() => navigate('/dashboard/account', { replace: true }), 3000);
+            } else if (attempts < MAX_ATTEMPTS) {
+              timerId = setTimeout(attemptVerify, RETRY_MS);
+            } else {
+              setStatus('failed');
+            }
+          });
+      };
+
+      attemptVerify();
+      return () => {
+        cancelled = true;
+        if (timerId) clearTimeout(timerId);
+      };
     } else if (isReservation) {
       // Use verifyAndActivate (not getByReference) so we actively confirm with Paystack
       // and activate the reservation if it succeeded.  This resolves the race condition

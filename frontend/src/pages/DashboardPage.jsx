@@ -1941,6 +1941,7 @@ function AccountPage() {
   const [fundLoading, setFundLoading]     = useState(false);
   const [showFundModal, setShowFundModal] = useState(false);
   const [fundPolling, setFundPolling]     = useState(false);
+  const [verifyingRef, setVerifyingRef]   = useState(null);
   const pollIntervalRef                   = useRef(null);
 
   const loadAccounts = useCallback(async () => {
@@ -1979,6 +1980,21 @@ function AccountPage() {
       setTxLoading(false);
     }
   }, []);
+
+  /** Manually verify a stuck PENDING wallet top-up and credit the wallet if Paystack confirms it. */
+  const handleVerifyTopUp = async (reference) => {
+    setVerifyingRef(reference);
+    try {
+      await walletAPI.verify(reference);
+      toast.success('Payment confirmed — wallet credited!');
+      await Promise.all([loadWallet(), loadTxHistory()]);
+    } catch (err) {
+      const msg = err?.response?.data?.message || 'Could not verify payment';
+      toast.error(msg);
+    } finally {
+      setVerifyingRef(null);
+    }
+  };
 
   useEffect(() => {
     loadAccounts();
@@ -2292,6 +2308,15 @@ function AccountPage() {
                         tx.status === 'PENDING'    ? 'bg-yellow-100 text-yellow-700' :
                         'bg-red-100 text-red-600'
                       }`}>{tx.status}</span>
+                      {tx.status === 'PENDING' && tx.reference?.startsWith('WLT-') && (
+                        <button
+                          onClick={() => handleVerifyTopUp(tx.reference)}
+                          disabled={verifyingRef === tx.reference}
+                          className="text-xs text-forest-700 underline hover:text-forest-900 disabled:opacity-50 mt-0.5"
+                        >
+                          {verifyingRef === tx.reference ? 'Verifying…' : 'Verify payment'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
