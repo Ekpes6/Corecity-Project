@@ -6,7 +6,7 @@ import {
   CheckCircle, XCircle, Clock, RefreshCw, Search, Filter,
   Bed, Bath, MapPin, Building2, AlertCircle, ShieldCheck,
   Crown, BookMarked, BadgeCheck, Landmark, Zap, ArrowUpRight,
-  CalendarCheck, Lock, Unlock, RotateCcw, Phone, User, Save,
+  CalendarCheck, Lock, Unlock, RotateCcw, Phone, User, Users, Save,
   Wallet, Banknote, PlusCircle, Trash2, Star as StarIcon, ArrowDownCircle, Copy,
 } from 'lucide-react';
 import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI, notificationAPI, adminAPI, authAPI, bankAccountAPI, walletAPI, disbursementAPI } from '../services/api';
@@ -2128,6 +2128,7 @@ export default function DashboardPage() {
     { to: '/dashboard/moderation',    label: 'Moderation',     icon: ShieldCheck, adminOnly: true },
     { to: '/dashboard/withdrawals',    label: 'Withdrawals',    icon: Banknote,    adminOnly: true },
     { to: '/dashboard/disbursements',  label: 'Disbursements',  icon: ArrowUpRight, adminOnly: true },
+    { to: '/dashboard/users',          label: 'User Management', icon: Users,       adminOnly: true },
     { to: '/dashboard/payments',      label: 'Payments',       icon: CreditCard },
     { to: '/dashboard/commissions',   label: 'Commissions',    icon: Landmark,    agentAdminOrSeller: true },
     { to: '/dashboard/reservations',  label: 'Reservations',   icon: CalendarCheck },
@@ -2218,6 +2219,7 @@ export default function DashboardPage() {
             <Route path="account"      element={<AccountPage />} />
             <Route path="withdrawals"  element={<WithdrawalsAdminPage />} />
             <Route path="disbursements" element={<DisbursementsAdminPage />} />
+            <Route path="users"         element={<UserManagementPage />} />
             <Route path="settings"     element={<SettingsPage />} />
           </Routes>
         </main>
