@@ -116,16 +116,20 @@ export const AuthProvider = ({ children }) => {
   // These are derived from state — which on every fresh page load is
   // re-verified against the server via the useEffect above.
   const isAuthenticated = !!user;
-  const role      = user?.role?.toUpperCase();
-  const isAgent   = role === 'AGENT';
-  const isSeller  = role === 'SELLER' || role === 'AGENT';
-  const isAdmin   = role === 'ADMIN';
+  const role        = user?.role?.toUpperCase();
+  const isAgent     = role === 'AGENT';
+  const isSeller    = role === 'SELLER' || role === 'AGENT';
+  const isAdmin     = role === 'ADMIN';
+  const accountStatus  = user?.accountStatus ?? 'ACTIVE';
+  const isSuspended    = accountStatus === 'SUSPENDED';
+  const isTerminated   = accountStatus === 'TERMINATED';
 
   return (
     <AuthContext.Provider value={{
       user, loading, roleVerified,
       login, register, logout, updateUser, refreshUser,
       isAuthenticated, isAgent, isSeller, isAdmin,
+      accountStatus, isSuspended, isTerminated,
     }}>
       {children}
     </AuthContext.Provider>
