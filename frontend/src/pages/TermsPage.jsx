@@ -123,7 +123,7 @@ export default function TermsPage() {
               'Hold a valid real estate licence or professional certification recognised in their jurisdiction',
               'Provide accurate identification and contact information at registration',
               'Maintain an active, verified account on the Platform',
-              'Comply with the Platform's Know Your Customer (KYC) requirements',
+              "Comply with the Platform's Know Your Customer (KYC) requirements",
             ]} />
 
             <SubHeading>2.3 Agent Obligations</SubHeading>
@@ -171,7 +171,7 @@ export default function TermsPage() {
               'Be the legal owner (or authorised representative) of any property listed',
               'Provide valid proof of ownership upon request by the Platform',
               'Provide accurate personal identification, phone number, and bank account details for disbursement',
-              'Comply with the Platform's KYC requirements',
+              "Comply with the Platform's KYC requirements",
             ]} />
 
             <SubHeading>3.3 Seller Obligations</SubHeading>
@@ -219,7 +219,7 @@ export default function TermsPage() {
             <NumberedList items={[
               'Seller disbursements are initiated by the Platform Admin upon confirmation of transaction completion',
               'The Seller will receive a notification confirming disbursement initiation',
-              'Sellers must not request disbursement before the buyer's payment has been confirmed and cleared',
+              "Sellers must not request disbursement before the buyer's payment has been confirmed and cleared",
             ]} />
 
             <SubHeading>4.3 Dispute on Disbursement</SubHeading>
@@ -303,7 +303,7 @@ export default function TermsPage() {
           <Section id="governing" title="X. Governing Law & Dispute Resolution" onView={setActiveSection}>
             <NumberedList items={[
               'This Agreement shall be governed by and construed in accordance with the laws of the Federal Republic of Nigeria',
-              'Any dispute arising from this Agreement shall first be referred to CoreCity's internal dispute resolution process',
+              "Any dispute arising from this Agreement shall first be referred to CoreCity's internal dispute resolution process",
               'If unresolved within 30 days, disputes shall be submitted to binding arbitration under the rules of the Lagos Court of Arbitration',
               'Nothing in this clause prevents either Party from seeking urgent injunctive relief from a court of competent jurisdiction',
             ]} />
