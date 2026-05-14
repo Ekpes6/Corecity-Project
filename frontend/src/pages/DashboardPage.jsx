@@ -1405,8 +1405,20 @@ function DisbursementCard({ item, note, onNoteChange, onMarkPaid, processing, on
       {/* Bank transfer details */}
       <div className="bg-gray-50 rounded-xl p-4 space-y-2">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bank Transfer Details</p>
-        {(item.ownerBankName || item.ownerAccountNumber || item.ownerAccountName) ? (
+        {(item.ownerBankName || item.ownerAccountNumber || item.ownerAccountName || item.ownerName || item.ownerPhone) ? (
           <div className="space-y-1.5">
+            {item.ownerName && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Owner Name</span>
+                <span className="text-sm font-medium text-gray-800">{item.ownerName}</span>
+              </div>
+            )}
+            {item.ownerPhone && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">Phone</span>
+                <a href={`tel:${item.ownerPhone}`} className="text-sm font-medium text-forest-700 hover:underline">{item.ownerPhone}</a>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">Bank</span>
               <span className="text-sm font-medium text-gray-800">{item.ownerBankName || '—'}</span>

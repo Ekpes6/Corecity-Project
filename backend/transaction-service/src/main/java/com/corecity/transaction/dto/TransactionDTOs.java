@@ -84,6 +84,7 @@ public class TransactionDTOs {
         /** Net property value (90% of buyer payment) — the amount owed to the seller. */
         private BigDecimal propertyValue;
         private String ownerName;
+        private String ownerPhone;
         private String ownerBankName;
         private String ownerAccountNumber;
         private String ownerAccountName;

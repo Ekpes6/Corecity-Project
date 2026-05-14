@@ -55,6 +55,7 @@ public class PropertyServiceClient {
     public record PropertySummary(
         String title,
         String ownerName,
+        String ownerPhone,
         String ownerBankName,
         String ownerAccountNumber,
         String ownerAccountName
@@ -76,6 +77,7 @@ public class PropertyServiceClient {
             return new PropertySummary(
                 node.path("title").asText(null),
                 node.path("ownerName").asText(null),
+                node.path("ownerPhone").asText(null),
                 node.path("ownerBankName").asText(null),
                 node.path("ownerAccountNumber").asText(null),
                 node.path("ownerAccountName").asText(null)

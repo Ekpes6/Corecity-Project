@@ -406,6 +406,7 @@ public class TransactionService {
                 ? c.getPropertyValue().add(c.getAgentCommission())
                 : c.getPropertyValue())
             .ownerName(prop != null ? prop.ownerName() : null)
+            .ownerPhone(prop != null ? prop.ownerPhone() : null)
             .ownerBankName(prop != null ? prop.ownerBankName() : null)
             .ownerAccountNumber(prop != null ? prop.ownerAccountNumber() : null)
             .ownerAccountName(prop != null ? prop.ownerAccountName() : null)
