@@ -127,8 +127,8 @@ public class WalletController {
     /** GET /api/v1/users/me/wallet/withdrawals/all — admin: all withdrawal requests. */
     @GetMapping("/withdrawals/all")
     public ResponseEntity<List<WithdrawalRequest>> getAllWithdrawals(
-            @RequestHeader(value = "X-User-Role", defaultValue = "") String role) {
-        if (!"ADMIN".equalsIgnoreCase(role)) {
+            @RequestHeader("X-User-Id") Long userId) {
+        if (!walletService.isAdmin(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         return ResponseEntity.ok(walletService.getAllWithdrawals());
@@ -141,10 +141,10 @@ public class WalletController {
      */
     @PatchMapping("/withdrawals/{id}/process")
     public ResponseEntity<WithdrawalRequest> processWithdrawal(
-            @RequestHeader(value = "X-User-Role", defaultValue = "") String role,
+            @RequestHeader("X-User-Id") Long userId,
             @PathVariable Long id,
             @RequestBody Map<String, Object> body) {
-        if (!"ADMIN".equalsIgnoreCase(role)) {
+        if (!walletService.isAdmin(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         Object statusRaw = body.get("status");

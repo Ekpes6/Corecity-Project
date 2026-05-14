@@ -6,7 +6,9 @@ import com.corecity.user.entity.WalletTransaction;
 import com.corecity.user.entity.WalletTransaction.Status;
 import com.corecity.user.entity.WalletTransaction.Type;
 import com.corecity.user.entity.WithdrawalRequest;
+import com.corecity.user.entity.User;
 import com.corecity.user.repository.BankAccountRepository;
+import com.corecity.user.repository.UserRepository;
 import com.corecity.user.repository.WalletRepository;
 import com.corecity.user.repository.WalletTransactionRepository;
 import com.corecity.user.repository.WithdrawalRequestRepository;
@@ -38,6 +40,7 @@ public class WalletService {
     private final WalletTransactionRepository walletTransactionRepository;
     private final WithdrawalRequestRepository withdrawalRequestRepository;
     private final BankAccountRepository bankAccountRepository;
+    private final UserRepository userRepository;
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
 
@@ -430,6 +433,13 @@ public class WalletService {
     @Transactional(readOnly = true)
     public List<WithdrawalRequest> getWithdrawals(Long userId) {
         return withdrawalRequestRepository.findByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    /** Returns true if the given userId belongs to an ADMIN user. */
+    public boolean isAdmin(Long userId) {
+        return userRepository.findById(userId)
+            .map(u -> u.getRole() == User.Role.ADMIN)
+            .orElse(false);
     }
 
     /** Admin: all withdrawal requests across all users, newest first. */
