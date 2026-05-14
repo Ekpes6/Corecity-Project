@@ -285,7 +285,8 @@ public class AuthService {
     /** Admin: suspend a user's account. */
     @Transactional
     public void suspendUser(Long adminId, Long targetId, String reason, String note, boolean withholdFunds) {
-        User target = userRepository.findById(targetId)
+        Long safeId = Objects.requireNonNull(targetId, "targetId must not be null");
+        User target = userRepository.findById(safeId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (target.getRole() == User.Role.ADMIN)
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot suspend an admin account");
@@ -297,7 +298,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reason: " + reason);
         }
 
-        userRepository.updateAccountStatus(targetId, User.AccountStatus.SUSPENDED.name(),
+        userRepository.updateAccountStatus(safeId, User.AccountStatus.SUSPENDED.name(),
             reasonEnum.name(), note, withholdFunds,
             java.time.LocalDateTime.now(), adminId);
     }
@@ -305,7 +306,8 @@ public class AuthService {
     /** Admin: terminate (permanently remove) a user's account. */
     @Transactional
     public void terminateUser(Long adminId, Long targetId, String reason, String note, boolean withholdFunds) {
-        User target = userRepository.findById(targetId)
+        Long safeId = Objects.requireNonNull(targetId, "targetId must not be null");
+        User target = userRepository.findById(safeId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (target.getRole() == User.Role.ADMIN)
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot terminate an admin account");
@@ -317,7 +319,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reason: " + reason);
         }
 
-        userRepository.updateAccountStatus(targetId, User.AccountStatus.TERMINATED.name(),
+        userRepository.updateAccountStatus(safeId, User.AccountStatus.TERMINATED.name(),
             reasonEnum.name(), note, withholdFunds,
             java.time.LocalDateTime.now(), adminId);
     }
@@ -325,11 +327,12 @@ public class AuthService {
     /** Admin: reinstate a suspended or terminated account to ACTIVE. */
     @Transactional
     public void reinstateUser(Long adminId, Long targetId) {
-        User target = userRepository.findById(targetId)
+        Long safeId = Objects.requireNonNull(targetId, "targetId must not be null");
+        User target = userRepository.findById(safeId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         if (target.getAccountStatus() == User.AccountStatus.ACTIVE)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is already active");
-        userRepository.reinstateUser(targetId);
+        userRepository.reinstateUser(safeId);
     }
 
     public List<Long> getUserIdsByRole(String role) {
