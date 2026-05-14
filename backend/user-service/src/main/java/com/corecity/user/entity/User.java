@@ -67,12 +67,12 @@ public class User {
     private boolean executiveAgent = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "account_status", nullable = false)
+    @Column(name = "account_status", nullable = false, columnDefinition = "varchar(20)")
     @Builder.Default
     private AccountStatus accountStatus = AccountStatus.ACTIVE;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "suspension_reason")
+    @Column(name = "suspension_reason", columnDefinition = "varchar(20)")
     private SuspensionReason suspensionReason;
 
     @Column(name = "suspension_note", columnDefinition = "TEXT")
