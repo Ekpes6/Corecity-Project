@@ -437,6 +437,7 @@ public class WalletService {
 
     /** Returns true if the given userId belongs to an ADMIN user. */
     public boolean isAdmin(Long userId) {
+        if (userId == null) return false;
         return userRepository.findById(userId)
             .map(u -> u.getRole() == User.Role.ADMIN)
             .orElse(false);
