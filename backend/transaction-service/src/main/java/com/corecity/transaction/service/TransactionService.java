@@ -225,10 +225,14 @@ public class TransactionService {
         // tx.getAmount() = total buyer price (base + 10% commission + Paystack fee).
         // Derive the seller's base: (totalBuyerPrice − paystackFee) ÷ 1.10
         // e.g. (85,802,000 − 2,000) ÷ 1.10 = 78,000,000
+        String sellerRole = userServiceClient.getUserRole(tx.getSellerId());
+        boolean isAgent   = "AGENT".equalsIgnoreCase(sellerRole);
         BigDecimal base      = tx.getAmount().subtract(tx.getServiceFee())
             .divide(new BigDecimal("1.10"), 2, RoundingMode.HALF_UP);
-        BigDecimal coreCityC = base.multiply(CORECITY_RATE).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal agentC    = base.multiply(AGENT_RATE).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal coreCityC = base.multiply(isAgent ? CORECITY_AGENT_RATE : CORECITY_SELLER_RATE)
+            .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal agentC    = base.multiply(isAgent ? AGENT_COMMISSION_RATE : SELLER_BONUS_RATE)
+            .setScale(2, RoundingMode.HALF_UP);
         BigDecimal totalC    = coreCityC.add(agentC);
         Commission commission = Commission.builder()
             .transactionId(tx.getId())
@@ -239,18 +243,27 @@ public class TransactionService {
             .agentCommission(agentC)
             .totalCommission(totalC)
             .overallCost(base.add(totalC))
+            .sellerRole(sellerRole)
             .status(Commission.CommissionStatus.PENDING)
             .build();
         commissionRepository.save(Objects.requireNonNull(commission));
-        log.info("Commission created for tx={}: CoreCity={} SellerBonus={}", tx.getId(), coreCityC, agentC);
+        log.info("Commission created for tx={}: sellerRole={} CoreCity={} AgentOrBonus={}",
+            tx.getId(), sellerRole, coreCityC, agentC);
 
-        // Disburse immediately: credit only admin's wallet (5% platform fee).
-        // Seller's 5% bonus is included in their bank-transfer payout (manual disbursement) — NOT a wallet credit.
-        // Run on a background thread — disbursement failures must not roll back the transaction.
+        // Disburse immediately on a background thread.
+        // AGENT  → credit agent wallet (7%) + admin wallet (3%).
+        // SELLER → credit only admin wallet (5%); seller's 5% bonus is included in manual bank-transfer payout.
         final String txRef    = tx.getReference();
         CompletableFuture.runAsync(() -> {
-            userServiceClient.creditWallet(adminUserId, coreCityC,
-                "CMM-ADMIN-" + txRef, "Commission (platform 5%): tx " + txRef);
+            if (isAgent) {
+                userServiceClient.creditWallet(adminUserId, coreCityC,
+                    "CMM-ADMIN-" + txRef, "Commission (platform 3%): tx " + txRef);
+                userServiceClient.creditWallet(tx.getSellerId(), agentC,
+                    "CMM-AGENT-" + txRef, "Commission (agent 7%): tx " + txRef);
+            } else {
+                userServiceClient.creditWallet(adminUserId, coreCityC,
+                    "CMM-ADMIN-" + txRef, "Commission (platform 5%): tx " + txRef);
+            }
             commission.setStatus(Commission.CommissionStatus.DISBURSED);
             commissionRepository.save(commission);
         });
