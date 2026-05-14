@@ -87,6 +87,7 @@ export function RegisterPage() {
   const [searchParams] = useSearchParams();
   const [showPw, setShowPw] = useState(false);
   const [phoneStatus, setPhoneStatus] = useState(null); // null | 'checking' | 'available' | 'taken'
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const phoneDebounceRef = useRef(null);
   const defaultRole = searchParams.get('role') || 'BUYER';
 
@@ -162,6 +163,12 @@ export function RegisterPage() {
   ];
 
   const role = watch('role');
+  const requiresAgreement = role === 'AGENT' || role === 'SELLER';
+
+  // Reset agreement acceptance whenever the role changes
+  useEffect(() => {
+    setAgreedToTerms(false);
+  }, [role]);
 
   return (
     <div className="min-h-screen bg-cream flex items-center justify-center px-4 py-12">
@@ -270,7 +277,35 @@ export function RegisterPage() {
               <Link to="/privacy" className="text-forest-700 underline">Privacy Policy</Link>.
             </p>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full">
+            {/* Agreement checkbox — shown only for Agent and Seller */}
+            {requiresAgreement && (
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={agreedToTerms}
+                  onChange={(e) => setAgreedToTerms(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 accent-forest-800 cursor-pointer shrink-0"
+                />
+                <span className="text-xs text-gray-600 leading-relaxed">
+                  I have read and accept the{' '}
+                  <Link to="/terms" target="_blank" rel="noopener noreferrer"
+                    className="text-forest-700 font-semibold underline underline-offset-2">
+                    CoreCity {role === 'AGENT' ? 'Agent' : 'Seller'} Agreement
+                  </Link>
+                  , including the commission structure (
+                  {role === 'AGENT'
+                    ? '7% wallet credit · 3% CoreCity fee'
+                    : '5% bank transfer bonus · 5% CoreCity fee'}
+                  ).
+                </span>
+              </label>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || (requiresAgreement && !agreedToTerms)}
+              className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               {loading ? 'Creating account…' : 'Create Account'}
             </button>
           </form>

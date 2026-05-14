@@ -105,8 +105,12 @@ export default function Footer() {
             © {new Date().getFullYear()} Corecity Nigeria Ltd. All rights reserved.
           </p>
           <div className="flex gap-6">
-            {['Privacy Policy', 'Terms of Use', 'Cookie Policy'].map((t) => (
-              <Link key={t} to="#" className="text-white/40 hover:text-white/70 text-xs transition-colors">
+            {[
+              ['Privacy Policy', '#'],
+              ['Terms of Use',   '/terms'],
+              ['Cookie Policy',  '#'],
+            ].map(([t, to]) => (
+              <Link key={t} to={to} className="text-white/40 hover:text-white/70 text-xs transition-colors">
                 {t}
               </Link>
             ))}

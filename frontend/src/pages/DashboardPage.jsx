@@ -1797,6 +1797,57 @@ function WithdrawalsAdminPage() {
 }
 
 // ── Main dashboard shell ────────────────────────────────────────
+// ── Agreement version banner ───────────────────────────────────
+const TERMS_VERSION = 1; // bump this whenever the agreement changes materially
+const TERMS_KEY     = 'cc_terms_v';
+
+function AgreementBanner() {
+  const { user } = useAuth();
+  const role = user?.role?.toUpperCase();
+  const needsBanner = role === 'AGENT' || role === 'SELLER';
+  const [accepted, setAccepted] = useState(() => {
+    return parseInt(localStorage.getItem(TERMS_KEY) || '0', 10) >= TERMS_VERSION;
+  });
+
+  if (!needsBanner || accepted) return null;
+
+  const handleAccept = () => {
+    localStorage.setItem(TERMS_KEY, String(TERMS_VERSION));
+    setAccepted(true);
+    toast.success('Agreement accepted — thank you!');
+  };
+
+  return (
+    <div className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="flex-1">
+        <p className="font-semibold text-amber-900 text-sm">
+          Action required: Accept the CoreCity {role === 'AGENT' ? 'Agent' : 'Seller'} Agreement
+        </p>
+        <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+          We've updated our platform agreement. Please read and accept it to continue listing
+          properties and receiving disbursements without interruption.
+        </p>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <Link
+          to="/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-semibold text-amber-800 underline underline-offset-2 hover:text-amber-900"
+        >
+          Read Agreement
+        </Link>
+        <button
+          onClick={handleAccept}
+          className="text-xs font-semibold bg-amber-800 text-white px-4 py-2 rounded-xl hover:bg-amber-900 transition-colors"
+        >
+          Accept &amp; Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user, logout, isSeller, isAdmin, isAgent } = useAuth();
   const navigate = useNavigate();
@@ -1862,6 +1913,8 @@ export default function DashboardPage() {
 
         {/* Content */}
         <main className="flex-1 min-w-0">
+          {/* Agreement re-acceptance banner for Agent / Seller */}
+          <AgreementBanner />
           {/* Mobile nav tabs */}
           <div className="lg:hidden flex gap-1 overflow-x-auto pb-2 mb-4 scrollbar-none">
             {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller, agentAdminOrSeller }) => {
