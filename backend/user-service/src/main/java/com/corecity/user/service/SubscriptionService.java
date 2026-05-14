@@ -64,8 +64,6 @@ public class SubscriptionService {
                 .name(plan.name())
                 .monthlyFee(plan.monthlyFee)
                 .maxListings(plan.maxListings)
-                .coreCityCommission("3%")
-                .agentCommission("7%")
                 .loanEligible(plan != SubscriptionPlan.EXECUTIVE)
                 .build())
             .collect(Collectors.toList());
