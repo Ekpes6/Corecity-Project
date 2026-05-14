@@ -53,4 +53,30 @@ public interface UserRepository extends JpaRepository<User, Long> {
      */
     @Query(value = "SELECT bvn FROM users WHERE id = :id", nativeQuery = true)
     String getRawBvn(@Param("id") Long id);
+
+    /** Returns all AGENT and SELLER accounts, ordered by most recently created. */
+    @Query("SELECT u FROM User u WHERE u.role IN ('AGENT', 'SELLER') ORDER BY u.createdAt DESC")
+    List<User> findAllAgentsAndSellers();
+
+    /** Updates account_status, suspension_reason, suspension_note, funds_withheld, suspended_at, suspended_by_admin_id for a user. */
+    @Modifying
+    @Query(value = "UPDATE users SET account_status = :status, suspension_reason = :reason, " +
+                   "suspension_note = :note, funds_withheld = :withheld, " +
+                   "suspended_at = :suspendedAt, suspended_by_admin_id = :adminId WHERE id = :id",
+           nativeQuery = true)
+    void updateAccountStatus(@Param("id") Long id,
+                             @Param("status") String status,
+                             @Param("reason") String reason,
+                             @Param("note") String note,
+                             @Param("withheld") boolean withheld,
+                             @Param("suspendedAt") java.time.LocalDateTime suspendedAt,
+                             @Param("adminId") Long adminId);
+
+    /** Reinstates a user to ACTIVE, clearing all suspension fields. */
+    @Modifying
+    @Query(value = "UPDATE users SET account_status = 'ACTIVE', suspension_reason = NULL, " +
+                   "suspension_note = NULL, funds_withheld = 0, suspended_at = NULL, " +
+                   "suspended_by_admin_id = NULL WHERE id = :id",
+           nativeQuery = true)
+    void reinstateUser(@Param("id") Long id);
 }

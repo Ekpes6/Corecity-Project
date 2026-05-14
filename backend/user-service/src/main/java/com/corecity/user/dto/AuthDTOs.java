@@ -57,9 +57,18 @@ public class AuthDTOs {
         private boolean ninSet;
         /** True if the user has already submitted a BVN (we never return the raw value). */
         private boolean bvnSet;
+        /** Account status: ACTIVE | SUSPENDED | TERMINATED */
+        private String accountStatus;
+        /** Reason for suspension/termination (null when ACTIVE). */
+        private String suspensionReason;
+        /** Free-text admin note accompanying the action. */
+        private String suspensionNote;
+        /** True when pending funds are withheld pending investigation. */
+        private boolean fundsWithheld;
+        private java.time.LocalDateTime suspendedAt;
     }
 
-    /** Lightweight projection returned by the admin user-search endpoint. */
+    /** Lightweight projection returned by the admin user-search / managed-users endpoint. */
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class UserSearchResult {
         private Long id;
@@ -67,5 +76,21 @@ public class AuthDTOs {
         private String firstName;
         private String lastName;
         private String role;
+        private String accountStatus;
+        private String suspensionReason;
+        private String suspensionNote;
+        private boolean fundsWithheld;
+        private java.time.LocalDateTime suspendedAt;
+    }
+
+    /** Request body for suspend / terminate endpoints. */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor
+    public static class SuspendRequest {
+        /** BREACH | FRAUD | REGULATORY | INACTIVITY */
+        private String reason;
+        /** Optional free-text note visible only to admins. */
+        private String note;
+        /** When true, pending wallet/disbursement funds are frozen. */
+        private boolean withholdFunds;
     }
 }

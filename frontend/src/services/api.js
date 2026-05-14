@@ -192,9 +192,13 @@ export const notificationAPI = {
   adminSend:      (data) => api.post('/notifications/admin/send', data),
 };
 
-// ─── Admin user search ────────────────────────────────────────
+// ─── Admin user search & management ──────────────────────────
 export const adminAPI = {
-  searchUsers: (q) => api.get(`/users/admin/search?q=${encodeURIComponent(q ?? '')}`),
+  searchUsers:  (q)       => api.get(`/users/admin/search?q=${encodeURIComponent(q ?? '')}`),
+  listUsers:    ()        => api.get('/users/admin/managed'),
+  suspendUser:  (id, data) => api.post(`/users/admin/${id}/suspend`, data),
+  terminateUser:(id, data) => api.post(`/users/admin/${id}/terminate`, data),
+  reinstateUser:(id)      => api.post(`/users/admin/${id}/reinstate`),
 };
 
 // ─── Bank Accounts ───────────────────────────────────────────

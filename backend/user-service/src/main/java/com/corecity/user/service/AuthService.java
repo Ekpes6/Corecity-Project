@@ -68,6 +68,16 @@ public class AuthService {
         if (!passwordEncoder.matches(req.getPassword(), user.getPassword()))
             throw new RuntimeException("Invalid credentials");
 
+        // Block suspended or terminated accounts
+        if (user.getAccountStatus() == User.AccountStatus.SUSPENDED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Your account has been suspended. Please contact support.");
+        }
+        if (user.getAccountStatus() == User.AccountStatus.TERMINATED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Your account has been terminated. Please contact support.");
+        }
+
         return AuthResponse.builder()
             .accessToken(jwtUtil.generateToken(user))
             .refreshToken(jwtUtil.generateRefreshToken(user))
@@ -131,6 +141,11 @@ public class AuthService {
             .createdAt(u.getCreatedAt())
             .ninSet(u.getNin() != null && !u.getNin().isBlank())
             .bvnSet(u.getBvn() != null && !u.getBvn().isBlank())
+            .accountStatus(u.getAccountStatus() != null ? u.getAccountStatus().name() : "ACTIVE")
+            .suspensionReason(u.getSuspensionReason() != null ? u.getSuspensionReason().name() : null)
+            .suspensionNote(u.getSuspensionNote())
+            .fundsWithheld(u.isFundsWithheld())
+            .suspendedAt(u.getSuspendedAt())
             .build();
     }
 
@@ -239,8 +254,82 @@ public class AuthService {
                         .firstName(u.getFirstName())
                         .lastName(u.getLastName())
                         .role(u.getRole().name())
+                        .accountStatus(u.getAccountStatus() != null ? u.getAccountStatus().name() : "ACTIVE")
+                        .suspensionReason(u.getSuspensionReason() != null ? u.getSuspensionReason().name() : null)
+                        .suspensionNote(u.getSuspensionNote())
+                        .fundsWithheld(u.isFundsWithheld())
+                        .suspendedAt(u.getSuspendedAt())
                         .build())
                 .toList();
+    }
+
+    /** Admin: list all AGENT and SELLER accounts with their current status. */
+    public List<UserSearchResult> listManagedUsers() {
+        return userRepository.findAllAgentsAndSellers()
+                .stream()
+                .map(u -> UserSearchResult.builder()
+                        .id(u.getId())
+                        .email(u.getEmail())
+                        .firstName(u.getFirstName())
+                        .lastName(u.getLastName())
+                        .role(u.getRole().name())
+                        .accountStatus(u.getAccountStatus() != null ? u.getAccountStatus().name() : "ACTIVE")
+                        .suspensionReason(u.getSuspensionReason() != null ? u.getSuspensionReason().name() : null)
+                        .suspensionNote(u.getSuspensionNote())
+                        .fundsWithheld(u.isFundsWithheld())
+                        .suspendedAt(u.getSuspendedAt())
+                        .build())
+                .toList();
+    }
+
+    /** Admin: suspend a user's account. */
+    @Transactional
+    public void suspendUser(Long adminId, Long targetId, String reason, String note, boolean withholdFunds) {
+        User target = userRepository.findById(targetId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (target.getRole() == User.Role.ADMIN)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot suspend an admin account");
+
+        User.SuspensionReason reasonEnum;
+        try {
+            reasonEnum = User.SuspensionReason.valueOf(reason.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reason: " + reason);
+        }
+
+        userRepository.updateAccountStatus(targetId, User.AccountStatus.SUSPENDED.name(),
+            reasonEnum.name(), note, withholdFunds,
+            java.time.LocalDateTime.now(), adminId);
+    }
+
+    /** Admin: terminate (permanently remove) a user's account. */
+    @Transactional
+    public void terminateUser(Long adminId, Long targetId, String reason, String note, boolean withholdFunds) {
+        User target = userRepository.findById(targetId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (target.getRole() == User.Role.ADMIN)
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot terminate an admin account");
+
+        User.SuspensionReason reasonEnum;
+        try {
+            reasonEnum = User.SuspensionReason.valueOf(reason.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reason: " + reason);
+        }
+
+        userRepository.updateAccountStatus(targetId, User.AccountStatus.TERMINATED.name(),
+            reasonEnum.name(), note, withholdFunds,
+            java.time.LocalDateTime.now(), adminId);
+    }
+
+    /** Admin: reinstate a suspended or terminated account to ACTIVE. */
+    @Transactional
+    public void reinstateUser(Long adminId, Long targetId) {
+        User target = userRepository.findById(targetId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (target.getAccountStatus() == User.AccountStatus.ACTIVE)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is already active");
+        userRepository.reinstateUser(targetId);
     }
 
     public List<Long> getUserIdsByRole(String role) {

@@ -66,6 +66,28 @@ public class User {
     @Builder.Default
     private boolean executiveAgent = false;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_status", nullable = false)
+    @Builder.Default
+    private AccountStatus accountStatus = AccountStatus.ACTIVE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "suspension_reason")
+    private SuspensionReason suspensionReason;
+
+    @Column(name = "suspension_note", columnDefinition = "TEXT")
+    private String suspensionNote;
+
+    @Column(name = "funds_withheld")
+    @Builder.Default
+    private boolean fundsWithheld = false;
+
+    @Column(name = "suspended_at")
+    private LocalDateTime suspendedAt;
+
+    @Column(name = "suspended_by_admin_id")
+    private Long suspendedByAdminId;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -76,5 +98,16 @@ public class User {
 
     public enum Role {
         BUYER, SELLER, AGENT, ADMIN
+    }
+
+    public enum AccountStatus {
+        ACTIVE, SUSPENDED, TERMINATED
+    }
+
+    public enum SuspensionReason {
+        BREACH,       // Breach of agreement
+        FRAUD,        // Suspected fraudulent activity
+        REGULATORY,   // Regulatory requirement or court order
+        INACTIVITY    // Prolonged inactivity (>12 months)
     }
 }

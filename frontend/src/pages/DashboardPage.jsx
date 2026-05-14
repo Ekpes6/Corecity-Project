@@ -1797,6 +1797,275 @@ function WithdrawalsAdminPage() {
 }
 
 // ── Main dashboard shell ────────────────────────────────────────
+// ── User Management (Admin) ────────────────────────────────────
+const SUSPENSION_REASONS = [
+  { value: 'BREACH',     label: 'Breach of Agreement' },
+  { value: 'FRAUD',      label: 'Suspected Fraudulent Activity' },
+  { value: 'REGULATORY', label: 'Regulatory Requirement / Court Order' },
+  { value: 'INACTIVITY', label: 'Prolonged Inactivity (>12 months)' },
+];
+
+const REASON_LABELS = Object.fromEntries(SUSPENSION_REASONS.map(r => [r.value, r.label]));
+
+const STATUS_BADGE = {
+  ACTIVE:     'bg-green-100 text-green-700',
+  SUSPENDED:  'bg-orange-100 text-orange-700',
+  TERMINATED: 'bg-red-100 text-red-700',
+};
+
+function UserManagementPage() {
+  const [users, setUsers]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
+  const [modal, setModal]         = useState(null); // { action: 'suspend'|'terminate', user }
+  const [reason, setReason]       = useState('BREACH');
+  const [note, setNote]           = useState('');
+  const [withhold, setWithhold]   = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminAPI.listUsers();
+      setUsers(res.data);
+    } catch {
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    return !q ||
+      u.email.toLowerCase().includes(q) ||
+      u.firstName.toLowerCase().includes(q) ||
+      u.lastName.toLowerCase().includes(q);
+  });
+
+  const openModal = (action, user) => {
+    setModal({ action, user });
+    setReason('BREACH');
+    setNote('');
+    setWithhold(action === 'terminate');
+  };
+  const closeModal = () => setModal(null);
+
+  const handleSubmit = async () => {
+    if (!modal) return;
+    setSubmitting(true);
+    try {
+      const payload = { reason, note, withholdFunds: withhold };
+      if (modal.action === 'suspend') {
+        await adminAPI.suspendUser(modal.user.id, payload);
+        toast.success(`${modal.user.firstName} suspended`);
+      } else {
+        await adminAPI.terminateUser(modal.user.id, payload);
+        toast.success(`${modal.user.firstName}'s account terminated`);
+      }
+      closeModal();
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Action failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleReinstate = async (u) => {
+    if (!window.confirm(`Reinstate ${u.firstName} ${u.lastName} to ACTIVE?`)) return;
+    try {
+      await adminAPI.reinstateUser(u.id);
+      toast.success(`${u.firstName} reinstated`);
+      load();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Reinstate failed');
+    }
+  };
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-gray-800 mb-1">User Management</h1>
+      <p className="text-sm text-gray-500 mb-6">
+        Suspend or terminate Agent / Seller accounts per Section 8.1 of the CoreCity Platform Agreement.
+      </p>
+
+      {/* Search */}
+      <div className="relative mb-4 max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search by name or email…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+      </div>
+
+      {loading ? (
+        <div className="text-center py-16 text-gray-400">Loading…</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">No accounts found.</div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(u => (
+            <div key={u.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* User info */}
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-800 text-sm">{u.firstName} {u.lastName}</p>
+                    <span className="text-xs font-medium text-gray-400 border border-gray-200 rounded-full px-2 py-0.5">
+                      {u.role}
+                    </span>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[u.accountStatus] ?? 'bg-gray-100 text-gray-600'}`}>
+                      {u.accountStatus}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">{u.email}</p>
+                  {u.accountStatus !== 'ACTIVE' && (
+                    <div className="mt-1.5 text-xs text-gray-500 space-y-0.5">
+                      {u.suspensionReason && (
+                        <p><span className="font-medium">Reason:</span> {REASON_LABELS[u.suspensionReason] ?? u.suspensionReason}</p>
+                      )}
+                      {u.suspensionNote && (
+                        <p><span className="font-medium">Note:</span> {u.suspensionNote}</p>
+                      )}
+                      {u.suspendedAt && (
+                        <p><span className="font-medium">Since:</span> {new Date(u.suspendedAt).toLocaleString('en-NG')}</p>
+                      )}
+                      {u.fundsWithheld && (
+                        <p className="text-orange-600 font-semibold">⚠ Funds withheld</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2 shrink-0 flex-wrap">
+                  {u.accountStatus === 'ACTIVE' && (
+                    <>
+                      <button
+                        onClick={() => openModal('suspend', u)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-orange-100 text-orange-700 hover:bg-orange-200 transition-colors"
+                      >
+                        Suspend
+                      </button>
+                      <button
+                        onClick={() => openModal('terminate', u)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                      >
+                        Terminate
+                      </button>
+                    </>
+                  )}
+                  {u.accountStatus === 'SUSPENDED' && (
+                    <>
+                      <button
+                        onClick={() => handleReinstate(u)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                      >
+                        Reinstate
+                      </button>
+                      <button
+                        onClick={() => openModal('terminate', u)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                      >
+                        Terminate
+                      </button>
+                    </>
+                  )}
+                  {u.accountStatus === 'TERMINATED' && (
+                    <button
+                      onClick={() => handleReinstate(u)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+                    >
+                      Reinstate
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Action Modal */}
+      {modal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            <h2 className="text-lg font-bold text-gray-800 mb-1 capitalize">
+              {modal.action} Account
+            </h2>
+            <p className="text-sm text-gray-500 mb-5">
+              {modal.user.firstName} {modal.user.lastName} &mdash; {modal.user.email}
+            </p>
+
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Reason (required)</label>
+            <select
+              value={reason}
+              onChange={e => setReason(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              {SUSPENSION_REASONS.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Admin note (optional)</label>
+            <textarea
+              rows={3}
+              placeholder="Internal note for the admin record…"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+
+            <label className="flex items-center gap-2 text-sm text-gray-700 mb-5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={withhold}
+                onChange={e => setWithhold(e.target.checked)}
+                className="w-4 h-4 rounded accent-amber-600"
+              />
+              Withhold pending funds pending investigation
+            </label>
+
+            {withhold && (
+              <div className="mb-4 rounded-xl bg-orange-50 border border-orange-200 px-4 py-3 text-xs text-orange-700">
+                <strong>Warning:</strong> Pending wallet balances and disbursements for this user
+                will be frozen until an admin manually reinstates or releases them.
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={closeModal}
+                className="text-sm px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting}
+                className={`text-sm font-semibold px-5 py-2 rounded-xl text-white transition-colors ${
+                  modal.action === 'terminate'
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-orange-600 hover:bg-orange-700'
+                } disabled:opacity-60`}
+              >
+                {submitting ? 'Processing…' : modal.action === 'terminate' ? 'Terminate' : 'Suspend'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Agreement version banner ───────────────────────────────────
 const TERMS_VERSION = 1; // bump this whenever the agreement changes materially
 const TERMS_KEY     = 'cc_terms_v';

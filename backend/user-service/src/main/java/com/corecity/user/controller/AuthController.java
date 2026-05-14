@@ -111,6 +111,65 @@ public class AuthController {
         return ResponseEntity.ok(authService.searchUsers(q));
     }
 
+    /**
+     * GET /api/v1/users/admin/managed — list all AGENT and SELLER accounts with status.
+     */
+    @GetMapping("/users/admin/managed")
+    public ResponseEntity<List<UserSearchResult>> listManagedUsers(
+            @RequestHeader("X-User-Role") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(authService.listManagedUsers());
+    }
+
+    /**
+     * POST /api/v1/users/admin/{id}/suspend — suspend a user's account.
+     */
+    @PostMapping("/users/admin/{id}/suspend")
+    public ResponseEntity<Void> suspendUser(
+            @PathVariable("id") Long targetId,
+            @RequestHeader("X-User-Id") Long adminId,
+            @RequestHeader("X-User-Role") String role,
+            @RequestBody SuspendRequest req) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        authService.suspendUser(adminId, targetId, req.getReason(), req.getNote(), req.isWithholdFunds());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * POST /api/v1/users/admin/{id}/terminate — permanently terminate a user's account.
+     */
+    @PostMapping("/users/admin/{id}/terminate")
+    public ResponseEntity<Void> terminateUser(
+            @PathVariable("id") Long targetId,
+            @RequestHeader("X-User-Id") Long adminId,
+            @RequestHeader("X-User-Role") String role,
+            @RequestBody SuspendRequest req) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        authService.terminateUser(adminId, targetId, req.getReason(), req.getNote(), req.isWithholdFunds());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * POST /api/v1/users/admin/{id}/reinstate — restore a suspended/terminated account to ACTIVE.
+     */
+    @PostMapping("/users/admin/{id}/reinstate")
+    public ResponseEntity<Void> reinstateUser(
+            @PathVariable("id") Long targetId,
+            @RequestHeader("X-User-Id") Long adminId,
+            @RequestHeader("X-User-Role") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        authService.reinstateUser(adminId, targetId);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/internal/users/ids-by-role")
     public ResponseEntity<List<Long>> getUserIdsByRole(
             @RequestParam(required = false) String role) {
