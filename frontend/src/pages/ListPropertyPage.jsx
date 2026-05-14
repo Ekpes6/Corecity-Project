@@ -5,10 +5,12 @@ import { useDropzone } from 'react-dropzone';
 import { Upload, X, CheckCircle2, ArrowRight, MapPin, Loader2, ChevronDown } from 'lucide-react';
 import { propertyAPI, fileAPI, locationAPI } from '../services/api';
 import { PROPERTY_TYPES, LISTING_TYPES, PRICE_PERIODS, ALL_AMENITIES, AMENITY_LABELS } from '../utils/nigeria';
+import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
 export default function ListPropertyPage() {
   const navigate  = useNavigate();
+  const { isAgent } = useAuth();
   const [step, setStep]           = useState(1);
   const [images, setImages]       = useState([]);      // File[] from dropzone
   const [previews, setPreviews]   = useState([]);      // data URLs
@@ -137,18 +139,18 @@ export default function ListPropertyPage() {
   }, [selectedStateId, setValue]);
 
   // ── Live commission breakdown ──────────────────────────────
-  // Computed from the seller's entered price (base value):
-  //   CoreCity fee    = 5% of base  (platform fee)
-  //   Seller bonus    = 5% of base  (added to seller's bank-transfer payout)
-  //   Buyer pays      = base + 5% + 5% = base × 1.10
+  // AGENT sellers:  7% agent wallet credit + 3% CoreCity wallet credit  → buyer pays base × 1.10
+  // SELLER/OWNER:   5% seller bonus (in bank-transfer payout) + 5% CoreCity wallet credit → buyer pays base × 1.10
   const priceBreakdown = useMemo(() => {
     const base = parseFloat(watchedPrice);
     if (!base || base <= 0) return null;
-    const corecity = +(base * 0.05).toFixed(2);
-    const agent    = +(base * 0.05).toFixed(2);
-    const total    = +(base + corecity + agent).toFixed(2);
-    return { base, corecity, agent, total };
-  }, [watchedPrice]);
+    const agentRate    = isAgent ? 0.07 : 0.05;
+    const corecityRate = isAgent ? 0.03 : 0.05;
+    const agentShare   = +(base * agentRate).toFixed(2);
+    const corecity     = +(base * corecityRate).toFixed(2);
+    const total        = +(base + agentShare + corecity).toFixed(2);
+    return { base, agent: agentShare, corecity, total };
+  }, [watchedPrice, isAgent]);
 
 
   const onDrop = useCallback((accepted) => {
@@ -340,15 +342,11 @@ export default function ListPropertyPage() {
                       <span className="font-medium">₦{priceBreakdown.base.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
-                      <span>Your bonus (5% — via bank transfer)</span>
+                      <span>{isAgent ? 'Your commission (7% — credited to wallet)' : 'Your bonus (5% — via bank transfer)'}</span>
                       <span className="font-medium">₦{priceBreakdown.agent.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
-                      <span>CoreCity platform fee (5%)</span>
-                      <span className="font-medium">₦{priceBreakdown.corecity.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-gray-600">
-                      <span>CoreCity platform fee (5%)</span>
+                      <span>CoreCity platform fee ({isAgent ? '3%' : '5%'})</span>
                       <span className="font-medium">₦{priceBreakdown.corecity.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-forest-900 font-bold border-t border-forest-200 pt-2 mt-1">

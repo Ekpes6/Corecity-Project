@@ -61,11 +61,11 @@ public class SubscriptionDTOs {
         private String name;
         private BigDecimal monthlyFee;
         private int maxListings;
-        /** Commission rates are fixed across all plans. */
+        /** Commission rates differ by role. Agents: 7% agent + 3% CoreCity. Sellers/owners: 5% seller bonus + 5% CoreCity. */
         @Builder.Default
-        private String coreCityCommission = "5%";
+        private String agentCommissionRate = "7% (agents) / 5% bonus (sellers)";
         @Builder.Default
-        private String agentCommission = "5%";
+        private String coreCityCommissionRate = "3% (agent deals) / 5% (seller deals)";
         private boolean loanEligible;
     }
 

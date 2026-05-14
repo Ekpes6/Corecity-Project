@@ -165,7 +165,7 @@ function DashboardHome() {
           <div className={`grid gap-3 ${isAdmin ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2'}`}>
             {/* Commission income */}
             <div className="card p-4 border-l-4 border-blue-400">
-              <p className="text-xs text-gray-500 mb-1">{isAdmin ? 'Platform Commissions (3%)' : 'Agent Commissions (7%)'}</p>
+              <p className="text-xs text-gray-500 mb-1">{isAdmin ? 'Platform Commissions' : isAgent ? 'Agent Commissions (7%)' : 'Seller Bonus (5%)'}</p>
               <p className="naira text-lg font-bold text-blue-700">
                 {formatNaira(isAdmin ? totalCorecityCommission : totalAgentCommission)}
               </p>
@@ -1957,12 +1957,12 @@ function CommissionsPage() {
         </div>
         {isAdmin && (
           <div className="card p-5 border-l-4 border-forest-700">
-            <p className="text-xs text-gray-500 mb-1">CoreCity Earnings (3%)</p>
+            <p className="text-xs text-gray-500 mb-1">CoreCity Earnings (3% / 5%)</p>
             <p className="text-xl font-bold text-forest-800 naira">{formatNaira(totalCorecityCommission)}</p>
           </div>
         )}
         <div className="card p-5 border-l-4 border-blue-400">
-          <p className="text-xs text-gray-500 mb-1">{isAdmin ? 'Agent Earnings (7%)' : 'My Commission (7%)'}</p>
+          <p className="text-xs text-gray-500 mb-1">{isAdmin ? 'Agent/Seller Earnings (7% or 5%)' : isAgent ? 'My Commission (7%)' : 'My Bonus (5%)'}</p>
           <p className="text-xl font-bold text-blue-700 naira">{formatNaira(totalAgentCommission)}</p>
         </div>
       </div>
@@ -1988,8 +1988,8 @@ function CommissionsPage() {
                     </p>
                     <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
                       <span>Property value: <span className="font-medium text-gray-700 naira">{formatNaira(c.propertyValue)}</span></span>
-                      {isAdmin && <span>CoreCity (3%): <span className="font-medium text-forest-700 naira">{formatNaira(c.corecityCommission)}</span></span>}
-                      <span>{isAdmin ? 'Agent (7%)' : 'My share (7%)'}: <span className="font-medium text-blue-700 naira">{formatNaira(c.agentCommission)}</span></span>
+                      {isAdmin && <span>CoreCity (3%/5%): <span className="font-medium text-forest-700 naira">{formatNaira(c.corecityCommission)}</span></span>}
+                      <span>{isAdmin ? 'Agent/Seller share' : isAgent ? 'My share (7%)' : 'My bonus (5%)'}: <span className="font-medium text-blue-700 naira">{formatNaira(c.agentCommission)}</span></span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">
