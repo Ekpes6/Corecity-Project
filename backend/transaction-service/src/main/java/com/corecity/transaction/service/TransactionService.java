@@ -367,6 +367,7 @@ public class TransactionService {
      */
     @Transactional
     public DisbursementResponse markSellerPaid(Long commissionId, String note) {
+        if (commissionId == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "commissionId required");
         Commission commission = commissionRepository.findById(commissionId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Commission not found"));
         if (commission.isSellerPaid()) {
@@ -381,11 +382,13 @@ public class TransactionService {
     }
 
     private DisbursementResponse toDisbursementResponse(Commission c) {
-        Transaction tx = c.getTransactionId() != null
-            ? transactionRepository.findById(c.getTransactionId()).orElse(null)
+        Long txId = c.getTransactionId();
+        Transaction tx = txId != null
+            ? transactionRepository.findById(txId).orElse(null)
             : null;
-        PropertyServiceClient.PropertySummary prop = c.getPropertyId() != null
-            ? propertyServiceClient.getPropertyForDisbursement(c.getPropertyId())
+        Long propId = c.getPropertyId();
+        PropertyServiceClient.PropertySummary prop = propId != null
+            ? propertyServiceClient.getPropertyForDisbursement(propId)
             : null;
         return DisbursementResponse.builder()
             .commissionId(c.getId())

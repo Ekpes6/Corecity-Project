@@ -100,6 +100,7 @@ public class InternalController {
      */
     @GetMapping("/user-role/{userId}")
     public ResponseEntity<Map<String, String>> getUserRole(@PathVariable Long userId) {
+        if (userId == null) return ResponseEntity.badRequest().build();
         return userRepository.findById(userId)
                 .map(u -> ResponseEntity.ok(Map.of("role", u.getRole().name())))
                 .orElseGet(() -> {
