@@ -342,6 +342,7 @@ public class TransactionService {
             .totalCommission(c.getTotalCommission())
             .overallCost(c.getOverallCost())
             .status(c.getStatus().name())
+            .sellerRole(c.getSellerRole())
             .createdAt(c.getCreatedAt())
             .build();
     }

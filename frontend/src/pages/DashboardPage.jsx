@@ -1988,8 +1988,18 @@ function CommissionsPage() {
                     </p>
                     <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
                       <span>Property value: <span className="font-medium text-gray-700 naira">{formatNaira(c.propertyValue)}</span></span>
-                      {isAdmin && <span>CoreCity (3%/5%): <span className="font-medium text-forest-700 naira">{formatNaira(c.corecityCommission)}</span></span>}
-                      <span>{isAdmin ? 'Agent/Seller share' : isAgent ? 'My share (7%)' : 'My bonus (5%)'}: <span className="font-medium text-blue-700 naira">{formatNaira(c.agentCommission)}</span></span>
+                      {isAdmin && (
+                        <span>
+                          CoreCity ({c.sellerRole === 'AGENT' ? '3%' : '5%'}):
+                          {' '}<span className="font-medium text-forest-700 naira">{formatNaira(c.corecityCommission)}</span>
+                        </span>
+                      )}
+                      <span>
+                        {isAdmin
+                          ? (c.sellerRole === 'AGENT' ? 'Agent share (7%)' : 'Seller bonus (5%)')
+                          : isAgent ? 'My share (7%)' : 'My bonus (5%)'}
+                        : <span className="font-medium text-blue-700 naira">{formatNaira(c.agentCommission)}</span>
+                      </span>
                     </div>
                   </div>
                   <div className="text-right shrink-0">

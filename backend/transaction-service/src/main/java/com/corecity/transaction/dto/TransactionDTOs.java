@@ -62,6 +62,8 @@ public class TransactionDTOs {
         private BigDecimal totalCommission;
         private BigDecimal overallCost;
         private String status;
+        /** 'AGENT' → 7%+3% model. 'SELLER' → 5%+5% model. */
+        private String sellerRole;
         private LocalDateTime createdAt;
     }
 
