@@ -209,7 +209,7 @@ export const walletAPI = {
   withdraw:        (data)           => api.post('/users/me/wallet/withdraw', data),
   getWithdrawals:  ()               => api.get('/users/me/wallet/withdrawals'),
   getAllWithdrawals:()               => api.get('/users/me/wallet/withdrawals/all'),
-  processWithdrawal:(id, data)      => api.patch(`/users/me/wallet/withdrawals/${id}/process`, data),
+  processWithdrawal:(id, data)      => api.post(`/users/me/wallet/withdrawals/${id}/process`, data),
 };
 
 export default api;

@@ -135,11 +135,13 @@ public class WalletController {
     }
 
     /**
-     * PATCH /api/v1/users/me/wallet/withdrawals/{id}/process
+     * POST /api/v1/users/me/wallet/withdrawals/{id}/process
      * Admin: mark a PENDING withdrawal as PROCESSED (bank transfer sent) or REJECTED (refund wallet).
      * Body: { "status": "PROCESSED"|"REJECTED", "adminNote": "optional note" }
+     * Note: Using POST instead of PATCH because Spring Cloud Gateway drops injected headers
+     * (X-User-Id) on PATCH requests that carry a request body (reactive pipeline limitation).
      */
-    @PatchMapping("/withdrawals/{id}/process")
+    @PostMapping("/withdrawals/{id}/process")
     public ResponseEntity<WithdrawalRequest> processWithdrawal(
             @RequestHeader("X-User-Id") Long userId,
             @PathVariable Long id,
