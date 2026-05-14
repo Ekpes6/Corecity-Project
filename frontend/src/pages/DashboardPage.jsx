@@ -260,6 +260,9 @@ function MyListings() {
   const { isSeller } = useAuth();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activePage,   setActivePage]   = useState(1);
+  const [pendingPage,  setPendingPage]  = useState(1);
+  const [rejectedPage, setRejectedPage] = useState(1);
 
   useEffect(() => {
     propertyAPI.getMyList()
@@ -288,68 +291,80 @@ function MyListings() {
       ) : (
         <div className="space-y-8">
           {/* Active listings */}
-          {properties.filter((p) => ['ACTIVE', 'ON_NEGOTIATION', 'SOLD', 'RENTED'].includes(p.status)).length > 0 && (
-            <div>
-              <h3 className="font-semibold text-gray-700 mb-3 text-sm">Active Listings</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {properties
-                  .filter((p) => ['ACTIVE', 'ON_NEGOTIATION', 'SOLD', 'RENTED'].includes(p.status))
-                  .map((p) => <PropertyCard key={p.id} property={p} />)}
+          {(() => {
+            const active = properties.filter((p) => ['ACTIVE', 'ON_NEGOTIATION', 'SOLD', 'RENTED'].includes(p.status));
+            if (!active.length) return null;
+            const activeSlice = active.slice((activePage - 1) * PAGE_SIZE, activePage * PAGE_SIZE);
+            return (
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-3 text-sm">Active Listings</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {activeSlice.map((p) => <PropertyCard key={p.id} property={p} />)}
+                </div>
+                <Pagination page={activePage} total={active.length} onChange={setActivePage} />
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Pending approval */}
-          {properties.filter((p) => p.status === 'PENDING').length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="font-semibold text-gray-700 text-sm">Awaiting Admin Approval</h3>
-                <span className="bg-yellow-100 text-yellow-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                  {properties.filter((p) => p.status === 'PENDING').length}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {properties.filter((p) => p.status === 'PENDING').map((p) => (
-                  <div key={p.id} className="card p-4 flex items-center gap-4 border-l-4 border-yellow-400">
-                    <img src={p.primaryImageUrl || p.imageUrls?.[0] || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'}
-                      alt={p.title} className="w-16 h-16 rounded-xl object-cover shrink-0"
-                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'; }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 text-sm truncate">{p.title}</p>
-                      <p className="text-xs text-gray-400 truncate">{p.address}</p>
+          {(() => {
+            const pending = properties.filter((p) => p.status === 'PENDING');
+            if (!pending.length) return null;
+            const pendingSlice = pending.slice((pendingPage - 1) * PAGE_SIZE, pendingPage * PAGE_SIZE);
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-semibold text-gray-700 text-sm">Awaiting Admin Approval</h3>
+                  <span className="bg-yellow-100 text-yellow-700 text-xs font-medium px-2 py-0.5 rounded-full">{pending.length}</span>
+                </div>
+                <div className="space-y-3">
+                  {pendingSlice.map((p) => (
+                    <div key={p.id} className="card p-4 flex items-center gap-4 border-l-4 border-yellow-400">
+                      <img src={p.primaryImageUrl || p.imageUrls?.[0] || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'}
+                        alt={p.title} className="w-16 h-16 rounded-xl object-cover shrink-0"
+                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'; }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-800 text-sm truncate">{p.title}</p>
+                        <p className="text-xs text-gray-400 truncate">{p.address}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full">Pending Review</span>
                     </div>
-                    <span className="shrink-0 text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full">Pending Review</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <Pagination page={pendingPage} total={pending.length} onChange={setPendingPage} />
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Rejected */}
-          {properties.filter((p) => p.status === 'REJECTED').length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <h3 className="font-semibold text-gray-700 text-sm">Rejected Listings</h3>
-                <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full">
-                  {properties.filter((p) => p.status === 'REJECTED').length}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {properties.filter((p) => p.status === 'REJECTED').map((p) => (
-                  <div key={p.id} className="card p-4 flex items-center gap-4 border-l-4 border-red-400">
-                    <img src={p.primaryImageUrl || p.imageUrls?.[0] || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'}
-                      alt={p.title} className="w-16 h-16 rounded-xl object-cover shrink-0"
-                      onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'; }} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 text-sm truncate">{p.title}</p>
-                      <p className="text-xs text-gray-400 truncate">{p.address}</p>
+          {(() => {
+            const rejected = properties.filter((p) => p.status === 'REJECTED');
+            if (!rejected.length) return null;
+            const rejectedSlice = rejected.slice((rejectedPage - 1) * PAGE_SIZE, rejectedPage * PAGE_SIZE);
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="font-semibold text-gray-700 text-sm">Rejected Listings</h3>
+                  <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full">{rejected.length}</span>
+                </div>
+                <div className="space-y-3">
+                  {rejectedSlice.map((p) => (
+                    <div key={p.id} className="card p-4 flex items-center gap-4 border-l-4 border-red-400">
+                      <img src={p.primaryImageUrl || p.imageUrls?.[0] || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'}
+                        alt={p.title} className="w-16 h-16 rounded-xl object-cover shrink-0"
+                        onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'; }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-800 text-sm truncate">{p.title}</p>
+                        <p className="text-xs text-gray-400 truncate">{p.address}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-medium bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-full">Rejected</span>
                     </div>
-                    <span className="shrink-0 text-xs font-medium bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-full">Rejected</span>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <Pagination page={rejectedPage} total={rejected.length} onChange={setRejectedPage} />
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
     </div>
@@ -1640,14 +1655,16 @@ function WithdrawalsAdminPage() {
   const { isAdmin } = useAuth();
   const [requests, setRequests] = useState([]);
   const [loading, setLoading]   = useState(true);
-  const [processing, setProcessing] = useState(null); // id being actioned
-  const [noteMap, setNoteMap]   = useState({});        // id -> note text
+  const [processing, setProcessing] = useState(null);
+  const [noteMap, setNoteMap]   = useState({});
+  const [page, setPage]         = useState(1);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       const { data } = await walletAPI.getAllWithdrawals();
       setRequests(data);
+      setPage(1);
     } catch (err) {
       const status = err?.response?.status;
       const msg = status === 403 ? 'Access denied — admin only'
@@ -1703,8 +1720,9 @@ function WithdrawalsAdminPage() {
           <p className="text-gray-400">No withdrawal requests yet.</p>
         </div>
       ) : (
-        <div className="card divide-y divide-gray-50">
-          {requests.map((r) => (
+        <div className="space-y-4">
+          <div className="card divide-y divide-gray-50">
+          {requests.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((r) => (
             <div key={r.id} className="px-5 py-5 space-y-3">
               {/* Header row */}
               <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -1758,6 +1776,8 @@ function WithdrawalsAdminPage() {
               )}
             </div>
           ))}
+          </div>
+          <Pagination page={page} total={requests.length} onChange={setPage} />
         </div>
       )}
     </div>
