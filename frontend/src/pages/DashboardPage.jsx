@@ -1457,19 +1457,25 @@ function DisbursementCard({ item, note, onNoteChange, onMarkPaid, processing, on
   );
 }
 
+const DISB_PAGE_SIZE = 10;
+
 function DisbursementsAdminPage() {
   const { isAdmin } = useAuth();
-  const [items,      setItems]      = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [showAll,    setShowAll]    = useState(false);
-  const [processing, setProcessing] = useState(null);
-  const [noteMap,    setNoteMap]    = useState({});
+  const [items,        setItems]       = useState([]);
+  const [loading,      setLoading]     = useState(true);
+  const [showAll,      setShowAll]     = useState(false);
+  const [processing,   setProcessing]  = useState(null);
+  const [noteMap,      setNoteMap]     = useState({});
+  const [pendingPage,  setPendingPage] = useState(1);
+  const [paidPage,     setPaidPage]    = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const res = await disbursementAPI.getAll(!showAll);
       setItems(res.data);
+      setPendingPage(1);
+      setPaidPage(1);
     } catch (err) {
       const status = err?.response?.status;
       const msg = status === 403
@@ -1504,8 +1510,12 @@ function DisbursementsAdminPage() {
 
   if (!isAdmin) return <p className="text-gray-500">Access denied.</p>;
 
-  const pending = items.filter(i => !i.sellerPaid);
-  const paid    = items.filter(i =>  i.sellerPaid);
+  const pending      = items.filter(i => !i.sellerPaid);
+  const paid         = items.filter(i =>  i.sellerPaid);
+  const pendingPages = Math.max(1, Math.ceil(pending.length / DISB_PAGE_SIZE));
+  const paidPages    = Math.max(1, Math.ceil(paid.length    / DISB_PAGE_SIZE));
+  const pendingSlice = pending.slice((pendingPage - 1) * DISB_PAGE_SIZE, pendingPage * DISB_PAGE_SIZE);
+  const paidSlice    = paid.slice   ((paidPage    - 1) * DISB_PAGE_SIZE, paidPage    * DISB_PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -1566,7 +1576,7 @@ function DisbursementsAdminPage() {
       ) : (
         <div className="space-y-4">
           {/* Pending */}
-          {pending.map(item => (
+          {pendingSlice.map(item => (
             <DisbursementCard
               key={item.commissionId}
               item={item}
@@ -1577,6 +1587,21 @@ function DisbursementsAdminPage() {
               onCopy={copyToClipboard}
             />
           ))}
+          {pendingPages > 1 && (
+            <div className="flex items-center justify-between pt-1">
+              <button
+                onClick={() => setPendingPage(p => Math.max(1, p - 1))}
+                disabled={pendingPage === 1}
+                className="btn-outline text-xs px-3 py-1.5 disabled:opacity-40"
+              >← Prev</button>
+              <span className="text-xs text-gray-500">Page {pendingPage} of {pendingPages}</span>
+              <button
+                onClick={() => setPendingPage(p => Math.min(pendingPages, p + 1))}
+                disabled={pendingPage === pendingPages}
+                className="btn-outline text-xs px-3 py-1.5 disabled:opacity-40"
+              >Next →</button>
+            </div>
+          )}
 
           {/* Paid history */}
           {showAll && paid.length > 0 && (
@@ -1584,9 +1609,24 @@ function DisbursementsAdminPage() {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide pt-2">
                 Paid ({paid.length})
               </p>
-              {paid.map(item => (
+              {paidSlice.map(item => (
                 <DisbursementCard key={item.commissionId} item={item} />
               ))}
+              {paidPages > 1 && (
+                <div className="flex items-center justify-between pt-1">
+                  <button
+                    onClick={() => setPaidPage(p => Math.max(1, p - 1))}
+                    disabled={paidPage === 1}
+                    className="btn-outline text-xs px-3 py-1.5 disabled:opacity-40"
+                  >← Prev</button>
+                  <span className="text-xs text-gray-500">Page {paidPage} of {paidPages}</span>
+                  <button
+                    onClick={() => setPaidPage(p => Math.min(paidPages, p + 1))}
+                    disabled={paidPage === paidPages}
+                    className="btn-outline text-xs px-3 py-1.5 disabled:opacity-40"
+                  >Next →</button>
+                </div>
+              )}
             </>
           )}
         </div>
