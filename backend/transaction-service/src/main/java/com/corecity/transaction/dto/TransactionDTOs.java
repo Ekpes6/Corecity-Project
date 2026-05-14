@@ -90,6 +90,8 @@ public class TransactionDTOs {
         private boolean sellerPaid;
         private LocalDateTime sellerPaidAt;
         private String sellerNote;
+        /** 'AGENT' → 7%+3% model. 'SELLER' → 5%+5% model. */
+        private String sellerRole;
         private LocalDateTime createdAt;
     }
 }

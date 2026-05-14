@@ -412,6 +412,7 @@ public class TransactionService {
             .sellerPaid(c.isSellerPaid())
             .sellerPaidAt(c.getSellerPaidAt())
             .sellerNote(c.getSellerNote())
+            .sellerRole(c.getSellerRole())
             .createdAt(c.getCreatedAt())
             .build();
     }
