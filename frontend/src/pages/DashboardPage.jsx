@@ -2118,7 +2118,7 @@ function AgreementBanner() {
 }
 
 export default function DashboardPage() {
-  const { user, logout, isSeller, isAdmin, isAgent } = useAuth();
+  const { user, logout, isSeller, isAdmin, isAgent, isSuspended, isTerminated } = useAuth();
   const navigate = useNavigate();
 
   const navItems = [
@@ -2183,6 +2183,19 @@ export default function DashboardPage() {
 
         {/* Content */}
         <main className="flex-1 min-w-0">
+          {/* Suspension / termination notice */}
+          {(isSuspended || isTerminated) && (
+            <div className={`mb-4 rounded-2xl border px-5 py-4 ${isTerminated ? 'border-red-300 bg-red-50' : 'border-orange-300 bg-orange-50'}`}>
+              <p className={`font-bold text-sm mb-0.5 ${isTerminated ? 'text-red-800' : 'text-orange-800'}`}>
+                {isTerminated ? 'Account Terminated' : 'Account Suspended'}
+              </p>
+              <p className={`text-xs leading-relaxed ${isTerminated ? 'text-red-700' : 'text-orange-700'}`}>
+                {isTerminated
+                  ? 'Your account has been permanently terminated by CoreCity administration. Your access to listings, disbursements, and platform features has been revoked. If you believe this is an error, please contact support@corecity.ng.'
+                  : 'Your account has been temporarily suspended by CoreCity administration. You cannot post new listings or receive disbursements while suspended. Please contact support@corecity.ng for assistance.'}
+              </p>
+            </div>
+          )}
           {/* Agreement re-acceptance banner for Agent / Seller */}
           <AgreementBanner />
           {/* Mobile nav tabs */}
