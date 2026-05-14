@@ -152,6 +152,42 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.backfillDisbursements());
     }
 
+    // ─── Seller Disbursements ────────────────────────────────────────────────
+
+    /**
+     * GET /api/v1/transactions/disbursements?pending=true — ADMIN only.
+     * Returns the list of commissions representing seller payouts (90% of buyer payment).
+     * Enriched with property title and owner bank details from property-service.
+     *
+     * @param pending true (default) = only unpaid, false = all records
+     */
+    @GetMapping("/disbursements")
+    public ResponseEntity<List<DisbursementResponse>> getSellerDisbursements(
+            @RequestHeader(value = "X-User-Role", defaultValue = "") String role,
+            @RequestParam(value = "pending", defaultValue = "true") boolean pending) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(transactionService.getSellerDisbursements(pending));
+    }
+
+    /**
+     * POST /api/v1/transactions/disbursements/{id}/mark-paid — ADMIN only.
+     * Marks the seller's property-value payment as sent (bank transfer confirmed).
+     * Body (optional): { "note": "GTB-REF-12345" }
+     */
+    @PostMapping("/disbursements/{id}/mark-paid")
+    public ResponseEntity<DisbursementResponse> markSellerPaid(
+            @RequestHeader(value = "X-User-Role", defaultValue = "") String role,
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> body) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        String note = (body != null && body.get("note") != null) ? body.get("note").toString() : null;
+        return ResponseEntity.ok(transactionService.markSellerPaid(id, note));
+    }
+
     // ─── Private helpers ────────────────────────────────────────────────────
 
     /**

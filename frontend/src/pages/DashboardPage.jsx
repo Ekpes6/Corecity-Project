@@ -7,9 +7,9 @@ import {
   Bed, Bath, MapPin, Building2, AlertCircle, ShieldCheck,
   Crown, BookMarked, BadgeCheck, Landmark, Zap, ArrowUpRight,
   CalendarCheck, Lock, Unlock, RotateCcw, Phone, User, Save,
-  Wallet, Banknote, PlusCircle, Trash2, Star as StarIcon, ArrowDownCircle,
+  Wallet, Banknote, PlusCircle, Trash2, Star as StarIcon, ArrowDownCircle, Copy,
 } from 'lucide-react';
-import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI, notificationAPI, adminAPI, authAPI, bankAccountAPI, walletAPI } from '../services/api';
+import { propertyAPI, transactionAPI, subscriptionAPI, reservationAPI, reputationAPI, commissionAPI, notificationAPI, adminAPI, authAPI, bankAccountAPI, walletAPI, disbursementAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import PropertyCard from '../components/property/PropertyCard';
 import ListPropertyPage from './ListPropertyPage';
@@ -1345,6 +1345,242 @@ function ReputationPage() {
   );
 }
 
+// ── Admin Seller Disbursements ──────────────────────────────────────────────
+function DisbursementCard({ item, note, onNoteChange, onMarkPaid, processing, onCopy }) {
+  const TYPE_LABEL = { PURCHASE: 'Sale', RENT: 'Rent', SHORTLET: 'Shortlet' };
+  const isPaid = item.sellerPaid;
+
+  return (
+    <div className={`card p-5 space-y-4 ${isPaid ? 'opacity-60' : ''}`}>
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="font-semibold text-gray-900 truncate">
+            {item.propertyTitle || `Property #${item.propertyId}`}
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Ref: {item.transactionReference || '—'} · {TYPE_LABEL[item.transactionType] || item.transactionType || '—'}
+            {item.createdAt ? ` · ${formatDateTime(item.createdAt)}` : ''}
+          </p>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-xl font-bold text-forest-800">{formatNaira(item.propertyValue)}</p>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+            isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'
+          }`}>
+            {isPaid ? 'PAID' : 'PENDING'}
+          </span>
+        </div>
+      </div>
+
+      {/* Bank transfer details */}
+      <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Bank Transfer Details</p>
+        {(item.ownerBankName || item.ownerAccountNumber || item.ownerAccountName) ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">Bank</span>
+              <span className="text-sm font-medium text-gray-800">{item.ownerBankName || '—'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">Account Number</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-mono font-semibold text-gray-900">{item.ownerAccountNumber || '—'}</span>
+                {item.ownerAccountNumber && (
+                  <button
+                    onClick={() => onCopy && onCopy(item.ownerAccountNumber)}
+                    className="text-forest-600 hover:text-forest-800 transition-colors"
+                    title="Copy account number"
+                  >
+                    <Copy size={13} />
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-gray-500">Account Name</span>
+              <span className="text-sm font-medium text-gray-800">
+                {item.ownerAccountName || item.ownerName || '—'}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 italic">No bank details on file for this property</p>
+        )}
+      </div>
+
+      {/* Action area — only for unpaid */}
+      {!isPaid && (
+        <div className="space-y-2">
+          <input
+            type="text"
+            value={note}
+            onChange={e => onNoteChange(e.target.value)}
+            placeholder="Optional transfer reference / note"
+            className="input-field text-sm w-full"
+          />
+          <button
+            onClick={onMarkPaid}
+            disabled={processing}
+            className="btn-primary w-full flex items-center justify-center gap-2 text-sm"
+          >
+            {processing
+              ? <RefreshCw size={14} className="animate-spin" />
+              : <CheckCircle size={14} />}
+            Mark as Paid
+          </button>
+        </div>
+      )}
+
+      {/* Paid metadata */}
+      {isPaid && (
+        <div className="text-xs text-gray-400 space-y-0.5">
+          {item.sellerPaidAt && <p>Paid: {formatDateTime(item.sellerPaidAt)}</p>}
+          {item.sellerNote  && <p>Note: <span className="text-gray-600 italic">{item.sellerNote}</span></p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DisbursementsAdminPage() {
+  const { isAdmin } = useAuth();
+  const [items,      setItems]      = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [showAll,    setShowAll]    = useState(false);
+  const [processing, setProcessing] = useState(null);
+  const [noteMap,    setNoteMap]    = useState({});
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await disbursementAPI.getAll(!showAll);
+      setItems(res.data);
+    } catch (err) {
+      const status = err?.response?.status;
+      const msg = status === 403
+        ? 'Access denied — admin only'
+        : err?.response?.data?.message || 'Could not load disbursements';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  }, [showAll]);
+
+  useEffect(() => { if (isAdmin) load(); }, [isAdmin, load]);
+
+  const handleMarkPaid = async (commissionId) => {
+    const note = noteMap[commissionId] || '';
+    if (!window.confirm('Confirm that the bank transfer has been sent to this seller?')) return;
+    try {
+      setProcessing(commissionId);
+      await disbursementAPI.markPaid(commissionId, note);
+      toast.success('Disbursement marked as paid');
+      await load();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || 'Action failed');
+    } finally {
+      setProcessing(null);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => toast.success('Copied!')).catch(() => toast.error('Copy failed'));
+  };
+
+  if (!isAdmin) return <p className="text-gray-500">Access denied.</p>;
+
+  const pending = items.filter(i => !i.sellerPaid);
+  const paid    = items.filter(i =>  i.sellerPaid);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-forest-900">Seller Disbursements</h2>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Property-value payments (90% of buyer price) owed to sellers
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={showAll}
+              onChange={e => setShowAll(e.target.checked)}
+              className="rounded"
+            />
+            Show paid
+          </label>
+          <button
+            onClick={load}
+            className="btn-outline text-sm flex items-center gap-2"
+          >
+            <RefreshCw size={14} /> Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Summary badge */}
+      {!loading && pending.length > 0 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-sm text-yellow-800 flex items-center gap-2">
+          <Clock size={15} />
+          <span>
+            <strong>{pending.length}</strong> pending disbursement{pending.length !== 1 ? 's' : ''} —
+            total <strong>{formatNaira(pending.reduce((s, i) => s + parseFloat(i.propertyValue || 0), 0))}</strong> owed to sellers
+          </span>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-12 text-gray-400">
+          <RefreshCw size={24} className="animate-spin mx-auto mb-2" />
+          Loading disbursements…
+        </div>
+      ) : items.length === 0 ? (
+        <div className="card p-10 text-center text-gray-400">
+          <ArrowUpRight size={36} className="mx-auto mb-3 text-gray-200" />
+          <p className="font-medium text-gray-500">
+            {showAll ? 'No disbursements found' : 'No pending disbursements'}
+          </p>
+          <p className="text-xs mt-1">
+            {showAll ? 'Disbursements appear here once a PURCHASE or RENT transaction completes.'
+                     : 'All sellers have been paid — toggle "Show paid" to see history.'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {/* Pending */}
+          {pending.map(item => (
+            <DisbursementCard
+              key={item.commissionId}
+              item={item}
+              note={noteMap[item.commissionId] || ''}
+              onNoteChange={v => setNoteMap(p => ({ ...p, [item.commissionId]: v }))}
+              onMarkPaid={() => handleMarkPaid(item.commissionId)}
+              processing={processing === item.commissionId}
+              onCopy={copyToClipboard}
+            />
+          ))}
+
+          {/* Paid history */}
+          {showAll && paid.length > 0 && (
+            <>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide pt-2">
+                Paid ({paid.length})
+              </p>
+              {paid.map(item => (
+                <DisbursementCard key={item.commissionId} item={item} />
+              ))}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Admin Withdrawals Page ──────────────────────────────────────────────────
 function WithdrawalsAdminPage() {
   const { isAdmin } = useAuth();
@@ -1484,7 +1720,8 @@ export default function DashboardPage() {
     { to: '/dashboard/listings',      label: 'My Listings',    icon: Home },
     { to: '/dashboard/list',          label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
     { to: '/dashboard/moderation',    label: 'Moderation',     icon: ShieldCheck, adminOnly: true },
-    { to: '/dashboard/withdrawals',   label: 'Withdrawals',    icon: Banknote,    adminOnly: true },
+    { to: '/dashboard/withdrawals',    label: 'Withdrawals',    icon: Banknote,    adminOnly: true },
+    { to: '/dashboard/disbursements',  label: 'Disbursements',  icon: ArrowUpRight, adminOnly: true },
     { to: '/dashboard/payments',      label: 'Payments',       icon: CreditCard },
     { to: '/dashboard/commissions',   label: 'Commissions',    icon: Landmark,    agentAdminOrSeller: true },
     { to: '/dashboard/reservations',  label: 'Reservations',   icon: CalendarCheck },
@@ -1572,6 +1809,7 @@ export default function DashboardPage() {
             <Route path="messages"     element={<MessagesPage />} />
             <Route path="account"      element={<AccountPage />} />
             <Route path="withdrawals"  element={<WithdrawalsAdminPage />} />
+            <Route path="disbursements" element={<DisbursementsAdminPage />} />
             <Route path="settings"     element={<SettingsPage />} />
           </Routes>
         </main>
@@ -2931,11 +3169,12 @@ function SettingsPage() {
           <h3 className="font-semibold text-gray-800 flex items-center gap-2"><ShieldCheck size={16} /> Admin Quick Access</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
-              { label: 'Moderation',      to: '/dashboard/moderation',   icon: ShieldCheck },
-              { label: 'All Payments',    to: '/dashboard/payments',     icon: CreditCard },
-              { label: 'Commissions',     to: '/dashboard/commissions',  icon: Landmark },
-              { label: 'Reservations',    to: '/dashboard/reservations', icon: CalendarCheck },
-              { label: 'Notifications',   to: '/dashboard/messages',     icon: Bell },
+              { label: 'Moderation',      to: '/dashboard/moderation',    icon: ShieldCheck },
+              { label: 'All Payments',    to: '/dashboard/payments',      icon: CreditCard },
+              { label: 'Commissions',     to: '/dashboard/commissions',   icon: Landmark },
+              { label: 'Disbursements',   to: '/dashboard/disbursements', icon: ArrowUpRight },
+              { label: 'Reservations',    to: '/dashboard/reservations',  icon: CalendarCheck },
+              { label: 'Notifications',   to: '/dashboard/messages',      icon: Bell },
               { label: 'Subscription Plans', to: '/dashboard/subscription', icon: Crown },
             ].map(({ label, to, icon: Icon }) => (
               <Link

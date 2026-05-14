@@ -12,8 +12,11 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -27,8 +30,13 @@ import org.springframework.beans.factory.annotation.Value;
 @Slf4j
 public class TransactionService {
 
-    private static final BigDecimal CORECITY_RATE = new BigDecimal("0.03");
-    private static final BigDecimal AGENT_RATE    = new BigDecimal("0.07");
+    // ── Commission rates ──────────────────────────────────────────────────────
+    // AGENT sellers (role=AGENT): 7% to agent wallet + 3% to CoreCity wallet
+    private static final BigDecimal AGENT_COMMISSION_RATE   = new BigDecimal("0.07");
+    private static final BigDecimal CORECITY_AGENT_RATE     = new BigDecimal("0.03");
+    // SELLER/OWNER sellers (role=SELLER): 5% seller bonus in bank-transfer payout + 5% to CoreCity wallet
+    private static final BigDecimal SELLER_BONUS_RATE       = new BigDecimal("0.05");
+    private static final BigDecimal CORECITY_SELLER_RATE    = new BigDecimal("0.05");
 
     private final TransactionRepository transactionRepository;
     private final CommissionRepository commissionRepository;
@@ -234,17 +242,15 @@ public class TransactionService {
             .status(Commission.CommissionStatus.PENDING)
             .build();
         commissionRepository.save(Objects.requireNonNull(commission));
-        log.info("Commission created for tx={}: CoreCity={} Agent={}", tx.getId(), coreCityC, agentC);
+        log.info("Commission created for tx={}: CoreCity={} SellerBonus={}", tx.getId(), coreCityC, agentC);
 
-        // Disburse immediately: credit agent's wallet (7%) and admin's wallet (3%).
+        // Disburse immediately: credit only admin's wallet (5% platform fee).
+        // Seller's 5% bonus is included in their bank-transfer payout (manual disbursement) — NOT a wallet credit.
         // Run on a background thread — disbursement failures must not roll back the transaction.
-        final Long agentId    = tx.getSellerId();
         final String txRef    = tx.getReference();
         CompletableFuture.runAsync(() -> {
-            userServiceClient.creditWallet(agentId, agentC,
-                "CMM-AGENT-" + txRef, "Commission (agent 7%): tx " + txRef);
             userServiceClient.creditWallet(adminUserId, coreCityC,
-                "CMM-ADMIN-" + txRef, "Commission (platform 3%): tx " + txRef);
+                "CMM-ADMIN-" + txRef, "Commission (platform 5%): tx " + txRef);
             commission.setStatus(Commission.CommissionStatus.DISBURSED);
             commissionRepository.save(commission);
         });
@@ -289,14 +295,17 @@ public class TransactionService {
                         log.warn("Backfill skipped for commission id={}: agentId is null", comm.getId());
                         return;
                     }
-                    userServiceClient.creditWallet(comm.getAgentId(), comm.getAgentCommission(),
-                        "CMM-AGENT-" + txRef, "Backfill commission (agent 7%): tx " + txRef);
-                } catch (Exception e) {
-                    log.warn("Backfill agent credit failed for tx={}: {}", txRef, e.getMessage());
-                }
-                try {
-                    userServiceClient.creditWallet(adminUserId, comm.getCorecityCommission(),
-                        "CMM-ADMIN-" + txRef, "Backfill commission (platform 3%): tx " + txRef);
+                    // Branch on sellerRole: AGENT gets both wallets credited; SELLER gets only admin.
+                    if ("AGENT".equalsIgnoreCase(comm.getSellerRole())) {
+                        userServiceClient.creditWallet(comm.getAgentId(), comm.getAgentCommission(),
+                            "CMM-AGENT-" + txRef, "Backfill commission (agent 7%): tx " + txRef);
+                        userServiceClient.creditWallet(adminUserId, comm.getCorecityCommission(),
+                            "CMM-ADMIN-" + txRef, "Backfill commission (platform 3%): tx " + txRef);
+                    } else {
+                        // SELLER: only admin wallet; seller's 5% bonus is in bank-transfer payout.
+                        userServiceClient.creditWallet(adminUserId, comm.getCorecityCommission(),
+                            "CMM-ADMIN-" + txRef, "Backfill commission (platform 5%): tx " + txRef);
+                    }
                 } catch (Exception e) {
                     log.warn("Backfill admin credit failed for tx={}: {}", txRef, e.getMessage());
                 }
@@ -320,6 +329,72 @@ public class TransactionService {
             .totalCommission(c.getTotalCommission())
             .overallCost(c.getOverallCost())
             .status(c.getStatus().name())
+            .createdAt(c.getCreatedAt())
+            .build();
+    }
+
+    // ── Seller Disbursement ───────────────────────────────────────────────────
+
+    /**
+     * Admin: list commissions where the seller's property-value (90%) is owed.
+     * Each commission maps 1-to-1 with a successful PURCHASE or RENT transaction.
+     *
+     * @param pendingOnly true = only unpaid, false = all (paid + unpaid)
+     */
+    public List<DisbursementResponse> getSellerDisbursements(boolean pendingOnly) {
+        List<Commission> commissions = pendingOnly
+            ? commissionRepository.findBySellerPaidFalseOrderByCreatedAtDesc()
+            : commissionRepository.findAllByOrderByCreatedAtDesc();
+        return commissions.stream().map(this::toDisbursementResponse).collect(Collectors.toList());
+    }
+
+    /**
+     * Admin: mark one commission's seller-payment as done (bank transfer confirmed).
+     * Records the timestamp and optional note (e.g. bank transfer reference).
+     */
+    @Transactional
+    public DisbursementResponse markSellerPaid(Long commissionId, String note) {
+        Commission commission = commissionRepository.findById(commissionId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Commission not found"));
+        if (commission.isSellerPaid()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Commission already marked as paid");
+        }
+        commission.setSellerPaid(true);
+        commission.setSellerPaidAt(LocalDateTime.now());
+        commission.setSellerNote(note);
+        commissionRepository.save(Objects.requireNonNull(commission));
+        log.info("Seller disbursement marked paid: commissionId={} note={}", commissionId, note);
+        return toDisbursementResponse(commission);
+    }
+
+    private DisbursementResponse toDisbursementResponse(Commission c) {
+        Transaction tx = c.getTransactionId() != null
+            ? transactionRepository.findById(c.getTransactionId()).orElse(null)
+            : null;
+        PropertyServiceClient.PropertySummary prop = c.getPropertyId() != null
+            ? propertyServiceClient.getPropertyForDisbursement(c.getPropertyId())
+            : null;
+        return DisbursementResponse.builder()
+            .commissionId(c.getId())
+            .transactionId(c.getTransactionId())
+            .transactionReference(tx != null ? tx.getReference() : null)
+            .transactionType(tx != null ? tx.getType().name() : null)
+            .propertyId(c.getPropertyId())
+            .propertyTitle(prop != null ? prop.title() : null)
+            .sellerId(c.getAgentId())
+            // Bank-transfer amount:
+            //   SELLER → base + 5% seller bonus (propertyValue + agentCommission)
+            //   AGENT  → base only (agent already received their 7% via wallet)
+            .propertyValue("SELLER".equalsIgnoreCase(c.getSellerRole())
+                ? c.getPropertyValue().add(c.getAgentCommission())
+                : c.getPropertyValue())
+            .ownerName(prop != null ? prop.ownerName() : null)
+            .ownerBankName(prop != null ? prop.ownerBankName() : null)
+            .ownerAccountNumber(prop != null ? prop.ownerAccountNumber() : null)
+            .ownerAccountName(prop != null ? prop.ownerAccountName() : null)
+            .sellerPaid(c.isSellerPaid())
+            .sellerPaidAt(c.getSellerPaidAt())
+            .sellerNote(c.getSellerNote())
             .createdAt(c.getCreatedAt())
             .build();
     }

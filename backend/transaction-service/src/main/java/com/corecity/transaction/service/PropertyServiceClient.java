@@ -48,6 +48,44 @@ public class PropertyServiceClient {
         }
     }
 
+    /**
+     * Snapshot of a property's display title and owner bank details,
+     * used to enrich the admin seller-disbursement view.
+     */
+    public record PropertySummary(
+        String title,
+        String ownerName,
+        String ownerBankName,
+        String ownerAccountNumber,
+        String ownerAccountName
+    ) {}
+
+    /**
+     * Fetches title and owner bank details for the disbursement admin view.
+     * Returns null if the property cannot be reached — enrichment is best-effort.
+     */
+    public PropertySummary getPropertyForDisbursement(Long propertyId) {
+        try {
+            JsonNode node = webClient.get()
+                .uri("/api/v1/properties/" + propertyId)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(5))
+                .block();
+            if (node == null) return null;
+            return new PropertySummary(
+                node.path("title").asText(null),
+                node.path("ownerName").asText(null),
+                node.path("ownerBankName").asText(null),
+                node.path("ownerAccountNumber").asText(null),
+                node.path("ownerAccountName").asText(null)
+            );
+        } catch (Exception e) {
+            log.warn("Could not fetch property {} for disbursement: {}", propertyId, e.getMessage());
+            return null;
+        }
+    }
+
     public void completeReservation(Long propertyId, Long buyerId, String transactionType, Integer leaseDays) {
         try {
             Map<String, Object> body = new HashMap<>();

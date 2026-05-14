@@ -137,15 +137,15 @@ export default function ListPropertyPage() {
   }, [selectedStateId, setValue]);
 
   // ── Live commission breakdown ──────────────────────────────
-  // Computed from the agent's entered price:
-  //   CoreCity commission = 3%
-  //   Agent commission    = 7%
-  //   Final listed price  = base + corecity + agent
+  // Computed from the seller's entered price (base value):
+  //   CoreCity fee    = 5% of base  (platform fee)
+  //   Seller bonus    = 5% of base  (added to seller's bank-transfer payout)
+  //   Buyer pays      = base + 5% + 5% = base × 1.10
   const priceBreakdown = useMemo(() => {
     const base = parseFloat(watchedPrice);
     if (!base || base <= 0) return null;
-    const corecity = +(base * 0.03).toFixed(2);
-    const agent    = +(base * 0.07).toFixed(2);
+    const corecity = +(base * 0.05).toFixed(2);
+    const agent    = +(base * 0.05).toFixed(2);
     const total    = +(base + corecity + agent).toFixed(2);
     return { base, corecity, agent, total };
   }, [watchedPrice]);
@@ -336,16 +336,20 @@ export default function ListPropertyPage() {
                   <div className="mt-2 text-xs bg-forest-50 border border-forest-200 rounded-lg p-3 space-y-1">
                     <p className="font-semibold text-forest-900 mb-1">Price Breakdown</p>
                     <div className="flex justify-between text-gray-600">
-                      <span>Base price (you receive)</span>
+                      <span>Your base price</span>
                       <span className="font-medium">₦{priceBreakdown.base.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
-                      <span>CoreCity commission (3%)</span>
+                      <span>Your bonus (5% — via bank transfer)</span>
+                      <span className="font-medium">₦{priceBreakdown.agent.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-600">
+                      <span>CoreCity platform fee (5%)</span>
                       <span className="font-medium">₦{priceBreakdown.corecity.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-gray-600">
-                      <span>Agent commission (7%)</span>
-                      <span className="font-medium">₦{priceBreakdown.agent.toLocaleString()}</span>
+                      <span>CoreCity platform fee (5%)</span>
+                      <span className="font-medium">₦{priceBreakdown.corecity.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-forest-900 font-bold border-t border-forest-200 pt-2 mt-1">
                       <span>Buyer pays (final listed price)</span>

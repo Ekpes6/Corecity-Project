@@ -15,4 +15,7 @@ public interface CommissionRepository extends JpaRepository<Commission, Long> {
     List<Commission> findAllByOrderByCreatedAtDesc();
 
     List<Commission> findByStatus(Commission.CommissionStatus status);
+
+    /** All commissions where the seller's property-value payment has NOT yet been sent. */
+    List<Commission> findBySellerPaidFalseOrderByCreatedAtDesc();
 }

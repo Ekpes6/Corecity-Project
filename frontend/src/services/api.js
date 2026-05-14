@@ -169,7 +169,12 @@ export const commissionAPI = {
   getMine: () => api.get('/transactions/commissions/my'),
   getAll:  () => api.get('/transactions/commissions/all'),
 };
-
+// ─── Seller Disbursements ───────────────────────────────────
+export const disbursementAPI = {
+  // pending=true returns only unsettled; pending=false returns all
+  getAll:   (pending = true) => api.get(`/transactions/disbursements?pending=${pending}`),
+  markPaid: (id, note)       => api.post(`/transactions/disbursements/${id}/mark-paid`, { note: note || null }),
+};
 // ─── States / LGAs ───────────────────────────────────────────
 export const locationAPI = {
   getStates: ()          => api.get('/states'),

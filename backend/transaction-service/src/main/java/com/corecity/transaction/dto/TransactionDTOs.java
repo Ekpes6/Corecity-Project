@@ -64,4 +64,30 @@ public class TransactionDTOs {
         private String status;
         private LocalDateTime createdAt;
     }
+
+    /**
+     * Admin view of a single seller disbursement — one per completed PURCHASE / RENT
+     * transaction.  Contains everything admin needs to make the bank transfer and
+     * then mark the record as paid.
+     */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class DisbursementResponse {
+        private Long commissionId;
+        private Long transactionId;
+        private String transactionReference;
+        private String transactionType;
+        private Long propertyId;
+        private String propertyTitle;
+        private Long sellerId;
+        /** Net property value (90% of buyer payment) — the amount owed to the seller. */
+        private BigDecimal propertyValue;
+        private String ownerName;
+        private String ownerBankName;
+        private String ownerAccountNumber;
+        private String ownerAccountName;
+        private boolean sellerPaid;
+        private LocalDateTime sellerPaidAt;
+        private String sellerNote;
+        private LocalDateTime createdAt;
+    }
 }

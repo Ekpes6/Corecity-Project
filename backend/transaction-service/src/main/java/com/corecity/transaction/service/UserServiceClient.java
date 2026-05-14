@@ -61,6 +61,27 @@ public class UserServiceClient {
     }
 
     /**
+     * Look up a user's role via the user-service internal endpoint.
+     * Returns the role string (e.g. "AGENT", "SELLER") or "SELLER" as a safe fallback.
+     * Used by TransactionService to select AGENT (7%/3%) vs SELLER (5%/5%) commission rates.
+     */
+    public String getUserRole(Long userId) {
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, String> resp = webClient.get()
+                .uri("/api/v1/users/internal/user-role/" + userId)
+                .retrieve()
+                .bodyToMono((Class<java.util.Map<String, String>>) (Class<?>) java.util.Map.class)
+                .timeout(java.time.Duration.ofSeconds(5))
+                .block();
+            return resp != null ? resp.getOrDefault("role", "SELLER") : "SELLER";
+        } catch (Exception e) {
+            log.warn("getUserRole call failed for user={}: {} — defaulting to SELLER", userId, e.getMessage());
+            return "SELLER";
+        }
+    }
+
+    /**
      * Credit a user's wallet via the user-service internal endpoint.
      * Failures are swallowed and logged — commission disbursement must not roll back the transaction.
      */

@@ -91,4 +91,20 @@ public class InternalController {
                 .map(u -> ResponseEntity.ok(Map.of("id", u.getId())))
                 .orElse(ResponseEntity.notFound().<Map<String, Long>>build());
     }
+
+    /**
+     * Returns the role of a single user by ID.
+     * Used by transaction-service to select the correct commission rate split.
+     * Response: { "role": "AGENT" } or { "role": "SELLER" } etc.
+     * Falls back to { "role": "SELLER" } if the user is not found.
+     */
+    @GetMapping("/user-role/{userId}")
+    public ResponseEntity<Map<String, String>> getUserRole(@PathVariable Long userId) {
+        return userRepository.findById(userId)
+                .map(u -> ResponseEntity.ok(Map.of("role", u.getRole().name())))
+                .orElseGet(() -> {
+                    log.warn("user-role lookup: userId={} not found, defaulting to SELLER", userId);
+                    return ResponseEntity.ok(Map.of("role", "SELLER"));
+                });
+    }
 }
