@@ -298,7 +298,7 @@ function MyListings() {
             return (
               <div>
                 <h3 className="font-semibold text-gray-700 mb-3 text-sm">Active Listings</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 overflow-y-auto scrollbar-none max-h-[640px]">
                   {activeSlice.map((p) => <PropertyCard key={p.id} property={p} />)}
                 </div>
                 <Pagination page={activePage} total={active.length} onChange={setActivePage} />
@@ -317,7 +317,7 @@ function MyListings() {
                   <h3 className="font-semibold text-gray-700 text-sm">Awaiting Admin Approval</h3>
                   <span className="bg-yellow-100 text-yellow-700 text-xs font-medium px-2 py-0.5 rounded-full">{pending.length}</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3 overflow-y-auto scrollbar-none max-h-[520px]">
                   {pendingSlice.map((p) => (
                     <div key={p.id} className="card p-4 flex items-center gap-4 border-l-4 border-yellow-400">
                       <img src={p.primaryImageUrl || p.imageUrls?.[0] || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'}
@@ -347,7 +347,7 @@ function MyListings() {
                   <h3 className="font-semibold text-gray-700 text-sm">Rejected Listings</h3>
                   <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded-full">{rejected.length}</span>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3 overflow-y-auto scrollbar-none max-h-[520px]">
                   {rejectedSlice.map((p) => (
                     <div key={p.id} className="card p-4 flex items-center gap-4 border-l-4 border-red-400">
                       <img src={p.primaryImageUrl || p.imageUrls?.[0] || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=70'}
@@ -1247,8 +1247,10 @@ function ReservationsPage() {
           <Link to="/properties" className="btn-primary">Browse Properties</Link>
         </div>
       ) : (
-        <div className="space-y-4">
-          {paginated.map((r) => <ReservationCard key={r.id} r={r} />)}
+        <div>
+          <div className="space-y-4 overflow-y-auto scrollbar-none max-h-[560px]">
+            {paginated.map((r) => <ReservationCard key={r.id} r={r} />)}
+          </div>
           <Pagination page={page} total={reservations.length} onChange={setPage} />
         </div>
       )}
@@ -1733,7 +1735,7 @@ function WithdrawalsAdminPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="card divide-y divide-gray-50">
+          <div className="card divide-y divide-gray-50 overflow-y-auto scrollbar-none max-h-[600px]">
           {requests.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((r) => (
             <div key={r.id} className="px-5 py-5 space-y-3">
               {/* Header row */}
@@ -2316,7 +2318,7 @@ function PaymentsPage() {
         <div className="text-center py-16 card"><p className="text-gray-400">No transactions yet</p></div>
       ) : (
         <div>
-          <div className="card divide-y divide-gray-50">
+          <div className="card divide-y divide-gray-50 overflow-y-auto scrollbar-none max-h-[560px]">
             {paginated.map((t) => (
               <div key={t.id} className="flex items-center justify-between px-5 py-4">
                 <div>
@@ -2398,7 +2400,7 @@ function CommissionsPage() {
         </div>
       ) : (
         <div className="space-y-0">
-          <div className="card divide-y divide-gray-50">
+          <div className="card divide-y divide-gray-50 overflow-y-auto scrollbar-none max-h-[600px]">
             {paginated.map((c) => (
               <div key={c.id} className="px-5 py-4">
                 <div className="flex items-start justify-between gap-4">
@@ -3156,7 +3158,7 @@ function AccountPage() {
             <p className="text-sm text-gray-400 py-4 text-center">No wallet transactions yet.</p>
           ) : (
             <>
-              <div className="space-y-2">
+              <div className="space-y-2 overflow-y-auto scrollbar-none max-h-[520px]">
                 {txHistory.slice((txPage - 1) * PAGE_SIZE, txPage * PAGE_SIZE).map((tx) => (
                   <div key={tx.id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-3">
