@@ -16,7 +16,7 @@ import java.util.Set;
 
 /**
  * Applies the CoreCity logo watermark to property images before they are stored in R2.
- * Watermark is positioned at bottom-centre at 50% opacity and scaled to 25% of image width.
+ * Watermark is positioned at the centre of the image at 18% opacity and scaled to 25% of image width.
  *
  * Place the logo at:
  *   backend/file-service/src/main/resources/watermark.png
@@ -103,17 +103,17 @@ public class WatermarkService {
             Graphics2D g = combined.createGraphics();
             g.drawImage(source, 0, 0, null);
 
-            // Calculate position: bottom center, offset upward by BOTTOM_PADDING
+            // Calculate position: dead centre of the image
             int x = (source.getWidth() - wmWidth) / 2;
-            int y = source.getHeight() - wmHeight - BOTTOM_PADDING;
+            int y = (source.getHeight() - wmHeight) / 2;
 
             // 1. Draw dark shadow slightly offset — creates contrast halo on bright areas
             int shadowOff = Math.max(2, wmWidth / 120);
-            g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.65f));
+            g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.10f));
             g.drawImage(shadow, x + shadowOff, y + shadowOff, null);
 
-            // 2. Draw the white logo on top at high opacity
-            g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.85f));
+            // 2. Draw the white logo on top at 18% opacity
+            g.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.18f));
             g.drawImage(scaledWm, x, y, null);
             g.dispose();
 
