@@ -84,7 +84,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-3 text-sm text-white/60">
                 <Phone size={16} className="shrink-0 text-clay-500" />
-                +234 9013209581 Corecity
+                +234 9013209581
               </li>
               <li className="flex items-center gap-3 text-sm text-white/60">
                 <Mail size={16} className="shrink-0 text-clay-500" />
