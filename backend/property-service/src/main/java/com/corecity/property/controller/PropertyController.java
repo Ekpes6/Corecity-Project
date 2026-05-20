@@ -116,19 +116,46 @@ public class PropertyController {
         return ResponseEntity.ok(propertyService.rejectProperty(id, userRole, reason));
     }
 
+    /** Admin only — paginated list of ALL properties regardless of status or owner. */
+    @GetMapping("/admin/all")
+    public ResponseEntity<Page<PropertyResponse>> adminAll(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status,
+            @RequestHeader("X-User-Role") String userRole) {
+        return ResponseEntity.ok(propertyService.adminGetAll(userRole, page, size, status));
+    }
+
+    /**
+     * Partial (PATCH) update of owner-contact fields.
+     * SELLER  → ownerAccountNumber, ownerAccountName only.
+     * AGENT   → ownerAccountNumber, ownerAccountName, ownerEmail, ownerPhone.
+     * ADMIN   → all four fields on any property.
+     */
+    @PatchMapping("/{id}/owner-contact")
+    public ResponseEntity<PropertyResponse> updateOwnerContact(
+            @PathVariable Long id,
+            @RequestBody OwnerContactUpdateRequest req,
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Role") String userRole) {
+        return ResponseEntity.ok(propertyService.updateOwnerContact(id, userId, userRole, req));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<PropertyResponse> update(
             @PathVariable Long id,
             @RequestBody CreatePropertyRequest req,
-            @RequestHeader("X-User-Id") Long userId) {
-        return ResponseEntity.ok(propertyService.updateProperty(id, req, userId));
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Role") String userRole) {
+        return ResponseEntity.ok(propertyService.updateProperty(id, req, userId, userRole));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> delete(
             @PathVariable Long id,
-            @RequestHeader("X-User-Id") Long userId) {
-        propertyService.deleteProperty(id, userId);
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Role") String userRole) {
+        propertyService.deleteProperty(id, userId, userRole);
         return ResponseEntity.ok(Map.of("message", "Property removed successfully"));
     }
 

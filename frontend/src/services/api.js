@@ -96,6 +96,11 @@ export const propertyAPI = {
   remove:     (id)     => api.delete(`/properties/${id}`),
   registerFiles: (id, fileUrls) => api.post(`/properties/${id}/files`, fileUrls),
   publish:       (id)          => api.post(`/properties/${id}/publish`),
+  /** Admin only \u2014 paginated list of ALL properties (any status / owner). */
+  adminAll: (page = 0, size = 20, status = '') =>
+    api.get('/properties/admin/all', { params: { page, size, ...(status ? { status } : {}) } }),
+  /** Role-based partial update of owner-contact fields. */
+  patchOwnerContact: (id, data) => api.patch(`/properties/${id}/owner-contact`, data),
 };
 
 // ─── Files ───────────────────────────────────────────────────

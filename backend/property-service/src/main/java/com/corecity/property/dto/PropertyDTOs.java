@@ -132,6 +132,23 @@ public class PropertyDTOs {
         private String reason;
     }
 
+    /**
+     * Partial update DTO for owner-contact fields.
+     * <p>
+     * Sellers may supply ownerAccountNumber + ownerAccountName only.
+     * Agents may additionally supply ownerPhone + ownerEmail.
+     * Admins may supply any of the four fields.
+     * The service layer silently ignores fields that the caller's role is not
+     * permitted to change — only non-null values are applied.
+     */
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class OwnerContactUpdateRequest {
+        private String ownerPhone;
+        private String ownerEmail;
+        private String ownerAccountNumber;
+        private String ownerAccountName;
+    }
+
     // ─── Reservation DTOs ────────────────────────────────────────────────────
 
     /** Returned immediately after a customer calls POST /properties/{id}/reserve */

@@ -293,14 +293,64 @@ public class PropertyService {
         return toResponse(savedProperty);
     }
 
+    /** Admin-only: returns all properties across all owners and statuses, paginated. */
+    @Transactional(readOnly = true)
+    public Page<PropertyResponse> adminGetAll(String userRole, int page, int size, String statusFilter) {
+        requireAdmin(userRole);
+        Pageable pageable = PageRequest.of(page, Math.min(size, 50), Sort.by(Sort.Direction.DESC, "createdAt"));
+        if (statusFilter != null && !statusFilter.isBlank()) {
+            Property.PropertyStatus status = Property.PropertyStatus.valueOf(statusFilter.toUpperCase());
+            return propertyRepository.findByStatus(status, pageable).map(this::toResponse);
+        }
+        return propertyRepository.findAll(pageable).map(this::toResponse);
+    }
+
+    /**
+     * Partial update of owner-contact fields, enforced per role:
+     *   SELLER → ownerAccountNumber, ownerAccountName only
+     *   AGENT  → the above + ownerEmail + ownerPhone
+     *   ADMIN  → all four fields on any property
+     */
     @Transactional
-    public PropertyResponse updateProperty(Long id, CreatePropertyRequest req, Long userId) {
+    public PropertyResponse updateOwnerContact(Long id, Long userId, String userRole, OwnerContactUpdateRequest req) {
+        Long safeId = Objects.requireNonNull(id, "property id must not be null");
+        Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
+        Property property = propertyRepository.findById(safeId)
+            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
+
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(userRole);
+        boolean isAgent = "AGENT".equalsIgnoreCase(userRole);
+
+        if (!isAdmin) {
+            boolean isOwner = property.getOwnerId().equals(safeUserId);
+            boolean isAssignedAgent = property.getAgentId() != null && property.getAgentId().equals(safeUserId);
+            if (!isOwner && !isAssignedAgent)
+                throw new ResponseStatusException(FORBIDDEN, "You do not have access to this property");
+        }
+
+        // Account fields — allowed for SELLER, AGENT, and ADMIN
+        if (req.getOwnerAccountNumber() != null) property.setOwnerAccountNumber(req.getOwnerAccountNumber());
+        if (req.getOwnerAccountName() != null)   property.setOwnerAccountName(req.getOwnerAccountName());
+
+        // Phone/email — AGENT and ADMIN only (silently ignored for SELLER)
+        if (isAgent || isAdmin) {
+            if (req.getOwnerPhone() != null) property.setOwnerPhone(req.getOwnerPhone());
+            if (req.getOwnerEmail() != null) property.setOwnerEmail(req.getOwnerEmail());
+        }
+
+        log.info("Owner-contact updated on property {} by user {} (role: {})", safeId, safeUserId, userRole);
+        return toResponse(propertyRepository.save(property));
+    }
+
+    @Transactional
+    public PropertyResponse updateProperty(Long id, CreatePropertyRequest req, Long userId, String userRole) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
         locationService.validateLocation(req.getStateId(), req.getLgaId());
         Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
-        if (!property.getOwnerId().equals(safeUserId))
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(userRole);
+        if (!isAdmin && !property.getOwnerId().equals(safeUserId))
             throw new RuntimeException("Unauthorized: not the property owner");
 
         property.setTitle(req.getTitle());
@@ -311,20 +361,32 @@ public class PropertyService {
         property.setLgaId(req.getLgaId());
         property.setLatitude(req.getLatitude());
         property.setLongitude(req.getLongitude());
-        if (req.getBedrooms() != null) property.setBedrooms(req.getBedrooms());
+        if (req.getBedrooms()  != null) property.setBedrooms(req.getBedrooms());
         if (req.getBathrooms() != null) property.setBathrooms(req.getBathrooms());
+        if (req.getToilets()   != null) property.setToilets(req.getToilets());
+        if (req.getSizeSqm()   != null) property.setSizeSqm(req.getSizeSqm());
+        if (req.getNegotiable() != null) property.setNegotiable(req.getNegotiable());
+        // Owner contact fields — updatable by the owner or admin via full PUT
+        if (req.getOwnerName()          != null) property.setOwnerName(req.getOwnerName());
+        if (req.getOwnerPhone()         != null) property.setOwnerPhone(req.getOwnerPhone());
+        if (req.getOwnerEmail()         != null) property.setOwnerEmail(req.getOwnerEmail());
+        if (req.getOwnerBankName()      != null) property.setOwnerBankName(req.getOwnerBankName());
+        if (req.getOwnerAccountNumber() != null) property.setOwnerAccountNumber(req.getOwnerAccountNumber());
+        if (req.getOwnerAccountName()   != null) property.setOwnerAccountName(req.getOwnerAccountName());
         var savedProperty = propertyRepository.save(
             Objects.requireNonNull(property, "updated property must not be null"));
+        log.info("Property {} updated by user {} (role: {})", safeId, safeUserId, userRole);
         return toResponse(savedProperty);
     }
 
     @Transactional
-    public void deleteProperty(Long id, Long userId) {
+    public void deleteProperty(Long id, Long userId, String userRole) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
         Property property = propertyRepository.findById(safeId)
             .orElseThrow(() -> new RuntimeException("Property not found"));
-        if (!property.getOwnerId().equals(safeUserId))
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(userRole);
+        if (!isAdmin && !property.getOwnerId().equals(safeUserId))
             throw new RuntimeException("Unauthorized");
         if (property.getStatus() == Property.PropertyStatus.DRAFT) {
             // Hard-delete unpublished drafts — they were never publicly visible
