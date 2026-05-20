@@ -331,6 +331,7 @@ public class PropertyService {
         }
 
         // Account fields — allowed for SELLER, AGENT, and ADMIN
+        if (req.getOwnerBankName() != null)      property.setOwnerBankName(req.getOwnerBankName());
         if (req.getOwnerAccountNumber() != null) property.setOwnerAccountNumber(req.getOwnerAccountNumber());
         if (req.getOwnerAccountName() != null)   property.setOwnerAccountName(req.getOwnerAccountName());
 

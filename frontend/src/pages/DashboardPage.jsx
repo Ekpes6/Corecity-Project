@@ -262,6 +262,7 @@ function OwnerContactModal({ property, onClose, onSaved }) {
   const { isAgent, isAdmin } = useAuth();
   const canEditPhoneEmail = isAgent || isAdmin;
   const [form, setForm] = useState({
+    ownerBankName:      property.ownerBankName      || '',
     ownerAccountNumber: property.ownerAccountNumber || '',
     ownerAccountName:   property.ownerAccountName   || '',
     ownerPhone:         property.ownerPhone         || '',
@@ -292,6 +293,11 @@ function OwnerContactModal({ property, onClose, onSaved }) {
         </div>
         <p className="text-xs text-gray-400 mb-4 truncate">Property: {property.title}</p>
         <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Bank Name</label>
+            <input className="input-field w-full" value={form.ownerBankName}
+              onChange={e => setForm(f => ({ ...f, ownerBankName: e.target.value }))} />
+          </div>
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1 block">Account Number</label>
             <input className="input-field w-full" value={form.ownerAccountNumber}

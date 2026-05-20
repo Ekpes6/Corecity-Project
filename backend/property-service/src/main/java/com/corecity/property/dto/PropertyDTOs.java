@@ -135,9 +135,9 @@ public class PropertyDTOs {
     /**
      * Partial update DTO for owner-contact fields.
      * <p>
-     * Sellers may supply ownerAccountNumber + ownerAccountName only.
+     * Sellers may supply ownerBankName + ownerAccountNumber + ownerAccountName only.
      * Agents may additionally supply ownerPhone + ownerEmail.
-     * Admins may supply any of the four fields.
+     * Admins may supply any of the five fields.
      * The service layer silently ignores fields that the caller's role is not
      * permitted to change — only non-null values are applied.
      */
@@ -145,6 +145,7 @@ public class PropertyDTOs {
     public static class OwnerContactUpdateRequest {
         private String ownerPhone;
         private String ownerEmail;
+        private String ownerBankName;
         private String ownerAccountNumber;
         private String ownerAccountName;
     }
