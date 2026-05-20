@@ -385,7 +385,17 @@ function MyListings() {
               <div>
                 <h3 className="font-semibold text-gray-700 mb-3 text-sm">Active Listings</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 overflow-y-auto scrollbar-none max-h-[640px]">
-                  {activeSlice.map((p) => <PropertyCard key={p.id} property={p} />)}
+                  {activeSlice.map((p) => (
+                    <div key={p.id} className="flex flex-col">
+                      <PropertyCard property={p} />
+                      {canEditContact && (
+                        <button onClick={() => setContactModal(p)}
+                          className="mt-1.5 text-xs text-forest-700 hover:text-forest-900 underline underline-offset-2 text-center">
+                          Edit Owner Contact
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
                 <Pagination page={activePage} total={active.length} onChange={setActivePage} />
               </div>
@@ -413,7 +423,15 @@ function MyListings() {
                         <p className="font-medium text-gray-800 text-sm truncate">{p.title}</p>
                         <p className="text-xs text-gray-400 truncate">{p.address}</p>
                       </div>
-                      <span className="shrink-0 text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full">Pending Review</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {canEditContact && (
+                          <button onClick={() => setContactModal(p)}
+                            className="text-xs text-forest-700 hover:text-forest-900 underline underline-offset-2">
+                            Edit Contact
+                          </button>
+                        )}
+                        <span className="text-xs font-medium bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full">Pending Review</span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -443,7 +461,15 @@ function MyListings() {
                         <p className="font-medium text-gray-800 text-sm truncate">{p.title}</p>
                         <p className="text-xs text-gray-400 truncate">{p.address}</p>
                       </div>
-                      <span className="shrink-0 text-xs font-medium bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-full">Rejected</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {canEditContact && (
+                          <button onClick={() => setContactModal(p)}
+                            className="text-xs text-forest-700 hover:text-forest-900 underline underline-offset-2">
+                            Edit Contact
+                          </button>
+                        )}
+                        <span className="text-xs font-medium bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-full">Rejected</span>
+                      </div>
                     </div>
                   ))}
                 </div>
