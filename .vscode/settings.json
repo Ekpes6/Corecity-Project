@@ -4,7 +4,7 @@
     "chat.agent.maxRequests": 300,
     "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx1G -Xms100m -javaagent:C:/Users/FELIX/.m2/repository/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar",
     "yaml.schemas": {
-        "none": [
+        "https://json.schemastore.org/spring-boot-application.json": [
             "**/backend/**/src/main/resources/application*.yml",
             "**/backend/**/src/main/resources/application*.yaml"
         ]
