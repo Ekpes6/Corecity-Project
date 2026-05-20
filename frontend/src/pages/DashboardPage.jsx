@@ -334,12 +334,21 @@ function OwnerContactModal({ property, onClose, onSaved }) {
 }
 
 function MyListings() {
-  const { isSeller } = useAuth();
+  const { isSeller, isAgent, isAdmin } = useAuth();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activePage,   setActivePage]   = useState(1);
   const [pendingPage,  setPendingPage]  = useState(1);
   const [rejectedPage, setRejectedPage] = useState(1);
+  const [contactModal, setContactModal] = useState(null); // property or null
+
+  const canEditContact = isSeller || isAgent || isAdmin;
+
+  function reload() {
+    propertyAPI.getMyList()
+      .then((r) => setProperties(r.data))
+      .catch(() => toast.error('Failed to load listings'));
+  }
 
   useEffect(() => {
     propertyAPI.getMyList()
