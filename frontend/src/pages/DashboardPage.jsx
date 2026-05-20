@@ -479,6 +479,13 @@ function MyListings() {
           })()}
         </div>
       )}
+      {contactModal && (
+        <OwnerContactModal
+          property={contactModal}
+          onClose={() => setContactModal(null)}
+          onSaved={reload}
+        />
+      )}
     </div>
   );
 }
