@@ -315,8 +315,10 @@ public class PropertyService {
     public PropertyResponse updateOwnerContact(Long id, Long userId, String userRole, OwnerContactUpdateRequest req) {
         Long safeId = Objects.requireNonNull(id, "property id must not be null");
         Long safeUserId = Objects.requireNonNull(userId, "user id must not be null");
-        Property property = propertyRepository.findById(safeId)
-            .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found"));
+        Property property = Objects.requireNonNull(
+            propertyRepository.findById(safeId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Property not found")),
+            "property must not be null");
 
         boolean isAdmin = "ADMIN".equalsIgnoreCase(userRole);
         boolean isAgent = "AGENT".equalsIgnoreCase(userRole);
