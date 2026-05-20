@@ -2238,6 +2238,403 @@ function AgreementBanner() {
   );
 }
 
+// ── Status badge helper ───────────────────────────────────────────────────────
+function PropertyStatusBadge({ status }) {
+  const map = {
+    ACTIVE:         'bg-green-100 text-green-700',
+    ON_NEGOTIATION: 'bg-blue-100 text-blue-700',
+    PENDING:        'bg-yellow-100 text-yellow-700',
+    DRAFT:          'bg-gray-100 text-gray-500',
+    REJECTED:       'bg-red-100 text-red-700',
+    INACTIVE:       'bg-gray-200 text-gray-500',
+    SOLD:           'bg-purple-100 text-purple-700',
+    RENTED:         'bg-indigo-100 text-indigo-700',
+    SHORTLET:       'bg-teal-100 text-teal-700',
+  };
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full whitespace-nowrap ${map[status] ?? 'bg-gray-100 text-gray-500'}`}>
+      {status?.replace('_', ' ')}
+    </span>
+  );
+}
+
+// ── Admin Property Edit Modal ─────────────────────────────────────────────────
+const PROPERTY_TYPES   = ['APARTMENT','BUNGALOW','DUPLEX','TERRACED','SEMI_DETACHED','DETACHED','LAND','COMMERCIAL'];
+const LISTING_TYPES    = ['FOR_SALE','FOR_RENT','SHORT_LET'];
+const PRICE_PERIODS    = ['OUTRIGHT','PER_YEAR','PER_MONTH','PER_NIGHT'];
+
+function AdminPropertyEditModal({ property, onClose, onSaved }) {
+  const [tab, setTab] = useState('details');
+  const [form, setForm] = useState({
+    title:              property.title              ?? '',
+    description:        property.description        ?? '',
+    propertyType:       property.propertyType       ?? 'APARTMENT',
+    listingType:        property.listingType        ?? 'FOR_SALE',
+    price:              property.price              ?? '',
+    pricePeriod:        property.pricePeriod        ?? 'OUTRIGHT',
+    bedrooms:           property.bedrooms           ?? '',
+    bathrooms:          property.bathrooms          ?? '',
+    toilets:            property.toilets            ?? '',
+    sizeSqm:            property.sizeSqm            ?? '',
+    address:            property.address            ?? '',
+    stateId:            property.stateId            ?? '',
+    lgaId:              property.lgaId              ?? '',
+    negotiable:         property.negotiable         ?? true,
+    ownerName:          property.ownerName          ?? '',
+    ownerPhone:         property.ownerPhone         ?? '',
+    ownerEmail:         property.ownerEmail         ?? '',
+    ownerBankName:      property.ownerBankName      ?? '',
+    ownerAccountNumber: property.ownerAccountNumber ?? '',
+    ownerAccountName:   property.ownerAccountName   ?? '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  function set(field, value) { setForm(f => ({ ...f, [field]: value })); }
+
+  async function handleSave() {
+    if (!form.title.trim()) { toast.error('Title is required'); return; }
+    if (!form.price)        { toast.error('Price is required'); return; }
+    setSaving(true);
+    try {
+      await propertyAPI.update(property.id, {
+        ...form,
+        price:    parseFloat(form.price)    || null,
+        stateId:  form.stateId  ? parseInt(form.stateId)  : null,
+        lgaId:    form.lgaId    ? parseInt(form.lgaId)    : null,
+        bedrooms: form.bedrooms ? parseInt(form.bedrooms) : null,
+        bathrooms:form.bathrooms? parseInt(form.bathrooms): null,
+        toilets:  form.toilets  ? parseInt(form.toilets)  : null,
+        sizeSqm:  form.sizeSqm  ? parseFloat(form.sizeSqm): null,
+      });
+      toast.success('Property updated');
+      onSaved();
+      onClose();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Update failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputCls = 'input-field w-full';
+  const labelCls = 'text-xs font-medium text-gray-500 mb-1 block';
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="card w-full max-w-2xl max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 pb-0 shrink-0">
+          <div>
+            <h3 className="font-display font-bold text-lg text-forest-900">Edit Property</h3>
+            <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">#{property.id} — {property.title}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        {/* Tabs */}
+        <div className="flex border-b border-gray-100 mx-6 mt-4 shrink-0">
+          {['details','contact'].map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              className={`px-4 py-2 text-sm font-medium capitalize transition-colors border-b-2 -mb-px ${
+                tab === t ? 'border-forest-700 text-forest-800' : 'border-transparent text-gray-400 hover:text-gray-600'
+              }`}>
+              {t === 'details' ? 'Property Details' : 'Owner Contact'}
+            </button>
+          ))}
+        </div>
+        {/* Body */}
+        <div className="overflow-y-auto scrollbar-none p-6 flex-1">
+          {tab === 'details' ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <label className={labelCls}>Title *</label>
+                  <input className={inputCls} value={form.title} onChange={e => set('title', e.target.value)} />
+                </div>
+                <div className="col-span-2">
+                  <label className={labelCls}>Description</label>
+                  <textarea className={inputCls} rows={3} value={form.description} onChange={e => set('description', e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Property Type</label>
+                  <select className={inputCls} value={form.propertyType} onChange={e => set('propertyType', e.target.value)}>
+                    {PROPERTY_TYPES.map(t => <option key={t} value={t}>{t.replace('_',' ')}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Listing Type</label>
+                  <select className={inputCls} value={form.listingType} onChange={e => set('listingType', e.target.value)}>
+                    {LISTING_TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Price (₦) *</label>
+                  <input className={inputCls} type="number" min="0" value={form.price} onChange={e => set('price', e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Price Period</label>
+                  <select className={inputCls} value={form.pricePeriod} onChange={e => set('pricePeriod', e.target.value)}>
+                    {PRICE_PERIODS.map(t => <option key={t} value={t}>{t.replace(/_/g,' ')}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelCls}>Bedrooms</label>
+                  <input className={inputCls} type="number" min="0" value={form.bedrooms} onChange={e => set('bedrooms', e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Bathrooms</label>
+                  <input className={inputCls} type="number" min="0" value={form.bathrooms} onChange={e => set('bathrooms', e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Toilets</label>
+                  <input className={inputCls} type="number" min="0" value={form.toilets} onChange={e => set('toilets', e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Size (sqm)</label>
+                  <input className={inputCls} type="number" min="0" value={form.sizeSqm} onChange={e => set('sizeSqm', e.target.value)} />
+                </div>
+                <div className="col-span-2">
+                  <label className={labelCls}>Address</label>
+                  <input className={inputCls} value={form.address} onChange={e => set('address', e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>State ID</label>
+                  <input className={inputCls} type="number" value={form.stateId} onChange={e => set('stateId', e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>LGA ID</label>
+                  <input className={inputCls} type="number" value={form.lgaId} onChange={e => set('lgaId', e.target.value)} />
+                </div>
+                <div className="flex items-center gap-2 col-span-2">
+                  <input type="checkbox" id="negotiable" checked={!!form.negotiable}
+                    onChange={e => set('negotiable', e.target.checked)} className="w-4 h-4 accent-forest-700" />
+                  <label htmlFor="negotiable" className="text-sm text-gray-600">Price is negotiable</label>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {[
+                { field: 'ownerName',          label: 'Owner Full Name' },
+                { field: 'ownerPhone',         label: 'Owner Phone' },
+                { field: 'ownerEmail',         label: 'Owner Email', type: 'email' },
+                { field: 'ownerBankName',      label: 'Bank Name' },
+                { field: 'ownerAccountNumber', label: 'Account Number' },
+                { field: 'ownerAccountName',   label: 'Account Name' },
+              ].map(({ field, label, type = 'text' }) => (
+                <div key={field}>
+                  <label className={labelCls}>{label}</label>
+                  <input className={inputCls} type={type} value={form[field]}
+                    onChange={e => set(field, e.target.value)} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Footer */}
+        <div className="flex gap-3 p-6 pt-0 shrink-0 border-t border-gray-100 mt-4">
+          <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="btn-primary flex-1">
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Admin: All Properties Management Page ─────────────────────────────────────
+function AdminPropertyManagementPage() {
+  const [properties, setProperties]     = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [page, setPage]                 = useState(0);        // 0-indexed (Spring)
+  const [statusFilter, setStatusFilter] = useState('');
+  const [loading, setLoading]           = useState(true);
+  const [editModal, setEditModal]       = useState(null);     // property or null
+  const [deleteConfirm, setDeleteConfirm] = useState(null);   // property or null
+  const [deleting, setDeleting]         = useState(false);
+
+  const PAGE_SIZE_ADMIN = 15;
+  const totalPages = Math.ceil(totalElements / PAGE_SIZE_ADMIN);
+
+  async function fetchAll(pg = page, sf = statusFilter) {
+    setLoading(true);
+    try {
+      const { data } = await propertyAPI.adminAll(pg, PAGE_SIZE_ADMIN, sf);
+      setProperties(data.content ?? []);
+      setTotalElements(data.totalElements ?? 0);
+    } catch (e) {
+      toast.error('Failed to load properties');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchAll(page, statusFilter); }, [page, statusFilter]); // eslint-disable-line
+
+  function handleStatusFilter(sf) {
+    setStatusFilter(sf);
+    setPage(0);
+  }
+
+  async function handleDelete() {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    try {
+      await propertyAPI.remove(deleteConfirm.id);
+      toast.success('Property removed');
+      setDeleteConfirm(null);
+      fetchAll();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Delete failed');
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const ALL_STATUSES = ['','ACTIVE','PENDING','DRAFT','REJECTED','INACTIVE','ON_NEGOTIATION','SOLD','RENTED','SHORTLET'];
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-forest-900">All Properties</h2>
+          <p className="text-xs text-gray-400 mt-0.5">{totalElements} total</p>
+        </div>
+        {/* Status filter */}
+        <div className="relative">
+          <select
+            value={statusFilter}
+            onChange={e => handleStatusFilter(e.target.value)}
+            className="input-field pr-8 appearance-none cursor-pointer text-sm">
+            <option value="">All Statuses</option>
+            {ALL_STATUSES.slice(1).map(s => (
+              <option key={s} value={s}>{s.replace(/_/g,' ')}</option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        </div>
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="animate-pulse space-y-2">
+          {[...Array(6)].map((_, i) => <div key={i} className="h-14 bg-gray-100 rounded-xl" />)}
+        </div>
+      ) : properties.length === 0 ? (
+        <div className="card text-center py-16">
+          <Building2 size={40} className="mx-auto text-gray-300 mb-3" />
+          <p className="text-gray-400">No properties found</p>
+        </div>
+      ) : (
+        <>
+          <div className="card overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs">Property</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs">Status</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs hidden md:table-cell">Type</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs hidden sm:table-cell">Price</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs hidden lg:table-cell">Owner ID</th>
+                    <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs hidden lg:table-cell">Date</th>
+                    <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {properties.map(p => (
+                    <tr key={p.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={p.primaryImageUrl || p.imageUrls?.[0] || 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=100&q=60'}
+                            alt={p.title}
+                            className="w-10 h-10 rounded-lg object-cover shrink-0 hidden sm:block"
+                            onError={e => { e.target.src = 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=100&q=60'; }}
+                          />
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-800 truncate max-w-[160px]">{p.title}</p>
+                            <p className="text-xs text-gray-400 truncate max-w-[160px]">{p.address}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3"><PropertyStatusBadge status={p.status} /></td>
+                      <td className="px-4 py-3 hidden md:table-cell text-xs text-gray-500">{p.propertyType?.replace('_',' ')}</td>
+                      <td className="px-4 py-3 hidden sm:table-cell text-xs font-medium text-gray-700">{formatNaira(p.price)}</td>
+                      <td className="px-4 py-3 hidden lg:table-cell text-xs text-gray-400">{p.ownerId}</td>
+                      <td className="px-4 py-3 hidden lg:table-cell text-xs text-gray-400">{p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB') : '—'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => setEditModal(p)}
+                            className="p-1.5 rounded-lg hover:bg-forest-50 text-forest-700 transition-colors" title="Edit">
+                            <Pencil size={15} />
+                          </button>
+                          <button onClick={() => setDeleteConfirm(p)}
+                            className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors" title="Delete">
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-colors">
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-sm text-gray-500">Page {page + 1} of {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
+                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 transition-colors">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Edit modal */}
+      {editModal && (
+        <AdminPropertyEditModal
+          property={editModal}
+          onClose={() => setEditModal(null)}
+          onSaved={() => { setEditModal(null); fetchAll(); }}
+        />
+      )}
+
+      {/* Delete confirm */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="card max-w-sm w-full p-6 text-center">
+            <Trash2 size={36} className="mx-auto text-red-400 mb-4" />
+            <h3 className="font-bold text-gray-800 mb-1">Delete Property?</h3>
+            <p className="text-sm text-gray-500 mb-1 truncate px-2">{deleteConfirm.title}</p>
+            {deleteConfirm.status === 'DRAFT' ? (
+              <p className="text-xs text-red-500 mb-5">This DRAFT will be permanently deleted.</p>
+            ) : (
+              <p className="text-xs text-gray-400 mb-5">The listing will be set to Inactive.</p>
+            )}
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="btn-secondary flex-1">Cancel</button>
+              <button onClick={handleDelete} disabled={deleting}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2 px-4 rounded-xl transition-colors disabled:opacity-50">
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { user, logout, isSeller, isAdmin, isAgent, isSuspended, isTerminated } = useAuth();
   const navigate = useNavigate();
@@ -2247,6 +2644,7 @@ export default function DashboardPage() {
     { to: '/dashboard/listings',      label: 'My Listings',    icon: Home },
     { to: '/dashboard/list',          label: 'Add Property',   icon: PlusSquare,  sellerOnly: true },
     { to: '/dashboard/moderation',    label: 'Moderation',     icon: ShieldCheck, adminOnly: true },
+    { to: '/dashboard/properties',     label: 'All Properties', icon: Building2,    adminOnly: true },
     { to: '/dashboard/withdrawals',    label: 'Withdrawals',    icon: Banknote,    adminOnly: true },
     { to: '/dashboard/disbursements',  label: 'Disbursements',  icon: ArrowUpRight, adminOnly: true },
     { to: '/dashboard/users',          label: 'User Management', icon: Users,       adminOnly: true },
@@ -2344,6 +2742,7 @@ export default function DashboardPage() {
             <Route path="listings"     element={<MyListings />} />
             <Route path="list"         element={<ListPropertyPage />} />
             <Route path="moderation"   element={<ModerationPage />} />
+            <Route path="properties"   element={<AdminPropertyManagementPage />} />
             <Route path="payments"     element={<PaymentsPage />} />
             <Route path="commissions"  element={<CommissionsPage />} />
             <Route path="reservations" element={<ReservationsPage />} />
