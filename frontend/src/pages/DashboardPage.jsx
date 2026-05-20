@@ -257,6 +257,82 @@ function DashboardHome() {
 }
 
 // ── My Listings ───────────────────────────────────────────────
+// ── Owner Contact Modal (Seller: 2 fields | Agent/Admin: 4 fields) ───────────
+function OwnerContactModal({ property, onClose, onSaved }) {
+  const { isAgent, isAdmin } = useAuth();
+  const canEditPhoneEmail = isAgent || isAdmin;
+  const [form, setForm] = useState({
+    ownerAccountNumber: property.ownerAccountNumber || '',
+    ownerAccountName:   property.ownerAccountName   || '',
+    ownerPhone:         property.ownerPhone         || '',
+    ownerEmail:         property.ownerEmail         || '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await propertyAPI.patchOwnerContact(property.id, form);
+      toast.success('Owner contact updated');
+      onSaved();
+      onClose();
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Update failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="card w-full max-w-md p-6">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-display font-bold text-lg text-forest-900">Update Owner Contact</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+        </div>
+        <p className="text-xs text-gray-400 mb-4 truncate">Property: {property.title}</p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Account Number</label>
+            <input className="input-field w-full" value={form.ownerAccountNumber}
+              onChange={e => setForm(f => ({ ...f, ownerAccountNumber: e.target.value }))} />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 mb-1 block">Account Name</label>
+            <input className="input-field w-full" value={form.ownerAccountName}
+              onChange={e => setForm(f => ({ ...f, ownerAccountName: e.target.value }))} />
+          </div>
+          {canEditPhoneEmail && (
+            <>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Owner Phone</label>
+                <input className="input-field w-full" value={form.ownerPhone}
+                  onChange={e => setForm(f => ({ ...f, ownerPhone: e.target.value }))} />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 mb-1 block">Owner Email</label>
+                <input className="input-field w-full" type="email" value={form.ownerEmail}
+                  onChange={e => setForm(f => ({ ...f, ownerEmail: e.target.value }))} />
+              </div>
+            </>
+          )}
+          {!canEditPhoneEmail && (
+            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+              As a Seller, you can only update account number and account name.
+            </p>
+          )}
+        </div>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+          <button onClick={handleSave} disabled={saving} className="btn-primary flex-1">
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function MyListings() {
   const { isSeller } = useAuth();
   const [properties, setProperties] = useState([]);
