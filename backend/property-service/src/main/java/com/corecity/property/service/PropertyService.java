@@ -339,7 +339,8 @@ public class PropertyService {
         }
 
         log.info("Owner-contact updated on property {} by user {} (role: {})", safeId, safeUserId, userRole);
-        return toResponse(propertyRepository.save(property));
+        Property savedProperty = propertyRepository.save(property);
+        return toResponse(Objects.requireNonNull(savedProperty, "save must not return null"));
     }
 
     @Transactional
