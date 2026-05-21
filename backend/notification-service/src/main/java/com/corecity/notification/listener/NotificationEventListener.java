@@ -169,7 +169,7 @@ public class NotificationEventListener {
         }
     }
 
-    /** Formats a raw amount object (BigDecimal or Number or String) as ₦X,XXX */
+    /** Formats a raw amount object (BigDecimal or Number or String) as e.g. ₦1,234 */
     private String formatAmount(Object amountObj) {
         if (amountObj instanceof BigDecimal bd) {
             return "₦" + NGN_FORMAT.format(bd);
