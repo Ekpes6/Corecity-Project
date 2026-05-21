@@ -29,6 +29,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 
 @Service
@@ -43,6 +44,7 @@ public class WalletService {
     private final UserRepository userRepository;
     private final WebClient.Builder webClientBuilder;
     private final ObjectMapper objectMapper;
+    private final RabbitTemplate rabbitTemplate;
 
     @Value("${paystack.secret-key}")
     private String paystackSecretKey;
@@ -180,6 +182,19 @@ public class WalletService {
         walletTransactionRepository.save(txn);
 
         log.info("Wallet {} credited ₦{} via reference {}", wallet.getId(), txn.getAmount(), reference);
+
+        // Fire wallet top-up notification (best-effort)
+        try {
+            userRepository.findById(wallet.getUserId()).ifPresent(user ->
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.wallet_topup",
+                    Map.of("email", user.getEmail(),
+                           "firstName", user.getFirstName(),
+                           "phone", user.getPhone() != null ? user.getPhone() : "",
+                           "amount", txn.getAmount().toPlainString(),
+                           "reference", reference)));
+        } catch (Exception ex) {
+            log.warn("Could not publish wallet_topup notification for reference {}: {}", reference, ex.getMessage());
+        }
     }
 
     /**
@@ -426,6 +441,21 @@ public class WalletService {
 
         log.info("Withdrawal initiated: userId={} amount=₦{} ref={} → {} {}", userId, amount, reference,
             primary.getBankName(), primary.getAccountName());
+
+        // Fire wallet withdrawal notification (best-effort)
+        try {
+            userRepository.findById(userId).ifPresent(user ->
+                rabbitTemplate.convertAndSend("corecity.exchange", "notification.wallet_withdrawal",
+                    Map.of("email", user.getEmail(),
+                           "firstName", user.getFirstName(),
+                           "phone", user.getPhone() != null ? user.getPhone() : "",
+                           "amount", amount.toPlainString(),
+                           "bankName", primary.getBankName(),
+                           "reference", reference)));
+        } catch (Exception ex) {
+            log.warn("Could not publish wallet_withdrawal notification for ref {}: {}", reference, ex.getMessage());
+        }
+
         return request;
     }
 
