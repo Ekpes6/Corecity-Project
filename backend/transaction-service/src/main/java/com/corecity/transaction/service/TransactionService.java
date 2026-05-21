@@ -115,12 +115,21 @@ public class TransactionService {
         }
 
         try {
-            publishAsync("notification.payment_success", Map.of(
-                "buyerId", walletTx.getBuyerId(), "sellerId", walletTx.getSellerId(),
-                "amount", walletTx.getAmount(), "reference", reference,
-                "propertyId", walletTx.getPropertyId(),
-                "transactionId", walletTx.getId()
-            ));
+            UserServiceClient.UserInfo buyer  = userServiceClient.getUserInfo(walletTx.getBuyerId());
+            UserServiceClient.UserInfo seller = userServiceClient.getUserInfo(walletTx.getSellerId());
+            String propTitle = propertyServiceClient.getPropertyTitle(walletTx.getPropertyId());
+
+            java.util.HashMap<String, Object> notifPayload = new java.util.HashMap<>();
+            notifPayload.put("buyerId",       walletTx.getBuyerId());
+            notifPayload.put("sellerId",      walletTx.getSellerId());
+            notifPayload.put("amount",        walletTx.getAmount());
+            notifPayload.put("reference",     reference);
+            notifPayload.put("propertyTitle", propTitle != null ? propTitle : "Your property");
+            notifPayload.put("transactionType", walletTx.getType().name());
+            notifPayload.put("date",          LocalDateTime.now().toString());
+            if (buyer  != null) { notifPayload.put("buyerEmail",  buyer.email());  notifPayload.put("buyerName",  buyer.firstName());  notifPayload.put("buyerPhone",  buyer.phone()); }
+            if (seller != null) { notifPayload.put("sellerEmail", seller.email()); notifPayload.put("sellerName", seller.firstName()); notifPayload.put("sellerPhone", seller.phone()); }
+            publishAsync("notification.payment_success", notifPayload);
         } catch (Exception e) {
             log.warn("Could not publish payment notification for tx {}", walletTx.getId());
         }
@@ -173,12 +182,25 @@ public class TransactionService {
             }
 
             // Notify both parties (async — must not block the HTTP response or the @Transactional commit)
-            publishAsync("notification.payment_success", Map.of(
-                "buyerId", tx.getBuyerId(), "sellerId", tx.getSellerId(),
-                "amount", tx.getAmount(), "reference", reference,
-                "propertyId", tx.getPropertyId(),
-                "transactionId", tx.getId()
-            ));
+            try {
+                UserServiceClient.UserInfo buyer  = userServiceClient.getUserInfo(tx.getBuyerId());
+                UserServiceClient.UserInfo seller = userServiceClient.getUserInfo(tx.getSellerId());
+                String propTitle = propertyServiceClient.getPropertyTitle(tx.getPropertyId());
+
+                java.util.HashMap<String, Object> notifPayload = new java.util.HashMap<>();
+                notifPayload.put("buyerId",       tx.getBuyerId());
+                notifPayload.put("sellerId",      tx.getSellerId());
+                notifPayload.put("amount",        tx.getAmount());
+                notifPayload.put("reference",     reference);
+                notifPayload.put("propertyTitle", propTitle != null ? propTitle : "Your property");
+                notifPayload.put("transactionType", tx.getType().name());
+                notifPayload.put("date",          LocalDateTime.now().toString());
+                if (buyer  != null) { notifPayload.put("buyerEmail",  buyer.email());  notifPayload.put("buyerName",  buyer.firstName());  notifPayload.put("buyerPhone",  buyer.phone()); }
+                if (seller != null) { notifPayload.put("sellerEmail", seller.email()); notifPayload.put("sellerName", seller.firstName()); notifPayload.put("sellerPhone", seller.phone()); }
+                publishAsync("notification.payment_success", notifPayload);
+            } catch (Exception e) {
+                log.warn("Could not publish payment notification for ref {}: {}", reference, e.getMessage());
+            }
             log.info("Transaction {} verified successfully via {}", reference, result.channel());
         } else if ("failed".equalsIgnoreCase(result.status())) {
             // Only write FAILED when Paystack explicitly confirms the payment failed.
