@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/v1")
@@ -51,7 +52,7 @@ public class AuthController {
             ? "https://corecity.com.ng/login?emailVerified=1"
             : "https://corecity.com.ng/login?emailVerified=0";
         return ResponseEntity.status(HttpStatus.FOUND)
-            .location(URI.create(redirect))
+            .location(Objects.requireNonNull(URI.create(redirect)))
             .build();
     }
 
