@@ -106,4 +106,33 @@ public class UserServiceClient {
             log.warn("wallet credit call failed for user={} ref={}: {}", userId, reference, e.getMessage());
         }
     }
+
+    /**
+     * Contact info record returned by getUserInfo().
+     */
+    public record UserInfo(Long id, String firstName, String lastName, String email, String phone) {}
+
+    /**
+     * Fetches a user's basic contact details for notification enrichment.
+     * Returns null on any failure so callers can safely proceed without this data.
+     */
+    public UserInfo getUserInfo(Long userId) {
+        if (userId == null) return null;
+        try {
+            @SuppressWarnings("unchecked")
+            java.util.Map<String, String> resp = webClient.get()
+                .uri("/api/v1/users/internal/user-info/" + userId)
+                .retrieve()
+                .bodyToMono((Class<java.util.Map<String, String>>) (Class<?>) java.util.Map.class)
+                .timeout(java.time.Duration.ofSeconds(5))
+                .block();
+            if (resp == null) return null;
+            return new UserInfo(userId,
+                resp.get("firstName"), resp.get("lastName"),
+                resp.get("email"), resp.get("phone"));
+        } catch (Exception e) {
+            log.warn("getUserInfo call failed for user={}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
 }
