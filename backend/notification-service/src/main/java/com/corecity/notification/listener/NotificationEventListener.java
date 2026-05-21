@@ -71,7 +71,7 @@ public class NotificationEventListener {
         String buyerName  = (String) event.getOrDefault("buyerName", "Customer");
         String buyerPhone = (String) event.getOrDefault("buyerPhone", "");
         if (!buyerEmail.isBlank()) {
-            emailService.sendPaymentSuccess(buyerEmail, buyerName, amountStr, reference, propertyTitle);
+            emailService.sendPaymentSuccess(buyerEmail, buyerName, amountStr, reference, propertyTitle, transType, date);
         }
         if (!buyerPhone.isBlank()) {
             smsService.sendSms(buyerPhone,
@@ -83,7 +83,7 @@ public class NotificationEventListener {
         String sellerPhone = (String) event.getOrDefault("sellerPhone", "");
         if (!sellerEmail.isBlank()) {
             emailService.sendPaymentSuccess(sellerEmail, (String) event.getOrDefault("sellerName", "Seller"),
-                amountStr, reference, propertyTitle);
+                amountStr, reference, propertyTitle, transType, date);
         }
         if (!sellerPhone.isBlank()) {
             smsService.sendSms(sellerPhone,

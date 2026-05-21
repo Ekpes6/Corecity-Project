@@ -54,10 +54,13 @@ public class EmailService {
             Map.of("firstName", firstName, "loginUrl", "https://corecity.com.ng/login"));
     }
 
-    public void sendPaymentSuccess(String to, String firstName, String amount, String reference, String propertyTitle) {
+    public void sendPaymentSuccess(String to, String firstName, String amount, String reference,
+                                    String propertyTitle, String transactionType, String date) {
         sendTemplatedEmail(to, "Payment Confirmed — corecity", "payment-success",
             Map.of("firstName", firstName, "amount", amount,
-                   "reference", reference, "propertyTitle", propertyTitle));
+                   "reference", reference, "propertyTitle", propertyTitle,
+                   "transactionType", transactionType != null ? transactionType : "PURCHASE",
+                   "date", date != null ? date : ""));
     }
 
     public void sendNewEnquiry(String to, String agentName, String propertyTitle, String senderName) {
