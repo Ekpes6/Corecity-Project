@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +38,8 @@ public class AuthService {
         if (userRepository.existsByPhone(req.getPhone()))
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Phone number already registered");
 
+        String verificationToken = UUID.randomUUID().toString().replace("-", "");
+
         var builtUser = User.builder()
             .email(req.getEmail())
             .phone(req.getPhone())
@@ -44,6 +47,8 @@ public class AuthService {
             .firstName(req.getFirstName())
             .lastName(req.getLastName())
             .role(req.getRole())
+            .emailVerified(false)
+            .emailVerificationToken(verificationToken)
             .build();
 
         var savedUser = userRepository.save(Objects.requireNonNull(builtUser, "built user must not be null"));
@@ -52,6 +57,12 @@ public class AuthService {
         rabbitTemplate.convertAndSend("corecity.exchange", "notification.welcome",
             Map.of("userId", savedUser.getId(), "email", savedUser.getEmail(),
                    "name", savedUser.getFirstName(), "phone", savedUser.getPhone()));
+
+        // Publish email verification event
+        rabbitTemplate.convertAndSend("corecity.exchange", "notification.email_verification",
+            Map.of("email", savedUser.getEmail(),
+                   "firstName", savedUser.getFirstName(),
+                   "token", verificationToken));
 
         return AuthResponse.builder()
             .accessToken(jwtUtil.generateToken(savedUser))
@@ -117,6 +128,17 @@ public class AuthService {
     /** Returns whether a phone number is available for registration. */
     public boolean isPhoneAvailable(String phone) {
         return !userRepository.existsByPhone(phone);
+    }
+
+    @Transactional
+    public boolean verifyEmail(String token) {
+        String safeToken = Objects.requireNonNull(token, "verification token must not be null");
+        return userRepository.findByEmailVerificationToken(safeToken).map(user -> {
+            user.setEmailVerified(true);
+            user.setEmailVerificationToken(null);
+            userRepository.save(user);
+            return true;
+        }).orElse(false);
     }
 
     public UserDTO updateProfile(Long userId, UpdateProfileRequest req) {

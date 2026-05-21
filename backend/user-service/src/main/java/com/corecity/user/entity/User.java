@@ -88,6 +88,13 @@ public class User {
     @Column(name = "suspended_by_admin_id")
     private Long suspendedByAdminId;
 
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = false;
+
+    @Column(name = "email_verification_token", length = 64)
+    private String emailVerificationToken;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
