@@ -32,10 +32,13 @@ public class NotificationEventListener {
         }
 
         switch (routingKey) {
-            case "notification.welcome" -> handleWelcomeEvent(event);
-            case "notification.payment_success" -> handlePaymentSuccessEvent(event);
-            case "notification.new_enquiry" -> handleNewEnquiryEvent(event);
-            case "notification.listing_approved" -> handleListingApprovedEvent(event);
+            case "notification.welcome"            -> handleWelcomeEvent(event);
+            case "notification.payment_success"    -> handlePaymentSuccessEvent(event);
+            case "notification.new_enquiry"        -> handleNewEnquiryEvent(event);
+            case "notification.listing_approved"   -> handleListingApprovedEvent(event);
+            case "notification.email_verification" -> handleEmailVerificationEvent(event);
+            case "notification.wallet_topup"       -> handleWalletTopupEvent(event);
+            case "notification.wallet_withdrawal"  -> handleWalletWithdrawalEvent(event);
             default -> log.debug("Skipping unhandled notification routing key: {}", routingKey);
         }
     }
@@ -121,5 +124,63 @@ public class NotificationEventListener {
             smsService.sendSms(phone,
                 String.format("corecity: \"%s\" is now live on corecity.com.ng! Share the link.", title));
         }
+    }
+
+    private void handleEmailVerificationEvent(Map<String, Object> event) {
+        String email     = (String) event.get("email");
+        String firstName = (String) event.getOrDefault("firstName", "User");
+        String token     = (String) event.get("token");
+        if (email != null && token != null) {
+            String verifyUrl = "https://api.corecity.com.ng/api/v1/auth/verify-email?token=" + token;
+            emailService.sendVerificationEmail(email, firstName, verifyUrl);
+        }
+    }
+
+    private void handleWalletTopupEvent(Map<String, Object> event) {
+        String email     = (String) event.getOrDefault("email", "");
+        String firstName = (String) event.getOrDefault("firstName", "Customer");
+        String phone     = (String) event.getOrDefault("phone", "");
+        Object amountObj = event.get("amount");
+        String reference = (String) event.getOrDefault("reference", "");
+
+        String amountStr = formatAmount(amountObj);
+        if (!email.isBlank()) {
+            emailService.sendWalletTopup(email, firstName, amountStr, reference);
+        }
+        if (!phone.isBlank()) {
+            smsService.sendSms(phone,
+                String.format("corecity: Your wallet has been credited with %s. Ref: %s", amountStr, reference));
+        }
+    }
+
+    private void handleWalletWithdrawalEvent(Map<String, Object> event) {
+        String email     = (String) event.getOrDefault("email", "");
+        String firstName = (String) event.getOrDefault("firstName", "Customer");
+        String phone     = (String) event.getOrDefault("phone", "");
+        Object amountObj = event.get("amount");
+        String bankName  = (String) event.getOrDefault("bankName", "");
+        String reference = (String) event.getOrDefault("reference", "");
+
+        String amountStr = formatAmount(amountObj);
+        if (!email.isBlank()) {
+            emailService.sendWalletWithdrawal(email, firstName, amountStr, bankName, reference);
+        }
+        if (!phone.isBlank()) {
+            smsService.sendSms(phone,
+                String.format("corecity: Withdrawal of %s to %s has been initiated. Ref: %s",
+                    amountStr, bankName, reference));
+        }
+    }
+
+    /** Formats a raw amount object (BigDecimal or Number or String) as ₦X,XXX */
+    private String formatAmount(Object amountObj) {
+        if (amountObj instanceof BigDecimal bd) {
+            return "₦" + NGN_FORMAT.format(bd);
+        } else if (amountObj instanceof Number n) {
+            return "₦" + NGN_FORMAT.format(n.doubleValue());
+        } else if (amountObj instanceof String s) {
+            try { return "₦" + NGN_FORMAT.format(new BigDecimal(s)); } catch (Exception ignored) {}
+        }
+        return "₦" + amountObj;
     }
 }
