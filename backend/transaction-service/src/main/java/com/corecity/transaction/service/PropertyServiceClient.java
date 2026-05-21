@@ -88,6 +88,25 @@ public class PropertyServiceClient {
         }
     }
 
+    /**
+     * Fetches only the title of a property — used to enrich payment notification events.
+     * Returns null if unreachable (best-effort).
+     */
+    public String getPropertyTitle(Long propertyId) {
+        try {
+            JsonNode node = webClient.get()
+                .uri("/api/v1/properties/" + propertyId)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .timeout(Duration.ofSeconds(5))
+                .block();
+            return node != null ? node.path("title").asText(null) : null;
+        } catch (Exception e) {
+            log.warn("Could not fetch property {} title: {}", propertyId, e.getMessage());
+            return null;
+        }
+    }
+
     public void completeReservation(Long propertyId, Long buyerId, String transactionType, Integer leaseDays) {
         try {
             Map<String, Object> body = new HashMap<>();
