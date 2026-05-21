@@ -61,13 +61,10 @@ public class NotificationEventListener {
         String reference     = (String) event.get("reference");
         Object amountObj     = event.get("amount");
         String propertyTitle = (String) event.getOrDefault("propertyTitle", "your property");
+        String transType     = (String) event.getOrDefault("transactionType", "PURCHASE");
+        String date          = (String) event.getOrDefault("date", "");
 
-        String amountStr = "₦0";
-        if (amountObj instanceof BigDecimal bd) {
-            amountStr = "₦" + NGN_FORMAT.format(bd);
-        } else if (amountObj instanceof Number n) {
-            amountStr = "₦" + NGN_FORMAT.format(n.doubleValue());
-        }
+        String amountStr = formatAmount(amountObj);
 
         // Notify buyer
         String buyerEmail = (String) event.getOrDefault("buyerEmail", "");
