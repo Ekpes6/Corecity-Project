@@ -41,6 +41,14 @@
             <td th:text="${propertyTitle}">Lagos Island Apartment</td>
           </tr>
           <tr>
+            <td>Transaction Type</td>
+            <td th:text="${transactionType}">PURCHASE</td>
+          </tr>
+          <tr th:if="${date != null and !#strings.isEmpty(date)}">
+            <td>Date</td>
+            <td th:text="${#strings.substring(date, 0, 10)}">2024-01-01</td>
+          </tr>
+          <tr>
             <td>Transaction Reference</td>
             <td th:text="${reference}">HLK-1234567890</td>
           </tr>
