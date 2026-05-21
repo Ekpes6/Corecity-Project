@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -36,6 +37,22 @@ public class AuthController {
             return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(authService.refresh(token));
+    }
+
+    /**
+     * Email verification link handler.
+     * Marks the account as email-verified and redirects the browser to the dashboard.
+     * This endpoint is public (excluded from AuthFilter in the gateway).
+     */
+    @GetMapping("/auth/verify-email")
+    public ResponseEntity<Void> verifyEmail(@RequestParam String token) {
+        boolean ok = authService.verifyEmail(token);
+        String redirect = ok
+            ? "https://corecity.com.ng/login?emailVerified=1"
+            : "https://corecity.com.ng/login?emailVerified=0";
+        return ResponseEntity.status(HttpStatus.FOUND)
+            .location(URI.create(redirect))
+            .build();
     }
 
     @GetMapping("/users/check-phone")
