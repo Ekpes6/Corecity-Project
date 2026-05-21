@@ -64,4 +64,19 @@ public class EmailService {
         sendTemplatedEmail(to, "New Enquiry on " + propertyTitle + " — corecity", "new-enquiry",
             Map.of("agentName", agentName, "propertyTitle", propertyTitle, "senderName", senderName));
     }
+
+    public void sendVerificationEmail(String to, String firstName, String verifyUrl) {
+        sendTemplatedEmail(to, "Verify your email address — corecity", "verify-email",
+            Map.of("firstName", firstName, "verifyUrl", verifyUrl));
+    }
+
+    public void sendWalletTopup(String to, String firstName, String amount, String reference) {
+        sendTemplatedEmail(to, "Wallet Top-up Confirmed — corecity", "wallet-topup",
+            Map.of("firstName", firstName, "amount", amount, "reference", reference));
+    }
+
+    public void sendWalletWithdrawal(String to, String firstName, String amount, String bankName, String reference) {
+        sendTemplatedEmail(to, "Withdrawal Request Received — corecity", "wallet-withdrawal",
+            Map.of("firstName", firstName, "amount", amount, "bankName", bankName, "reference", reference));
+    }
 }
