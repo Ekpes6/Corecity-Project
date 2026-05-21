@@ -108,4 +108,25 @@ public class InternalController {
                     return ResponseEntity.ok(Map.of("role", "SELLER"));
                 });
     }
+
+    /**
+     * Returns a user's basic contact info (name, email, phone) for notification enrichment.
+     * Called by transaction-service when publishing payment_success events.
+     * Response: { "firstName": "...", "lastName": "...", "email": "...", "phone": "..." }
+     */
+    @GetMapping("/user-info/{userId}")
+    public ResponseEntity<Map<String, String>> getUserInfo(@PathVariable Long userId) {
+        if (userId == null) return ResponseEntity.badRequest().build();
+        return userRepository.findById(userId)
+                .map(u -> ResponseEntity.ok(Map.of(
+                    "firstName", u.getFirstName(),
+                    "lastName",  u.getLastName(),
+                    "email",     u.getEmail(),
+                    "phone",     u.getPhone() != null ? u.getPhone() : ""
+                )))
+                .orElseGet(() -> {
+                    log.warn("user-info lookup: userId={} not found", userId);
+                    return ResponseEntity.notFound().<Map<String, String>>build();
+                });
+    }
 }
