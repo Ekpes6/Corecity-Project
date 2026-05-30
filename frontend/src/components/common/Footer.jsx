@@ -88,7 +88,7 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-3 text-sm text-white/60">
                 <Mail size={16} className="shrink-0 text-clay-500" />
-                corecityproperty@gmail.com
+                support@corecity.com.ng
               </li>
             </ul>
 
