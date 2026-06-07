@@ -171,6 +171,37 @@ public class NotificationEventListener {
         }
     }
 
+    private void handleAccountSuspendedEvent(Map<String, Object> event) {
+        String email        = (String) event.getOrDefault("email", "");
+        String firstName    = (String) event.getOrDefault("firstName", "User");
+        String phone        = (String) event.getOrDefault("phone", "");
+        String reason       = (String) event.getOrDefault("reason", "Policy violation");
+        String note         = (String) event.getOrDefault("note", "");
+        boolean withheld    = Boolean.TRUE.equals(event.get("fundsWithheld"));
+
+        if (!email.isBlank()) {
+            emailService.sendAccountSuspended(email, firstName, reason, note, withheld);
+        }
+        if (!phone.isBlank()) {
+            smsService.sendSms(phone,
+                "corecity: Your account has been suspended. Please contact support@corecity.com.ng for assistance.");
+        }
+    }
+
+    private void handleAccountReinstatedEvent(Map<String, Object> event) {
+        String email     = (String) event.getOrDefault("email", "");
+        String firstName = (String) event.getOrDefault("firstName", "User");
+        String phone     = (String) event.getOrDefault("phone", "");
+
+        if (!email.isBlank()) {
+            emailService.sendAccountReinstated(email, firstName);
+        }
+        if (!phone.isBlank()) {
+            smsService.sendSms(phone,
+                "corecity: Good news! Your account has been reinstated. You can now resume all platform activities.");
+        }
+    }
+
     /** Formats a raw amount object (BigDecimal or Number or String) as e.g. ₦1,234 */
     private String formatAmount(Object amountObj) {
         if (amountObj instanceof BigDecimal bd) {

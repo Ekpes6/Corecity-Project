@@ -332,6 +332,17 @@ public class AuthService {
         userRepository.updateAccountStatus(safeId, User.AccountStatus.SUSPENDED.name(),
             reasonEnum.name(), note, withholdFunds,
             java.time.LocalDateTime.now(), adminId);
+
+        // Notify the user of the suspension via email/SMS
+        rabbitTemplate.convertAndSend("corecity.notifications", "notification.account_suspended",
+            Map.of(
+                "email",        target.getEmail(),
+                "firstName",    target.getFirstName(),
+                "phone",        target.getPhone() != null ? target.getPhone() : "",
+                "reason",       reasonEnum.name(),
+                "note",         note != null ? note : "",
+                "fundsWithheld", withholdFunds
+            ));
     }
 
     /** Admin: terminate (permanently remove) a user's account. */
@@ -364,6 +375,14 @@ public class AuthService {
         if (target.getAccountStatus() == User.AccountStatus.ACTIVE)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is already active");
         userRepository.reinstateUser(safeId);
+
+        // Notify the user of reinstatement via email/SMS
+        rabbitTemplate.convertAndSend("corecity.notifications", "notification.account_reinstated",
+            Map.of(
+                "email",     target.getEmail(),
+                "firstName", target.getFirstName(),
+                "phone",     target.getPhone() != null ? target.getPhone() : ""
+            ));
     }
 
     public List<Long> getUserIdsByRole(String role) {

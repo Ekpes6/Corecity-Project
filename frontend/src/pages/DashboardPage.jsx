@@ -2921,6 +2921,19 @@ export default function DashboardPage() {
   const { user, logout, isSeller, isAdmin, isAgent, isSuspended, isTerminated } = useAuth();
   const navigate = useNavigate();
 
+  // Live unread notification count for sidebar badge
+  const [sidebarUnread, setSidebarUnread] = useState(0);
+  useEffect(() => {
+    let active = true;
+    const fetch = () =>
+      notificationAPI.getUnreadCount()
+        .then(r => { if (active) setSidebarUnread(r.data?.count ?? 0); })
+        .catch(() => {});
+    fetch();
+    const id = setInterval(fetch, 30000);
+    return () => { active = false; clearInterval(id); };
+  }, []);
+
   const navItems = [
     { to: '/dashboard',               label: 'Overview',       icon: LayoutDashboard, end: true },
     { to: '/dashboard/listings',      label: 'My Listings',    icon: Home },
@@ -2935,7 +2948,7 @@ export default function DashboardPage() {
     { to: '/dashboard/reservations',  label: 'Reservations',   icon: CalendarCheck },
     { to: '/dashboard/subscription',  label: 'Subscription',   icon: Crown,       agentOrSeller: true },
     { to: '/dashboard/reputation',    label: 'Reputation',     icon: BadgeCheck,  agentOnly: true },
-    { to: '/dashboard/messages',      label: 'Messages',       icon: MessageSquare },
+    { to: '/dashboard/messages',      label: 'Messages',       icon: MessageSquare, badge: sidebarUnread > 0 ? sidebarUnread : null },
     { to: '/dashboard/account',       label: 'Account',        icon: Wallet },
     { to: '/dashboard/settings',      label: 'Settings',       icon: Settings },
   ];
@@ -2958,7 +2971,7 @@ export default function DashboardPage() {
           </div>
 
           <nav className="card p-2 space-y-0.5">
-            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller, agentAdminOrSeller }) => {
+            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller, agentAdminOrSeller, badge }) => {
               if (sellerOnly && !isSeller) return null;
               if (adminOnly && !isAdmin) return null;
               if (agentOnly && !isAgent) return null;
@@ -2971,7 +2984,13 @@ export default function DashboardPage() {
                       isActive ? 'bg-forest-800 text-white' : 'text-gray-600 hover:bg-gray-50 hover:text-forest-800'
                     }`
                   }>
-                  <Icon size={17} /> {label}
+                  <Icon size={17} />
+                  <span className="flex-1">{label}</span>
+                  {badge != null && (
+                    <span className="ml-auto text-xs font-bold bg-red-500 text-white rounded-full px-1.5 py-0.5 min-w-[18px] text-center leading-none">
+                      {badge > 99 ? '99+' : badge}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}
@@ -3001,7 +3020,7 @@ export default function DashboardPage() {
           <AgreementBanner />
           {/* Mobile nav tabs */}
           <div className="lg:hidden flex gap-1 overflow-x-auto pb-2 mb-4 scrollbar-none">
-            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller, agentAdminOrSeller }) => {
+            {navItems.map(({ to, label, icon: Icon, end, sellerOnly, adminOnly, agentOnly, agentOrSeller, agentAdminOrSeller, badge }) => {
               if (sellerOnly && !isSeller) return null;
               if (adminOnly && !isAdmin) return null;
               if (agentOnly && !isAgent) return null;
@@ -3010,11 +3029,16 @@ export default function DashboardPage() {
               return (
                 <NavLink key={to} to={to} end={end}
                   className={({ isActive }) =>
-                    `flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-medium shrink-0 transition-colors ${
+                    `relative flex items-center gap-1.5 whitespace-nowrap px-3 py-2 rounded-xl text-xs font-medium shrink-0 transition-colors ${
                       isActive ? 'bg-forest-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`
                   }>
                   <Icon size={14} /> {label}
+                  {badge != null && (
+                    <span className="ml-0.5 text-xs font-bold bg-red-500 text-white rounded-full px-1 py-0.5 min-w-[16px] text-center leading-none">
+                      {badge > 99 ? '99+' : badge}
+                    </span>
+                  )}
                 </NavLink>
               );
             })}

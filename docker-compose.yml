@@ -337,10 +337,13 @@ services:
 
   # ─── SSL / TLS Terminating Proxy ─────────────────────────────────────────────
   # Place TLS certs at ./nginx/certs/fullchain.pem and ./nginx/certs/privkey.pem
-  # before starting. See nginx/ssl-proxy.conf for Let's Encrypt instructions.
+  # before starting. Obtain via: sudo ./nginx/certbot-setup.sh
+  # For local dev with a self-signed cert: ./nginx/certbot-setup.sh --self-signed
+  # Start with SSL: docker compose --profile ssl up -d
   ssl-proxy:
     image: nginx:alpine
     container_name: corecity-ssl-proxy
+    profiles: [ssl]
     restart: unless-stopped
     ports:
       - "80:80"
