@@ -583,37 +583,6 @@ public class SubscriptionService {
         return plan.monthlyFee;
     }
 
-    private String initPaystackPayment(String email, BigDecimal amountNgn,
-                                       String reference, Map<String, Object> meta) {
-        long amountKobo = amountNgn.multiply(BigDecimal.valueOf(100)).longValue();
-        Map<String, Object> body = Map.of(
-            "email", email,
-            "amount", amountKobo,
-            "reference", reference,
-            "currency", "NGN",
-            "callback_url", paystackCallbackUrl,
-            "metadata", meta,
-            "channels", new String[]{"card", "bank", "ussd", "bank_transfer", "qr"}
-        );
-        try {
-            String response = webClientBuilder.build()
-                .post()
-                .uri(PAYSTACK_BASE + "/transaction/initialize")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + paystackSecretKey)
-                .header(HttpHeaders.CONTENT_TYPE, "application/json")
-                .bodyValue(Objects.requireNonNull(body))
-                .retrieve()
-                .bodyToMono(String.class)
-                .retry(2)
-                .block();
-            JsonNode root = objectMapper.readTree(response);
-            return root.path("data").path("authorization_url").asText();
-        } catch (Exception e) {
-            log.error("Paystack subscription init failed: {}", e.getMessage());
-            throw new RuntimeException("Payment gateway unavailable – please try again later");
-        }
-    }
-
     private SubscriptionResponse toSubscriptionResponse(AgentSubscription s) {
         return SubscriptionResponse.builder()
             .id(s.getId()).plan(s.getPlan().name())

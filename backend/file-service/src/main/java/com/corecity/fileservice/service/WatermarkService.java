@@ -33,9 +33,6 @@ public class WatermarkService {
     /** Watermark width as a fraction of the property image width. */
     private static final double WATERMARK_WIDTH_RATIO = 0.25;
 
-    /** Bottom padding between watermark and image edge (pixels). */
-    private static final int BOTTOM_PADDING = 20;
-
     private BufferedImage watermarkImage;
 
     @PostConstruct
