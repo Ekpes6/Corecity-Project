@@ -1940,48 +1940,31 @@ const STATUS_BADGE = {
   TERMINATED: 'bg-red-100 text-red-700',
 };
 
-function UserManagementPage() {
-  const [users, setUsers]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [search, setSearch]       = useState('');
-  const [modal, setModal]         = useState(null); // { action: 'suspend'|'terminate', user }
-  const [reason, setReason]       = useState('BREACH');
-  const [note, setNote]           = useState('');
-  const [withhold, setWithhold]   = useState(false);
+const ROLE_BADGE = {
+  ADMIN:  'bg-purple-100 text-purple-700',
+  AGENT:  'bg-blue-100 text-blue-700',
+  SELLER: 'bg-amber-100 text-amber-700',
+  BUYER:  'bg-gray-100 text-gray-600',
+};
+
+// ── Shared action modal used by both accordion panels ──────────
+function UserActionModal({ modal, onClose, onDone }) {
+  const [reason, setReason]     = useState('BREACH');
+  const [note, setNote]         = useState('');
+  const [withhold, setWithhold] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await adminAPI.listUsers();
-      setUsers(res.data);
-    } catch {
-      toast.error('Failed to load users');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (modal) {
+      setReason('BREACH');
+      setNote('');
+      setWithhold(modal.action === 'terminate');
     }
-  }, []);
+  }, [modal]);
 
-  useEffect(() => { load(); }, [load]);
-
-  const filtered = users.filter(u => {
-    const q = search.toLowerCase();
-    return !q ||
-      u.email.toLowerCase().includes(q) ||
-      u.firstName.toLowerCase().includes(q) ||
-      u.lastName.toLowerCase().includes(q);
-  });
-
-  const openModal = (action, user) => {
-    setModal({ action, user });
-    setReason('BREACH');
-    setNote('');
-    setWithhold(action === 'terminate');
-  };
-  const closeModal = () => setModal(null);
+  if (!modal) return null;
 
   const handleSubmit = async () => {
-    if (!modal) return;
     setSubmitting(true);
     try {
       const payload = { reason, note, withholdFunds: withhold };
@@ -1992,8 +1975,8 @@ function UserManagementPage() {
         await adminAPI.terminateUser(modal.user.id, payload);
         toast.success(`${modal.user.firstName}'s account terminated`);
       }
-      closeModal();
-      load();
+      onClose();
+      onDone();
     } catch (e) {
       toast.error(e?.response?.data?.message || 'Action failed');
     } finally {
@@ -2001,12 +1984,399 @@ function UserManagementPage() {
     }
   };
 
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+        <h2 className="text-lg font-bold text-gray-800 mb-1 capitalize">
+          {modal.action} Account
+        </h2>
+        <p className="text-sm text-gray-500 mb-5">
+          {modal.user.firstName} {modal.user.lastName} &mdash; {modal.user.email}
+        </p>
+
+        <label className="block text-xs font-semibold text-gray-600 mb-1">Reason (required)</label>
+        <select
+          value={reason}
+          onChange={e => setReason(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          {SUSPENSION_REASONS.map(r => (
+            <option key={r.value} value={r.value}>{r.label}</option>
+          ))}
+        </select>
+
+        <label className="block text-xs font-semibold text-gray-600 mb-1">Admin note (optional)</label>
+        <textarea
+          rows={3}
+          placeholder="Internal note for the admin record…"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+
+        <label className="flex items-center gap-2 text-sm text-gray-700 mb-5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={withhold}
+            onChange={e => setWithhold(e.target.checked)}
+            className="w-4 h-4 rounded accent-amber-600"
+          />
+          Withhold pending funds pending investigation
+        </label>
+
+        {withhold && (
+          <div className="mb-4 rounded-xl bg-orange-50 border border-orange-200 px-4 py-3 text-xs text-orange-700">
+            <strong>Warning:</strong> Pending wallet balances and disbursements for this user
+            will be frozen until an admin manually reinstates or releases them.
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="text-sm px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            className={`text-sm font-semibold px-5 py-2 rounded-xl text-white transition-colors ${
+              modal.action === 'terminate'
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-orange-600 hover:bg-orange-700'
+            } disabled:opacity-60`}
+          >
+            {submitting ? 'Processing…' : modal.action === 'terminate' ? 'Terminate' : 'Suspend'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Shared user row used by both accordion panels ──────────────
+function UserRow({ u, onAction, onReinstate }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="w-8 h-8 rounded-full bg-forest-800 flex items-center justify-center text-white text-xs font-bold shrink-0">
+              {u.firstName?.[0]}{u.lastName?.[0]}
+            </div>
+            <p className="font-semibold text-gray-800 text-sm">{u.firstName} {u.lastName}</p>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_BADGE[u.role] ?? 'bg-gray-100 text-gray-600'}`}>
+              {u.role}
+            </span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[u.accountStatus] ?? 'bg-gray-100 text-gray-600'}`}>
+              {u.accountStatus ?? 'ACTIVE'}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500 mt-1 ml-10">{u.email}</p>
+          {u.accountStatus && u.accountStatus !== 'ACTIVE' && (
+            <div className="mt-1.5 ml-10 text-xs text-gray-500 space-y-0.5">
+              {u.suspensionReason && (
+                <p><span className="font-medium">Reason:</span> {REASON_LABELS[u.suspensionReason] ?? u.suspensionReason}</p>
+              )}
+              {u.suspensionNote && (
+                <p><span className="font-medium">Note:</span> {u.suspensionNote}</p>
+              )}
+              {u.suspendedAt && (
+                <p><span className="font-medium">Since:</span> {new Date(u.suspendedAt).toLocaleString('en-NG')}</p>
+              )}
+              {u.fundsWithheld && (
+                <p className="text-orange-600 font-semibold">⚠ Funds withheld</p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 shrink-0 flex-wrap">
+          {(!u.accountStatus || u.accountStatus === 'ACTIVE') && (
+            <>
+              <button
+                onClick={() => onAction('suspend', u)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-orange-100 text-orange-700 hover:bg-orange-200 transition-colors"
+              >
+                Suspend
+              </button>
+              <button
+                onClick={() => onAction('terminate', u)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+              >
+                Terminate
+              </button>
+            </>
+          )}
+          {u.accountStatus === 'SUSPENDED' && (
+            <>
+              <button
+                onClick={() => onReinstate(u)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+              >
+                Reinstate
+              </button>
+              <button
+                onClick={() => onAction('terminate', u)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+              >
+                Terminate
+              </button>
+            </>
+          )}
+          {u.accountStatus === 'TERMINATED' && (
+            <button
+              onClick={() => onReinstate(u)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
+            >
+              Reinstate
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Accordion section wrapper ──────────────────────────────────
+function AccordionSection({ title, subtitle, icon: Icon, badge, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-forest-50 flex items-center justify-center shrink-0">
+            <Icon size={18} className="text-forest-700" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-gray-800 text-sm">{title}</p>
+              {badge != null && (
+                <span className="text-xs font-bold bg-forest-100 text-forest-800 px-2 py-0.5 rounded-full">{badge}</span>
+              )}
+            </div>
+            {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+          </div>
+        </div>
+        <ChevronDown
+          size={18}
+          className={`text-gray-400 transition-transform duration-200 shrink-0 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="border-t border-gray-100 px-5 py-5">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── All Users panel ────────────────────────────────────────────
+function AllUsersPanel({ onAction, onReinstate, refreshKey }) {
+  const [users, setUsers]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [page, setPage]     = useState(1);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminAPI.searchUsers('');
+      setUsers(res.data ?? []);
+    } catch {
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    const matchQ = !q ||
+      u.email?.toLowerCase().includes(q) ||
+      u.firstName?.toLowerCase().includes(q) ||
+      u.lastName?.toLowerCase().includes(q);
+    const matchRole   = roleFilter   === 'ALL' || u.role === roleFilter;
+    const matchStatus = statusFilter === 'ALL' || (u.accountStatus ?? 'ACTIVE') === statusFilter;
+    return matchQ && matchRole && matchStatus;
+  });
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  return (
+    <div>
+      {/* Filters row */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-5">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+        </div>
+        <select
+          value={roleFilter}
+          onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
+          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          <option value="ALL">All Roles</option>
+          <option value="ADMIN">Admin</option>
+          <option value="AGENT">Agent</option>
+          <option value="SELLER">Seller</option>
+          <option value="BUYER">Buyer</option>
+        </select>
+        <select
+          value={statusFilter}
+          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+          className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+        >
+          <option value="ALL">All Statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="SUSPENDED">Suspended</option>
+          <option value="TERMINATED">Terminated</option>
+        </select>
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+        >
+          <RefreshCw size={14} /> Refresh
+        </button>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        {[
+          { label: 'Total',      value: users.length,                                         color: 'text-gray-700' },
+          { label: 'Active',     value: users.filter(u => (u.accountStatus ?? 'ACTIVE') === 'ACTIVE').length,    color: 'text-green-600' },
+          { label: 'Suspended',  value: users.filter(u => u.accountStatus === 'SUSPENDED').length,  color: 'text-orange-600' },
+          { label: 'Terminated', value: users.filter(u => u.accountStatus === 'TERMINATED').length, color: 'text-red-600' },
+        ].map(s => (
+          <div key={s.label} className="bg-gray-50 rounded-xl px-4 py-3">
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}
+        </div>
+      ) : paginated.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 text-sm">No users match the current filters.</div>
+      ) : (
+        <>
+          <div className="space-y-2.5">
+            {paginated.map(u => (
+              <UserRow key={u.id} u={u} onAction={onAction} onReinstate={onReinstate} />
+            ))}
+          </div>
+          <Pagination page={page} total={filtered.length} onChange={setPage} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Managed Accounts panel (Agent & Seller enforcement) ────────
+function ManagedAccountsPanel({ onAction, onReinstate, refreshKey }) {
+  const [users, setUsers]   = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminAPI.listUsers();
+      setUsers(res.data ?? []);
+    } catch {
+      toast.error('Failed to load managed accounts');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    return !q ||
+      u.email?.toLowerCase().includes(q) ||
+      u.firstName?.toLowerCase().includes(q) ||
+      u.lastName?.toLowerCase().includes(q);
+  });
+
+  return (
+    <div>
+      <div className="flex gap-3 mb-5">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name or email…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+        </div>
+        <button
+          onClick={load}
+          className="flex items-center gap-1.5 px-3 py-2.5 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+        >
+          <RefreshCw size={14} /> Refresh
+        </button>
+      </div>
+
+      <div className="mb-4 rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-xs text-amber-800">
+        <strong>Section 8.1 — CoreCity Platform Agreement:</strong> Agents and Sellers may be
+        suspended or terminated for breach, fraud, regulatory requirements, or prolonged inactivity.
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-gray-400 text-sm">No managed accounts found.</div>
+      ) : (
+        <div className="space-y-2.5">
+          {filtered.map(u => (
+            <UserRow key={u.id} u={u} onAction={onAction} onReinstate={onReinstate} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── User Management Page ───────────────────────────────────────
+function UserManagementPage() {
+  const [modal, setModal]       = useState(null); // { action, user }
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const openModal   = (action, user) => setModal({ action, user });
+  const closeModal  = () => setModal(null);
+  const triggerRefresh = () => setRefreshKey(k => k + 1);
+
   const handleReinstate = async (u) => {
     if (!window.confirm(`Reinstate ${u.firstName} ${u.lastName} to ACTIVE?`)) return;
     try {
       await adminAPI.reinstateUser(u.id);
       toast.success(`${u.firstName} reinstated`);
-      load();
+      triggerRefresh();
     } catch (e) {
       toast.error(e?.response?.data?.message || 'Reinstate failed');
     }
@@ -2016,179 +2386,43 @@ function UserManagementPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-1">User Management</h1>
       <p className="text-sm text-gray-500 mb-6">
-        Suspend or terminate Agent / Seller accounts per Section 8.1 of the CoreCity Platform Agreement.
+        View and manage all platform users. Expand a section below to perform user actions.
       </p>
 
-      {/* Search */}
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search by name or email…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-        />
+      <div className="space-y-4">
+        {/* ── Accordion 1: All Users ── */}
+        <AccordionSection
+          title="All Users"
+          subtitle="Browse, filter, and act on every registered user"
+          icon={Users}
+          defaultOpen
+        >
+          <AllUsersPanel
+            onAction={openModal}
+            onReinstate={handleReinstate}
+            refreshKey={refreshKey}
+          />
+        </AccordionSection>
+
+        {/* ── Accordion 2: Managed Accounts ── */}
+        <AccordionSection
+          title="Managed Accounts"
+          subtitle="Agent & Seller enforcement — Section 8.1 of the Platform Agreement"
+          icon={ShieldCheck}
+        >
+          <ManagedAccountsPanel
+            onAction={openModal}
+            onReinstate={handleReinstate}
+            refreshKey={refreshKey}
+          />
+        </AccordionSection>
       </div>
 
-      {loading ? (
-        <div className="text-center py-16 text-gray-400">Loading…</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">No accounts found.</div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(u => (
-            <div key={u.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                {/* User info */}
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-800 text-sm">{u.firstName} {u.lastName}</p>
-                    <span className="text-xs font-medium text-gray-400 border border-gray-200 rounded-full px-2 py-0.5">
-                      {u.role}
-                    </span>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${STATUS_BADGE[u.accountStatus] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {u.accountStatus}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{u.email}</p>
-                  {u.accountStatus !== 'ACTIVE' && (
-                    <div className="mt-1.5 text-xs text-gray-500 space-y-0.5">
-                      {u.suspensionReason && (
-                        <p><span className="font-medium">Reason:</span> {REASON_LABELS[u.suspensionReason] ?? u.suspensionReason}</p>
-                      )}
-                      {u.suspensionNote && (
-                        <p><span className="font-medium">Note:</span> {u.suspensionNote}</p>
-                      )}
-                      {u.suspendedAt && (
-                        <p><span className="font-medium">Since:</span> {new Date(u.suspendedAt).toLocaleString('en-NG')}</p>
-                      )}
-                      {u.fundsWithheld && (
-                        <p className="text-orange-600 font-semibold">⚠ Funds withheld</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 shrink-0 flex-wrap">
-                  {u.accountStatus === 'ACTIVE' && (
-                    <>
-                      <button
-                        onClick={() => openModal('suspend', u)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-orange-100 text-orange-700 hover:bg-orange-200 transition-colors"
-                      >
-                        Suspend
-                      </button>
-                      <button
-                        onClick={() => openModal('terminate', u)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                      >
-                        Terminate
-                      </button>
-                    </>
-                  )}
-                  {u.accountStatus === 'SUSPENDED' && (
-                    <>
-                      <button
-                        onClick={() => handleReinstate(u)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                      >
-                        Reinstate
-                      </button>
-                      <button
-                        onClick={() => openModal('terminate', u)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                      >
-                        Terminate
-                      </button>
-                    </>
-                  )}
-                  {u.accountStatus === 'TERMINATED' && (
-                    <button
-                      onClick={() => handleReinstate(u)}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-green-100 text-green-700 hover:bg-green-200 transition-colors"
-                    >
-                      Reinstate
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Action Modal */}
-      {modal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-1 capitalize">
-              {modal.action} Account
-            </h2>
-            <p className="text-sm text-gray-500 mb-5">
-              {modal.user.firstName} {modal.user.lastName} &mdash; {modal.user.email}
-            </p>
-
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Reason (required)</label>
-            <select
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-amber-400"
-            >
-              {SUSPENSION_REASONS.map(r => (
-                <option key={r.value} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-
-            <label className="block text-xs font-semibold text-gray-600 mb-1">Admin note (optional)</label>
-            <textarea
-              rows={3}
-              placeholder="Internal note for the admin record…"
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm mb-4 resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-
-            <label className="flex items-center gap-2 text-sm text-gray-700 mb-5 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={withhold}
-                onChange={e => setWithhold(e.target.checked)}
-                className="w-4 h-4 rounded accent-amber-600"
-              />
-              Withhold pending funds pending investigation
-            </label>
-
-            {withhold && (
-              <div className="mb-4 rounded-xl bg-orange-50 border border-orange-200 px-4 py-3 text-xs text-orange-700">
-                <strong>Warning:</strong> Pending wallet balances and disbursements for this user
-                will be frozen until an admin manually reinstates or releases them.
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={closeModal}
-                className="text-sm px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={submitting}
-                className={`text-sm font-semibold px-5 py-2 rounded-xl text-white transition-colors ${
-                  modal.action === 'terminate'
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-orange-600 hover:bg-orange-700'
-                } disabled:opacity-60`}
-              >
-                {submitting ? 'Processing…' : modal.action === 'terminate' ? 'Terminate' : 'Suspend'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <UserActionModal
+        modal={modal}
+        onClose={closeModal}
+        onDone={triggerRefresh}
+      />
     </div>
   );
 }
