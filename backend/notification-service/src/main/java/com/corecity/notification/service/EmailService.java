@@ -82,4 +82,16 @@ public class EmailService {
         sendTemplatedEmail(to, "Withdrawal Request Received — corecity", "wallet-withdrawal",
             Map.of("firstName", firstName, "amount", amount, "bankName", bankName, "reference", reference));
     }
+
+    public void sendAccountSuspended(String to, String firstName, String reason, String note, boolean fundsWithheld) {
+        sendTemplatedEmail(to, "Your corecity account has been suspended", "account-suspended",
+            Map.of("firstName", firstName, "reason", reason != null ? reason : "Policy violation",
+                   "note", note != null ? note : "",
+                   "fundsWithheld", fundsWithheld));
+    }
+
+    public void sendAccountReinstated(String to, String firstName) {
+        sendTemplatedEmail(to, "Your corecity account has been reinstated ✅", "account-reinstated",
+            Map.of("firstName", firstName));
+    }
 }

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+    .header { background: linear-gradient(135deg, #1B5E20, #2E7D32); padding: 36px 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 26px; }
+    .header p  { color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px 32px; }
+    .body h2 { color: #1B5E20; font-size: 20px; margin-top: 0; }
+    .info-box { background: #F1F8E9; border-left: 4px solid #2E7D32; border-radius: 6px; padding: 16px 20px; margin: 24px 0; }
+    .info-box p { margin: 6px 0; color: #333; font-size: 14px; }
+    .cta { display: inline-block; margin: 20px 0; padding: 14px 32px; background: #2E7D32; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }
+    .footer { background: #F9F9F9; padding: 20px 32px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏠 corecity Nigeria</h1>
+      <p>Your account has been reinstated</p>
+    </div>
+    <div class="body">
+      <h2>Welcome back, <span th:text="${firstName}">User</span>! 🎉</h2>
+      <p>Great news — your corecity account has been reinstated and is now fully active. You can resume all platform activities immediately.</p>
+
+      <div class="info-box">
+        <p>✅ Listings: Active</p>
+        <p>✅ Disbursements: Enabled</p>
+        <p>✅ Platform access: Restored</p>
+      </div>
+
+      <p>If you have any questions or need further assistance, our support team is here to help.</p>
+
+      <a href="https://corecity.com.ng/dashboard" class="cta">Go to Dashboard →</a>
+
+      <p style="color:#777; font-size:13px; margin-top:24px;">
+        Email: <a href="mailto:support@corecity.com.ng">support@corecity.com.ng</a>
+      </p>
+    </div>
+    <div class="footer">
+      © 2024 corecity Nigeria Ltd
+    </div>
+  </div>
+</body>
+</html>

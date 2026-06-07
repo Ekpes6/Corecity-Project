@@ -32,13 +32,15 @@ public class NotificationEventListener {
         }
 
         switch (routingKey) {
-            case "notification.welcome"            -> handleWelcomeEvent(event);
-            case "notification.payment_success"    -> handlePaymentSuccessEvent(event);
-            case "notification.new_enquiry"        -> handleNewEnquiryEvent(event);
-            case "notification.listing_approved"   -> handleListingApprovedEvent(event);
-            case "notification.email_verification" -> handleEmailVerificationEvent(event);
-            case "notification.wallet_topup"       -> handleWalletTopupEvent(event);
-            case "notification.wallet_withdrawal"  -> handleWalletWithdrawalEvent(event);
+            case "notification.welcome"              -> handleWelcomeEvent(event);
+            case "notification.payment_success"      -> handlePaymentSuccessEvent(event);
+            case "notification.new_enquiry"          -> handleNewEnquiryEvent(event);
+            case "notification.listing_approved"     -> handleListingApprovedEvent(event);
+            case "notification.email_verification"   -> handleEmailVerificationEvent(event);
+            case "notification.wallet_topup"         -> handleWalletTopupEvent(event);
+            case "notification.wallet_withdrawal"    -> handleWalletWithdrawalEvent(event);
+            case "notification.account_suspended"    -> handleAccountSuspendedEvent(event);
+            case "notification.account_reinstated"   -> handleAccountReinstatedEvent(event);
             default -> log.debug("Skipping unhandled notification routing key: {}", routingKey);
         }
     }

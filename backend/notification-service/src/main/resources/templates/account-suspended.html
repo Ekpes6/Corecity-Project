@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background: #f5f5f5; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,.08); }
+    .header { background: linear-gradient(135deg, #e65100, #f57c00); padding: 36px 32px; text-align: center; }
+    .header h1 { color: #fff; margin: 0; font-size: 26px; }
+    .header p  { color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px; }
+    .body { padding: 40px 32px; }
+    .body h2 { color: #bf360c; font-size: 20px; margin-top: 0; }
+    .alert-box { background: #FFF3E0; border-left: 4px solid #f57c00; border-radius: 6px; padding: 16px 20px; margin: 24px 0; }
+    .alert-box p { margin: 6px 0; color: #5d4037; font-size: 14px; }
+    .alert-box span { font-weight: 600; color: #bf360c; }
+    .cta { display: inline-block; margin: 20px 0; padding: 14px 32px; background: #f57c00; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; }
+    .footer { background: #F9F9F9; padding: 20px 32px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⚠ corecity Nigeria</h1>
+      <p>Important account notice</p>
+    </div>
+    <div class="body">
+      <h2>Account Suspended</h2>
+      <p>Hi <strong th:text="${firstName}">User</strong>, your corecity account has been temporarily suspended.</p>
+
+      <div class="alert-box">
+        <p><span>Reason:</span> <span th:text="${reason}">Policy violation</span></p>
+        <p th:if="${note != null and !#strings.isEmpty(note)}"><span>Note:</span> <span th:text="${note}">Admin note</span></p>
+        <p th:if="${fundsWithheld}"><span>⚠ Funds withheld:</span> Your pending wallet balance is frozen pending review.</p>
+      </div>
+
+      <p>While your account is suspended you cannot post new listings or receive disbursements.
+         If you believe this is in error, please contact our support team immediately.</p>
+
+      <a href="mailto:support@corecity.com.ng" class="cta">Contact Support →</a>
+
+      <p style="color:#777; font-size:13px; margin-top:24px;">
+        Email: <a href="mailto:support@corecity.com.ng">support@corecity.com.ng</a>
+      </p>
+    </div>
+    <div class="footer">
+      © 2024 corecity Nigeria Ltd
+    </div>
+  </div>
+</body>
+</html>
