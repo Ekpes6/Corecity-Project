@@ -265,42 +265,51 @@ public class AuthService {
         return userRepository.findByEmail(email).map(User::getId);
     }
 
-    /** Admin: search users by partial email, first name, or last name. Returns up to 20 results. */
+    /** Admin: search users by partial email, first name, or last name. Returns up to 50 results. */
     public List<UserSearchResult> searchUsers(String q) {
         return userRepository.searchByEmailOrName(q == null ? "" : q.trim())
                 .stream()
-                .limit(20)
-                .map(u -> UserSearchResult.builder()
-                        .id(u.getId())
-                        .email(u.getEmail())
-                        .firstName(u.getFirstName())
-                        .lastName(u.getLastName())
-                        .role(u.getRole().name())
-                        .accountStatus(u.getAccountStatus() != null ? u.getAccountStatus().name() : "ACTIVE")
-                        .suspensionReason(u.getSuspensionReason() != null ? u.getSuspensionReason().name() : null)
-                        .suspensionNote(u.getSuspensionNote())
-                        .fundsWithheld(u.isFundsWithheld())
-                        .suspendedAt(u.getSuspendedAt())
-                        .build())
+                .limit(50)
+                .map(this::toSearchResult)
                 .toList();
+    }
+
+    /** Admin: paginated list of ALL users with optional search query. */
+    public java.util.Map<String, Object> listAllUsersPaged(String q, int page, int size) {
+        org.springframework.data.domain.Pageable pageable =
+            org.springframework.data.domain.PageRequest.of(Math.max(page, 0), Math.min(size, 100),
+                org.springframework.data.domain.Sort.by("createdAt").descending());
+        org.springframework.data.domain.Page<User> pg =
+            userRepository.searchAllUsersPaged(q == null ? "" : q.trim(), pageable);
+        return java.util.Map.of(
+            "content",       pg.getContent().stream().map(this::toSearchResult).toList(),
+            "totalElements", pg.getTotalElements(),
+            "totalPages",    pg.getTotalPages(),
+            "page",          pg.getNumber(),
+            "size",          pg.getSize()
+        );
+    }
+
+    private UserSearchResult toSearchResult(User u) {
+        return UserSearchResult.builder()
+                .id(u.getId())
+                .email(u.getEmail())
+                .firstName(u.getFirstName())
+                .lastName(u.getLastName())
+                .role(u.getRole().name())
+                .accountStatus(u.getAccountStatus() != null ? u.getAccountStatus().name() : "ACTIVE")
+                .suspensionReason(u.getSuspensionReason() != null ? u.getSuspensionReason().name() : null)
+                .suspensionNote(u.getSuspensionNote())
+                .fundsWithheld(u.isFundsWithheld())
+                .suspendedAt(u.getSuspendedAt())
+                .build();
     }
 
     /** Admin: list all AGENT and SELLER accounts with their current status. */
     public List<UserSearchResult> listManagedUsers() {
         return userRepository.findAllAgentsAndSellers()
                 .stream()
-                .map(u -> UserSearchResult.builder()
-                        .id(u.getId())
-                        .email(u.getEmail())
-                        .firstName(u.getFirstName())
-                        .lastName(u.getLastName())
-                        .role(u.getRole().name())
-                        .accountStatus(u.getAccountStatus() != null ? u.getAccountStatus().name() : "ACTIVE")
-                        .suspensionReason(u.getSuspensionReason() != null ? u.getSuspensionReason().name() : null)
-                        .suspensionNote(u.getSuspensionNote())
-                        .fundsWithheld(u.isFundsWithheld())
-                        .suspendedAt(u.getSuspendedAt())
-                        .build())
+                .map(this::toSearchResult)
                 .toList();
     }
 

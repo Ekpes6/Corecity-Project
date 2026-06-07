@@ -142,6 +142,22 @@ public class AuthController {
     }
 
     /**
+     * GET /api/v1/users/admin/all — paginated list of all users with optional search.
+     * Query params: q (search text), page (0-based, default 0), size (default 20, max 100).
+     */
+    @GetMapping("/users/admin/all")
+    public ResponseEntity<java.util.Map<String, Object>> listAllUsers(
+            @RequestParam(defaultValue = "") String q,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestHeader("X-User-Role") String role) {
+        if (!"ADMIN".equalsIgnoreCase(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(authService.listAllUsersPaged(q, page, size));
+    }
+
+    /**
      * POST /api/v1/users/admin/{id}/suspend — suspend a user's account.
      */
     @PostMapping("/users/admin/{id}/suspend")

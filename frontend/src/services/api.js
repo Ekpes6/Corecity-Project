@@ -199,11 +199,12 @@ export const notificationAPI = {
 
 // ─── Admin user search & management ──────────────────────────
 export const adminAPI = {
-  searchUsers:  (q)       => api.get(`/users/admin/search?q=${encodeURIComponent(q ?? '')}`),
-  listUsers:    ()        => api.get('/users/admin/managed'),
-  suspendUser:  (id, data) => api.post(`/users/admin/${id}/suspend`, data),
-  terminateUser:(id, data) => api.post(`/users/admin/${id}/terminate`, data),
-  reinstateUser:(id)      => api.post(`/users/admin/${id}/reinstate`),
+  searchUsers:  (q)             => api.get(`/users/admin/search?q=${encodeURIComponent(q ?? '')}`),
+  listUsers:    ()              => api.get('/users/admin/managed'),
+  listAllUsers: (q, page, size) => api.get(`/users/admin/all?q=${encodeURIComponent(q ?? '')}&page=${page ?? 0}&size=${size ?? 20}`),
+  suspendUser:  (id, data)      => api.post(`/users/admin/${id}/suspend`, data),
+  terminateUser:(id, data)      => api.post(`/users/admin/${id}/terminate`, data),
+  reinstateUser:(id)            => api.post(`/users/admin/${id}/reinstate`),
 };
 
 // ─── Bank Accounts ───────────────────────────────────────────

@@ -1,6 +1,8 @@
 package com.corecity.user.repository;
 
 import com.corecity.user.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -20,6 +22,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
            "OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :q, '%')) " +
            "OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :q, '%'))")
     List<User> searchByEmailOrName(@Param("q") String q);
+
+    /** Paginated search across all users — used by the admin All-Users panel. */
+    @Query("SELECT u FROM User u WHERE :q = '' OR LOWER(u.email) LIKE LOWER(CONCAT('%', :q, '%')) " +
+           "OR LOWER(u.firstName) LIKE LOWER(CONCAT('%', :q, '%')) " +
+           "OR LOWER(u.lastName) LIKE LOWER(CONCAT('%', :q, '%')) ORDER BY u.createdAt DESC")
+    Page<User> searchAllUsersPaged(@Param("q") String q, Pageable pageable);
 
     /**
      * Writes a pre-encrypted NIN value directly into the column, bypassing the

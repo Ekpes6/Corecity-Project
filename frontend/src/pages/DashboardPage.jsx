@@ -2178,40 +2178,55 @@ function AccordionSection({ title, subtitle, icon: Icon, badge, defaultOpen = fa
 
 // ── All Users panel ────────────────────────────────────────────
 function AllUsersPanel({ onAction, onReinstate, refreshKey }) {
-  const [users, setUsers]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('ALL');
+  const [users, setUsers]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [search, setSearch]       = useState('');
+  const [debouncedQ, setDebouncedQ] = useState('');
+  const [roleFilter, setRoleFilter]   = useState('ALL');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [page, setPage]     = useState(1);
+  const [page, setPage]           = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages]       = useState(0);
+  const [stats, setStats]         = useState({ total: 0, active: 0, suspended: 0, terminated: 0 });
+
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => { setDebouncedQ(search); setPage(0); }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await adminAPI.searchUsers('');
-      setUsers(res.data ?? []);
+      const res = await adminAPI.listAllUsers(debouncedQ, page, PAGE_SIZE);
+      const data = res.data;
+      setUsers(data.content ?? []);
+      setTotalElements(data.totalElements ?? 0);
+      setTotalPages(data.totalPages ?? 0);
+      // Load stats from a fresh unfiltered count when on page 0 with no query
+      if (!debouncedQ && page === 0) {
+        setStats({
+          total:      data.totalElements ?? 0,
+          active:     (data.content ?? []).filter(u => (u.accountStatus ?? 'ACTIVE') === 'ACTIVE').length,
+          suspended:  (data.content ?? []).filter(u => u.accountStatus === 'SUSPENDED').length,
+          terminated: (data.content ?? []).filter(u => u.accountStatus === 'TERMINATED').length,
+        });
+      }
     } catch {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [debouncedQ, page, refreshKey]);
 
-  useEffect(() => { load(); }, [load, refreshKey]);
+  useEffect(() => { load(); }, [load]);
 
+  // Client-side role/status filter on the current page
   const filtered = users.filter(u => {
-    const q = search.toLowerCase();
-    const matchQ = !q ||
-      u.email?.toLowerCase().includes(q) ||
-      u.firstName?.toLowerCase().includes(q) ||
-      u.lastName?.toLowerCase().includes(q);
     const matchRole   = roleFilter   === 'ALL' || u.role === roleFilter;
     const matchStatus = statusFilter === 'ALL' || (u.accountStatus ?? 'ACTIVE') === statusFilter;
-    return matchQ && matchRole && matchStatus;
+    return matchRole && matchStatus;
   });
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-  const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div>
@@ -2223,13 +2238,13 @@ function AllUsersPanel({ onAction, onReinstate, refreshKey }) {
             type="text"
             placeholder="Search by name or email…"
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            onChange={e => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
           />
         </div>
         <select
           value={roleFilter}
-          onChange={e => { setRoleFilter(e.target.value); setPage(1); }}
+          onChange={e => setRoleFilter(e.target.value)}
           className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
         >
           <option value="ALL">All Roles</option>
@@ -2240,7 +2255,7 @@ function AllUsersPanel({ onAction, onReinstate, refreshKey }) {
         </select>
         <select
           value={statusFilter}
-          onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+          onChange={e => setStatusFilter(e.target.value)}
           className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
         >
           <option value="ALL">All Statuses</option>
@@ -2259,10 +2274,10 @@ function AllUsersPanel({ onAction, onReinstate, refreshKey }) {
       {/* Stats row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         {[
-          { label: 'Total',      value: users.length,                                         color: 'text-gray-700' },
-          { label: 'Active',     value: users.filter(u => (u.accountStatus ?? 'ACTIVE') === 'ACTIVE').length,    color: 'text-green-600' },
-          { label: 'Suspended',  value: users.filter(u => u.accountStatus === 'SUSPENDED').length,  color: 'text-orange-600' },
-          { label: 'Terminated', value: users.filter(u => u.accountStatus === 'TERMINATED').length, color: 'text-red-600' },
+          { label: 'Total',      value: totalElements,       color: 'text-gray-700' },
+          { label: 'Active',     value: stats.active,        color: 'text-green-600' },
+          { label: 'Suspended',  value: stats.suspended,     color: 'text-orange-600' },
+          { label: 'Terminated', value: stats.terminated,    color: 'text-red-600' },
         ].map(s => (
           <div key={s.label} className="bg-gray-50 rounded-xl px-4 py-3">
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -2275,16 +2290,43 @@ function AllUsersPanel({ onAction, onReinstate, refreshKey }) {
         <div className="space-y-3">
           {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}
         </div>
-      ) : paginated.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-12 text-gray-400 text-sm">No users match the current filters.</div>
       ) : (
         <>
           <div className="space-y-2.5">
-            {paginated.map(u => (
+            {filtered.map(u => (
               <UserRow key={u.id} u={u} onAction={onAction} onReinstate={onReinstate} />
             ))}
           </div>
-          <Pagination page={page} total={filtered.length} onChange={setPage} />
+          {/* Server-side pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 text-sm text-gray-500">
+              <span>
+                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, totalElements)} of {totalElements}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setPage(p => p - 1)}
+                  disabled={page === 0}
+                  className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+                ><ChevronLeft size={16} /></button>
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`w-8 h-8 rounded-lg text-xs font-medium ${p === page ? 'bg-forest-700 text-white' : 'hover:bg-gray-100'}`}
+                  >{p + 1}</button>
+                ))}
+                {totalPages > 7 && page < totalPages - 1 && (
+                  <button
+                    onClick={() => setPage(p => p + 1)}
+                    className="p-1.5 rounded-lg hover:bg-gray-100"
+                  ><ChevronRight size={16} /></button>
+                )}
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
