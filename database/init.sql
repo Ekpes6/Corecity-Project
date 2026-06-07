@@ -1,11 +1,11 @@
--- ─────────────────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- corecity Nigeria - Database Initialization Script
--- ─────────────────────────────────────────────────────────────────────────
+-- â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 CREATE DATABASE IF NOT EXISTS corecity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE corecity_db;
 
--- ─── Users ───────────────────────────────────────────────────────────────
+-- â”€â”€â”€ Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS users (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     email       VARCHAR(255) NOT NULL UNIQUE,
@@ -20,11 +20,23 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url          VARCHAR(500),
     reputation_score    INT NOT NULL DEFAULT 0,
     is_executive_agent  BOOLEAN NOT NULL DEFAULT FALSE,
+    -- v13: account suspension
+    account_status        VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE' COMMENT 'ACTIVE | SUSPENDED | TERMINATED',
+    suspension_reason     VARCHAR(20)  NULL COMMENT 'BREACH | FRAUD | REGULATORY | INACTIVITY',
+    suspension_note       TEXT         NULL COMMENT 'Admin-facing note',
+    funds_withheld        TINYINT(1)   NOT NULL DEFAULT 0,
+    suspended_at          DATETIME     NULL,
+    suspended_by_admin_id BIGINT       NULL,
+    -- v14: email verification
+    email_verified            TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '1 = email confirmed',
+    email_verification_token  VARCHAR(64)  NULL COMMENT 'UUID token; NULL after verified',
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
+CREATE INDEX IF NOT EXISTS idx_users_account_status       ON users (account_status);
+CREATE INDEX IF NOT EXISTS idx_users_verification_token   ON users (email_verification_token);
 
--- ─── States & LGAs (Nigerian) ────────────────────────────────────────────
+-- â”€â”€â”€ States & LGAs (Nigerian) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS states (
     id   INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL
@@ -37,7 +49,7 @@ CREATE TABLE IF NOT EXISTS lgas (
     FOREIGN KEY (state_id) REFERENCES states(id)
 );
 
--- ─── Properties ──────────────────────────────────────────────────────────
+-- â”€â”€â”€ Properties â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS properties (
     id               BIGINT AUTO_INCREMENT PRIMARY KEY,
     title            VARCHAR(255) NOT NULL,
@@ -57,10 +69,17 @@ CREATE TABLE IF NOT EXISTS properties (
     longitude        DECIMAL(11,8),
     owner_id         BIGINT NOT NULL,
     agent_id         BIGINT,
-    status           ENUM('DRAFT','PENDING','ACTIVE','ON_NEGOTIATION','SOLD','RENTED','INACTIVE','REJECTED') DEFAULT 'DRAFT',
+    status           ENUM('DRAFT','PENDING','ACTIVE','ON_NEGOTIATION','SOLD','RENTED','SHORTLET','INACTIVE','REJECTED') DEFAULT 'DRAFT',
     is_negotiable    BOOLEAN DEFAULT TRUE,
     amenities        JSON,                          -- e.g. ["BOREHOLE","GENERATOR","CCTV","GYM"]
     views_count      INT DEFAULT 0,
+    -- v10: owner contact details
+    owner_name           VARCHAR(200) NULL,
+    owner_phone          VARCHAR(30)  NULL,
+    owner_email          VARCHAR(200) NULL,
+    owner_bank_name      VARCHAR(100) NULL,
+    owner_account_number VARCHAR(30)  NULL,
+    owner_account_name   VARCHAR(200) NULL,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id),
@@ -68,7 +87,7 @@ CREATE TABLE IF NOT EXISTS properties (
     FOREIGN KEY (lga_id) REFERENCES lgas(id)
 );
 
--- ─── Property Images ──────────────────────────────────────────────────────
+-- â”€â”€â”€ Property Images â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS property_files (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
     property_id  BIGINT NOT NULL,
@@ -79,7 +98,7 @@ CREATE TABLE IF NOT EXISTS property_files (
     FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE CASCADE
 );
 
--- ─── Transactions (Paystack Integration) ─────────────────────────────────
+-- â”€â”€â”€ Transactions (Paystack Integration) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS transactions (
     id               BIGINT AUTO_INCREMENT PRIMARY KEY,
     reference        VARCHAR(100) NOT NULL UNIQUE,  -- Paystack reference
@@ -93,6 +112,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     payment_channel  VARCHAR(50),                    -- card, bank_transfer, ussd
     authorization_url VARCHAR(500),                 -- Paystack checkout URL
     paystack_data    JSON,
+    -- v9: rental duration
+    lease_days       INT NULL,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (property_id) REFERENCES properties(id),
@@ -100,7 +121,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     FOREIGN KEY (seller_id) REFERENCES users(id)
 );
 
--- ─── Notifications ────────────────────────────────────────────────────────
+-- â”€â”€â”€ Notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS notifications (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id    BIGINT NOT NULL,
@@ -114,7 +135,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- ─── Enquiries ────────────────────────────────────────────────────────────
+-- â”€â”€â”€ Enquiries â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS enquiries (
     id           BIGINT AUTO_INCREMENT PRIMARY KEY,
     property_id  BIGINT NOT NULL,
@@ -126,7 +147,7 @@ CREATE TABLE IF NOT EXISTS enquiries (
     FOREIGN KEY (sender_id) REFERENCES users(id)
 );
 
--- ─── Saved / Favourites ──────────────────────────────────────────────────
+-- â”€â”€â”€ Saved / Favourites â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS saved_properties (
     user_id     BIGINT NOT NULL,
     property_id BIGINT NOT NULL,
@@ -136,8 +157,8 @@ CREATE TABLE IF NOT EXISTS saved_properties (
     FOREIGN KEY (property_id) REFERENCES properties(id)
 );
 
--- ─── Reservations (Bid Placement Policy) ─────────────────────────────────
--- A customer pays ₦1,000 to enter a 5-day exclusive negotiation window.
+-- â”€â”€â”€ Reservations (Bid Placement Policy) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+-- A customer pays â‚¦1,000 to enter a 5-day exclusive negotiation window.
 CREATE TABLE IF NOT EXISTS reservations (
     id                BIGINT AUTO_INCREMENT PRIMARY KEY,
     property_id       BIGINT NOT NULL,
@@ -152,7 +173,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     FOREIGN KEY (customer_id) REFERENCES users(id)
 );
 
--- ─── Agent Subscriptions ─────────────────────────────────────────────────
+-- â”€â”€â”€ Agent Subscriptions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS agent_subscriptions (
     id                BIGINT AUTO_INCREMENT PRIMARY KEY,
     agent_id          BIGINT NOT NULL,
@@ -169,7 +190,7 @@ CREATE TABLE IF NOT EXISTS agent_subscriptions (
     FOREIGN KEY (agent_id) REFERENCES users(id)
 );
 
--- ─── Agent Loans ─────────────────────────────────────────────────────────
+-- â”€â”€â”€ Agent Loans â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Interest-free loan covering a subscription fee; not available for EXECUTIVE plan.
 CREATE TABLE IF NOT EXISTS agent_loans (
     id              BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -182,13 +203,17 @@ CREATE TABLE IF NOT EXISTS agent_loans (
     status          ENUM('PENDING','ACTIVE','REPAID','OVERDUE','DEFAULTED') NOT NULL DEFAULT 'PENDING',
     trial_number    INT NULL,
     loan_program_id BIGINT NULL,
+    -- v6: repayment tracking
+    repayment_status            ENUM('PENDING','SUCCESS','FAILED') NOT NULL DEFAULT 'PENDING',
+    repayment_reference         VARCHAR(100) NULL,
+    repayment_authorization_url VARCHAR(512) NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (agent_id) REFERENCES users(id),
     FOREIGN KEY (subscription_id) REFERENCES agent_subscriptions(id)
 );
 
--- ─── Loan Programs (13-trial progression tracker) ─────────────────────────
+-- â”€â”€â”€ Loan Programs (13-trial progression tracker) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS loan_programs (
     id                          BIGINT AUTO_INCREMENT PRIMARY KEY,
     agent_id                    BIGINT NOT NULL UNIQUE,
@@ -201,7 +226,7 @@ CREATE TABLE IF NOT EXISTS loan_programs (
     FOREIGN KEY (agent_id) REFERENCES users(id)
 );
 
--- ─── Reputation Events ────────────────────────────────────────────────────
+-- â”€â”€â”€ Reputation Events â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS reputation_events (
     id             BIGINT AUTO_INCREMENT PRIMARY KEY,
     agent_id       BIGINT NOT NULL,
@@ -215,7 +240,7 @@ CREATE TABLE IF NOT EXISTS reputation_events (
     FOREIGN KEY (agent_id) REFERENCES users(id)
 );
 
--- ─── Commissions ─────────────────────────────────────────────────────────
+-- â”€â”€â”€ Commissions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Auto-generated on every successful PURCHASE or RENT transaction.
 -- CoreCity takes 3% and the agent takes 7% of the property value.
 CREATE TABLE IF NOT EXISTS commissions (
@@ -229,12 +254,18 @@ CREATE TABLE IF NOT EXISTS commissions (
     total_commission    DECIMAL(15,2) NOT NULL,
     overall_cost        DECIMAL(15,2) NOT NULL,
     status              ENUM('PENDING','DISBURSED') NOT NULL DEFAULT 'PENDING',
+    -- v11: seller disbursement tracking
+    seller_paid         TINYINT(1)   NOT NULL DEFAULT 0,
+    seller_paid_at      DATETIME     DEFAULT NULL,
+    seller_note         VARCHAR(500) DEFAULT NULL,
+    -- v12: seller role for commission rate selection
+    seller_role         ENUM('AGENT','SELLER') NOT NULL DEFAULT 'AGENT',
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (transaction_id) REFERENCES transactions(id),
     FOREIGN KEY (property_id) REFERENCES properties(id)
 );
 
--- ─── In-app notifications ────────────────────────────────────────────────
+-- â”€â”€â”€ In-app notifications â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 CREATE TABLE IF NOT EXISTS app_notifications (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id    BIGINT       NOT NULL,
@@ -247,7 +278,7 @@ CREATE TABLE IF NOT EXISTS app_notifications (
     INDEX idx_an_unread (user_id, is_read)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Withdrawal Requests ─────────────────────────────────────────────────
+-- â”€â”€â”€ Withdrawal Requests â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 -- Wallet is debited immediately; admin processes the bank transfer externally.
 CREATE TABLE IF NOT EXISTS withdrawal_requests (
     id             BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -263,7 +294,7 @@ CREATE TABLE IF NOT EXISTS withdrawal_requests (
     INDEX idx_wr_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- ─── Seed: Nigerian States ───────────────────────────────────────────────
+-- â”€â”€â”€ Seed: Nigerian States â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 INSERT INTO states (name) VALUES
 ('Abia'),('Adamawa'),('Akwa Ibom'),('Anambra'),('Bauchi'),('Bayelsa'),
 ('Benue'),('Borno'),('Cross River'),('Delta'),('Ebonyi'),('Edo'),
@@ -271,6 +302,56 @@ INSERT INTO states (name) VALUES
 ('Kaduna'),('Kano'),('Katsina'),('Kebbi'),('Kogi'),('Kwara'),
 ('Lagos'),('Nasarawa'),('Niger'),('Ogun'),('Ondo'),('Osun'),
 ('Oyo'),('Plateau'),('Rivers'),('Sokoto'),('Taraba'),('Yobe'),('Zamfara');
+
+-- ─── Bank Accounts (v10) ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    id             BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id        BIGINT       NOT NULL,
+    bank_name      VARCHAR(100) NOT NULL,
+    account_number VARCHAR(500) NOT NULL, -- encrypted ciphertext
+    account_name   VARCHAR(200) NOT NULL,
+    is_primary     TINYINT(1)   NOT NULL DEFAULT 0,
+    created_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_bank_accounts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Wallets (v10) ───────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS wallets (
+    id         BIGINT         AUTO_INCREMENT PRIMARY KEY,
+    user_id    BIGINT         NOT NULL UNIQUE,
+    balance    DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+    currency   VARCHAR(5)     NOT NULL DEFAULT 'NGN',
+    created_at TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_wallets_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Wallet Transactions (v10) ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id          BIGINT         AUTO_INCREMENT PRIMARY KEY,
+    wallet_id   BIGINT         NOT NULL,
+    type        ENUM('CREDIT','DEBIT') NOT NULL,
+    amount      DECIMAL(15, 2) NOT NULL,
+    reference   VARCHAR(100)   NOT NULL UNIQUE,
+    description VARCHAR(255),
+    status      ENUM('PENDING','SUCCESSFUL','FAILED') NOT NULL DEFAULT 'PENDING',
+    created_at  TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_wallet_transactions_wallet FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Property Lifecycle (v9) ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS property_lifecycle (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    property_id BIGINT      NOT NULL,
+    user_id     BIGINT      NOT NULL,
+    type        VARCHAR(20) NOT NULL,
+    start_time  DATETIME    NOT NULL,
+    end_time    DATETIME    NULL,
+    status      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at  TIMESTAMP   DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_lifecycle_property FOREIGN KEY (property_id) REFERENCES properties(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 
 -- Seed all Nigerian LGAs (774 total)
 INSERT INTO lgas (state_id, name) VALUES
