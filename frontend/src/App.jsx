@@ -11,6 +11,7 @@ import { LoginPage, RegisterPage } from './pages/AuthPages';
 import DashboardPage     from './pages/DashboardPage';
 import PaymentVerifyPage from './pages/PaymentVerifyPage';
 import TermsPage         from './pages/TermsPage';
+import HowItWorksPage    from './pages/HowItWorksPage';
 
 // Protected route wrapper
 function ProtectedRoute({ children }) {
@@ -49,6 +50,7 @@ function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/terms" element={<Layout><TermsPage /></Layout>} />
+      <Route path="/how-it-works" element={<Layout><HowItWorksPage /></Layout>} />
 
       <Route path="/payment/verify" element={
         <Layout noFooter><PaymentVerifyPage /></Layout>

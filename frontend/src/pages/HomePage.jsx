@@ -184,6 +184,55 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── How It Works Teaser ──────────────────────────────── */}
+      <section className="bg-white py-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="rounded-3xl overflow-hidden shadow-lift relative"
+            style={{ background: 'linear-gradient(135deg, #2D5016 0%, #1a3209 100%)' }}>
+            {/* decorative dots */}
+            <div className="absolute inset-0 opacity-5"
+              style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }}/>
+            <div className="relative flex flex-col lg:flex-row items-center gap-10 p-10 lg:p-14">
+              {/* icon trio */}
+              <div className="shrink-0 flex gap-4">
+                {[
+                  { emoji: '🏠', label: 'Buyer',  bg: '#7CB342' },
+                  { emoji: '🏗️', label: 'Seller', bg: '#E8824A' },
+                  { emoji: '🤝', label: 'Agent',  bg: '#7B3FA0' },
+                ].map(({ emoji, label, bg }) => (
+                  <div key={label} className="flex flex-col items-center gap-2">
+                    <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-lg"
+                      style={{ background: bg }}>
+                      {emoji}
+                    </div>
+                    <span className="text-white/60 text-xs font-semibold">{label}</span>
+                  </div>
+                ))}
+              </div>
+              {/* text */}
+              <div className="flex-1 text-center lg:text-left">
+                <p className="text-clay-400 font-semibold text-sm uppercase tracking-wide mb-2">New to CoreCity?</p>
+                <h2 className="font-display text-2xl md:text-3xl font-bold text-white mb-3">
+                  Learn how the platform works — step by step
+                </h2>
+                <p className="text-white/60 text-sm max-w-lg">
+                  Interactive guide covering the full journey for buyers, sellers, and agents —
+                  with diagrams, payment flows, and subscription plans explained visually.
+                </p>
+              </div>
+              {/* CTA */}
+              <div className="shrink-0">
+                <Link to="/how-it-works"
+                  className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-white shadow-lg transition-all hover:scale-105"
+                  style={{ background: '#7CB342' }}>
+                  See How It Works <ArrowRight size={18}/>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA ──────────────────────────────────────────────── */}
       <section className="bg-forest-800 text-white py-20">
         <div className="max-w-3xl mx-auto text-center px-6">

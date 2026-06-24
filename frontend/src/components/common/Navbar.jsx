@@ -97,7 +97,8 @@ export default function Navbar() {
   const handleLogout = () => { logout(); navigate('/'); };
 
   const navLinks = [
-    { to: '/properties',          label: 'Browse',   icon: Search },
+    { to: '/properties',          label: 'Browse',        icon: Search },
+    { to: '/how-it-works',        label: 'How It Works',  icon: Home },
     ...(isSeller ? [{ to: '/dashboard/list', label: 'List Property', icon: PlusSquare }] : []),
     ...(isAdmin ? [{ to: '/dashboard/moderation', label: 'Moderation', icon: Bell, auth: true }] : []),
     { to: '/dashboard',            label: 'Dashboard', icon: User, auth: true },
