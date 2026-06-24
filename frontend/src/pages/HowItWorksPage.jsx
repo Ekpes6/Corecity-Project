@@ -336,7 +336,7 @@ const PLANS = [
   { name: 'Basic',     price: '₦20,000', listings: 5,   color: '#7CB342', badge: null },
   { name: 'Standard', price: '₦50,000', listings: 20,  color: '#E8824A', badge: 'Popular' },
   { name: 'Premium',  price: '₦100,000',listings: 50,  color: '#2D5016', badge: null },
-  { name: 'Executive',price: '₦200,000',listings: 999, color: '#7B3FA0', badge: '🏆 Elite' },
+  { name: 'Executive',price: '₦2,000,000',listings: 999, color: '#7B3FA0', badge: '🏆 Elite' },
 ];
 
 /* ─────────────────────── tab config ─────────────────────────────────────── */
