@@ -60,14 +60,20 @@ export default function HomePage() {
               <SearchBar />
             </div>
 
-            <div className="flex flex-wrap gap-2 mt-4 text-sm text-white/50">
-              <span>Popular:</span>
-              {['Lagos Island', 'Lekki Phase 1', 'Maitama Abuja', 'GRA Port Harcourt', 'Asokoro'].map((k) => (
-                <Link key={k} to={`/properties?keyword=${encodeURIComponent(k)}`}
-                  className="text-white/70 hover:text-white underline underline-offset-2 transition-colors">
-                  {k}
-                </Link>
-              ))}
+            <div className="flex flex-wrap items-center gap-4 mt-6">
+              <Link to="/how-it-works"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 border border-white/25 text-white text-sm font-semibold hover:bg-white/20 transition-colors">
+                How It Works <ArrowRight size={15} />
+              </Link>
+              <div className="flex flex-wrap gap-2 text-sm text-white/50">
+                <span>Popular:</span>
+                {['Lagos Island', 'Lekki Phase 1', 'Maitama Abuja', 'GRA Port Harcourt', 'Asokoro'].map((k) => (
+                  <Link key={k} to={`/properties?keyword=${encodeURIComponent(k)}`}
+                    className="text-white/70 hover:text-white underline underline-offset-2 transition-colors">
+                    {k}
+                  </Link>
+                ))}
+              </div>
             </div>
           </div>
         </div>
