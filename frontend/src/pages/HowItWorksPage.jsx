@@ -333,10 +333,10 @@ function PaymentFlowDiagram() {
 
 /* ─────────────────────── subscription plan cards ────────────────────────── */
 const PLANS = [
-  { name: 'Basic',     price: '₦20,000', listings: 5,   color: '#7CB342', badge: null },
-  { name: 'Standard', price: '₦50,000', listings: 20,  color: '#E8824A', badge: 'Popular' },
-  { name: 'Premium',  price: '₦100,000',listings: 50,  color: '#2D5016', badge: null },
-  { name: 'Executive',price: '₦2,000,000',listings: 999, color: '#7B3FA0', badge: '🏆 Elite' },
+  { name: 'Basic',     price: '₦10,000',    listings: 30,  color: '#7CB342', badge: null },
+  { name: 'Standard', price: '₦30,000',    listings: 60,  color: '#E8824A', badge: 'Popular' },
+  { name: 'Premium',  price: '₦100,000',   listings: 150, color: '#2D5016', badge: null },
+  { name: 'Executive',price: '₦2,000,000', listings: 500, color: '#7B3FA0', badge: '🏆 Elite' },
 ];
 
 /* ─────────────────────── tab config ─────────────────────────────────────── */
@@ -686,7 +686,7 @@ export default function HowItWorksPage() {
                 </div>
                 <h3 className="font-display font-bold text-xl mb-1">{name}</h3>
                 <p className="text-2xl font-bold mb-1" style={{ color }}>{price}</p>
-                <p className="text-white/50 text-xs mb-4">per year</p>
+                <p className="text-white/50 text-xs mb-4">per month</p>
                 <div className="border-t border-white/10 pt-4 space-y-2">
                   <div className="flex items-center gap-2 text-sm text-white/70">
                     <CheckCircle size={13} style={{ color }}/>
