@@ -1,9 +1,37 @@
 {
-  "short_name": "Corecity",
-  "name": "Corecity Nigeria",
-  "description": "Find properties for sale, rent, and short let across Nigeria.",
+  "short_name": "CoreCity",
+  "name": "CoreCity Nigeria — Find Your Home",
+  "description": "Browse thousands of verified properties for sale, rent, and short let across all 36 Nigerian states. Secure payments via Paystack.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
-  "theme_color": "#1B5E20"
+  "theme_color": "#1B5E20",
+  "categories": ["real-estate", "finance", "lifestyle"],
+  "lang": "en-NG",
+  "icons": [
+    { "src": "favicon.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Properties",
+      "short_name": "Browse",
+      "url": "/properties",
+      "description": "Search properties across Nigeria"
+    },
+    {
+      "name": "My Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard",
+      "description": "View your account dashboard"
+    },
+    {
+      "name": "List a Property",
+      "short_name": "List",
+      "url": "/register?role=SELLER",
+      "description": "List a property for sale or rent"
+    }
+  ]
 }
